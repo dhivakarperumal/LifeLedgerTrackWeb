@@ -105,25 +105,7 @@ const Billing = () => {
 
     return (
         <div className="space-y-6 pb-20">
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                <div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-purple-600">
-                        {isIncomePage ? "Income Management" : "Billing"}
-                    </p>
-                    <h1 className="mt-1 text-3xl font-black text-slate-800">
-                        {isIncomePage ? "All Income" : "Billing"}
-                    </h1>
-                </div>
-                {isIncomePage && (
-                    <button
-                        type="button"
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/30 transition-all hover:from-[#10002b] hover:to-[#5a189a] active:scale-95"
-                    >
-                        <FiPlus size={16} /> Add New Income
-                    </button>
-                )}
-            </div>
+         
 
             {isIncomePage ? (
                 <>

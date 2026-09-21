@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FiDollarSign, FiSend, FiX, FiPlus } from "react-icons/fi";
+import { FiDollarSign, FiSend, FiX, FiPlus, FiSearch, FiGrid, FiList, FiArrowRight } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
@@ -21,6 +21,9 @@ const Transfer = () => {
     const [incomes, setIncomes] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [transferFilter, setTransferFilter] = useState("All Transfers");
+    const [viewMode, setViewMode] = useState("table");
 
     useEffect(() => {
         const loadTransfers = async () => {
@@ -80,6 +83,14 @@ const Transfer = () => {
         }
     };
 
+    const totalTransferred = transfers.reduce((total, transfer) => total + Number(transfer.amount || 0), 0);
+    const visibleTransfers = transfers.filter((transfer) => {
+        const searchValue = `${transfer.title || ""} ${transfer.category || ""} ${transfer.transfer_from || ""} ${transfer.transfer_to || ""}`.toLowerCase();
+        const matchesSearch = searchValue.includes(searchTerm.toLowerCase());
+        const matchesFilter = transferFilter === "All Transfers" || transfer.category === transferFilter;
+        return matchesSearch && matchesFilter;
+    });
+
     return (
         <div className="space-y-6 pb-20">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -90,13 +101,33 @@ const Transfer = () => {
                     </h1>
                     <p className="mt-1 text-sm text-slate-500">Track money moved between your accounts.</p>
                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                <TransferStatCard label="Total Transfers" value={transfers.length} caption="All transfer records" color="bg-[#4b0b78]" icon={<FiSend />} />
+                <TransferStatCard label="Amount Transferred" value={`₹${totalTransferred.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} caption="Total moved amount" color="bg-[#00bfa5]" icon={<FiDollarSign />} />
+                <TransferStatCard label="Income Sources" value={incomes.length} caption="Available income records" color="bg-[#ff9200]" icon={<FiArrowRight />} />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <div className="relative min-w-[220px] flex-1">
+                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search transfers by title, account..." className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white" />
+                </div>
+                <select value={transferFilter} onChange={(event) => setTransferFilter(event.target.value)} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf]">
+                    <option>All Transfers</option><option>Savings</option><option>Investment</option><option>Budget Transfer</option><option>Other</option>
+                </select>
+                <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
+                    <button type="button" aria-label="List view" onClick={() => setViewMode("table")} className={`rounded-lg p-2 transition-all ${viewMode === "table" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}><FiList size={17} /></button>
+                    <button type="button" aria-label="Grid view" onClick={() => setViewMode("grid")} className={`rounded-lg p-2 transition-all ${viewMode === "grid" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}><FiGrid size={17} /></button>
+                </div>
                 <button type="button" onClick={() => setIsModalOpen(true)} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/30 transition-all hover:from-[#10002b] hover:to-[#5a189a] active:scale-95">
                     <FiPlus size={16} /> Add New Transfer
                 </button>
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                <div className="overflow-x-auto">
+                {viewMode === "table" ? <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] text-xs uppercase tracking-wider text-[#FCD34D]">
                             <tr>
@@ -109,7 +140,7 @@ const Transfer = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {transfers.map((transfer) => (
+                            {visibleTransfers.map((transfer) => (
                                 <tr key={transfer.id} className="text-slate-700 hover:bg-purple-50/40">
                                     <td className="px-6 py-4 font-bold">{transfer.title}</td>
                                     <td className="px-6 py-4">{transfer.transfer_from || "-"}</td>
@@ -121,8 +152,10 @@ const Transfer = () => {
                             ))}
                         </tbody>
                     </table>
-                </div>
-                {transfers.length === 0 && <p className="p-8 text-center text-sm font-semibold text-slate-400">No transfer records found.</p>}
+                </div> : <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
+                    {visibleTransfers.map((transfer) => <div key={transfer.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-slate-800">{transfer.title}</p><p className="text-xs text-slate-500">{transfer.transfer_from || "-"} to {transfer.transfer_to || "-"}</p></div><p className="font-black text-[#4b0b78]">₹{Number(transfer.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p></div><p className="mt-4 text-xs text-slate-500">{transfer.category || "-"} · {transfer.transfer_date || "-"}</p></div>)}
+                </div>}
+                {visibleTransfers.length === 0 && <p className="p-8 text-center text-sm font-semibold text-slate-400">No transfer records found.</p>}
             </div>
 
             {isModalOpen && (
@@ -157,5 +190,12 @@ const Transfer = () => {
         </div>
     );
 };
+
+const TransferStatCard = ({ label, value, caption, color, icon }) => (
+    <div className="flex min-h-32 items-center gap-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.08)]">
+        <div className={`flex h-17.5 w-17.5 shrink-0 items-center justify-center rounded-[1.25rem] text-2xl font-black text-white shadow-lg ${color}`}>{icon}</div>
+        <div className="min-w-0"><p className="mb-1 text-sm font-bold text-slate-400">{label}</p><h2 className="text-2xl font-black leading-none text-slate-800">{value}</h2><p className="mt-2 text-xs font-medium text-slate-400">{caption}</p></div>
+    </div>
+);
 
 export default Transfer;
