@@ -44,15 +44,26 @@ const navItems = [
     ],
   },
 
+
   { path: "/admin/users/memories", label: "Memories", icon: Users },
   { path: "/admin/users/diary", label: "My Diary", icon: Users },
 
   { path: "/admin/users/all", label: "Customers", icon: Users },
 
-  { path: "/admin/banners", label: "Promotion Banners", icon: Image },
-  { path: "/admin/videos", label: "Showcase Videos", icon: Video },
-  { path: "/admin/reviews", label: "Customer Reviews", icon: MessageSquare },
+  // { path: "/admin/banners", label: "Promotion Banners", icon: Image },
+  // { path: "/admin/videos", label: "Showcase Videos", icon: Video },
+  // { path: "/admin/reviews", label: "Customer Reviews", icon: MessageSquare },
   { path: "/admin/reports", label: "Reports", icon: BarChart3 },
+
+  {
+    label: "More",
+    icon: Package,
+    children: [
+      { path: "/admin/more/income", label: "All Income", icon: List },
+      { path: "/admin/more/add", label: "Transfer Amount", icon: PlusCircle },
+    ],
+  },
+
   { path: "/", label: "Back Home", icon: Home },
 ];
 
