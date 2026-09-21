@@ -60,7 +60,7 @@ const navItems = [
     icon: Package,
     children: [
       { path: "/admin/more/income", label: "All Income", icon: List },
-      { path: "/admin/more/add", label: "Transfer Amount", icon: PlusCircle },
+      { path: "/admin/more/transfer", label: "Transfer Amount", icon: PlusCircle },
     ],
   },
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { FiPlus, FiX, FiUpload } from "react-icons/fi";
+import { FiPlus, FiX, FiUpload, FiSearch, FiGrid, FiList } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import api from "../../api";
 
@@ -17,11 +17,14 @@ const initialForm = {
 
 const Billing = () => {
     const location = useLocation();
-    const isIncomePage = location.pathname === "/admin/more/income";
+    const isIncomePage = location.pathname.replace(/\/$/, "") === "/admin/more/income";
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form, setForm] = useState(initialForm);
     const [incomes, setIncomes] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [incomeFilter, setIncomeFilter] = useState("All Income");
+    const [viewMode, setViewMode] = useState("table");
 
     useEffect(() => {
         if (!isIncomePage) return;
@@ -75,6 +78,27 @@ const Billing = () => {
         }
     };
 
+    const totalIncome = incomes.reduce((total, income) => total + Number(income.amount || 0), 0);
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const monthlyIncome = incomes
+        .filter((income) => {
+            const incomeDate = new Date(income.income_date);
+            return incomeDate.getMonth() === currentMonth && incomeDate.getFullYear() === currentYear;
+        })
+        .reduce((total, income) => total + Number(income.amount || 0), 0);
+    const recurringIncome = incomes
+        .filter((income) => income.recurring === "Yes")
+        .reduce((total, income) => total + Number(income.amount || 0), 0);
+    const visibleIncomes = incomes.filter((income) => {
+        const searchValue = `${income.title || ""} ${income.category || ""} ${income.payment_method || ""}`.toLowerCase();
+        const matchesSearch = searchValue.includes(searchTerm.toLowerCase());
+        const matchesFilter = incomeFilter === "All Income"
+            || (incomeFilter === "Recurring" && income.recurring === "Yes")
+            || (incomeFilter === "One-time" && income.recurring !== "Yes");
+        return matchesSearch && matchesFilter;
+    });
+
     return (
         <div className="space-y-6 pb-20">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -86,24 +110,69 @@ const Billing = () => {
                         {isIncomePage ? "All Income" : "Billing"}
                     </h1>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => isIncomePage && setIsModalOpen(true)}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-[#4b0b78] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-purple-200 transition hover:bg-[#260642]"
-                >
-                    <FiPlus /> {isIncomePage ? "Add New Income" : "Create New Order"}
-                </button>
+                {isIncomePage && (
+                    <button
+                        type="button"
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/30 transition-all hover:from-[#10002b] hover:to-[#5a189a] active:scale-95"
+                    >
+                        <FiPlus size={16} /> Add New Income
+                    </button>
+                )}
             </div>
 
             {isIncomePage ? (
-                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                    <div className="overflow-x-auto">
+                <>
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                        <IncomeStatCard label="Total Income" value={totalIncome} caption="All recorded income" color="bg-[#4b0b78]" icon="$" />
+                        <IncomeStatCard label="This Month" value={monthlyIncome} caption="Income this month" color="bg-[#00bfa5]" icon="↗" />
+                        <IncomeStatCard label="Recurring Income" value={recurringIncome} caption="Recurring entries" color="bg-[#ff9200]" icon="↻" />
+                        <IncomeStatCard label="Income Records" value={incomes.length} caption="Total transactions" color="bg-[#f43f83]" icon="#" isCount />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                        <div className="relative min-w-[220px] flex-1">
+                            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <input
+                                type="search"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="Search income by title, category..."
+                                className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white"
+                            />
+                        </div>
+                        <select
+                            value={incomeFilter}
+                            onChange={(event) => setIncomeFilter(event.target.value)}
+                            className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf]"
+                        >
+                            <option>All Income</option>
+                            <option>Recurring</option>
+                            <option>One-time</option>
+                        </select>
+                        <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
+                            <button type="button" aria-label="List view" onClick={() => setViewMode("table")} className={`rounded-lg p-2 transition-all ${viewMode === "table" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}>
+                                <FiList size={17} />
+                            </button>
+                            <button type="button" aria-label="Grid view" onClick={() => setViewMode("grid")} className={`rounded-lg p-2 transition-all ${viewMode === "grid" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}>
+                                <FiGrid size={17} />
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsModalOpen(true)}
+                            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/30 transition-all hover:from-[#10002b] hover:to-[#5a189a] active:scale-95"
+                        >
+                            <FiPlus size={16} /> Add New Income
+                        </button>
+                    </div>
+                    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    {viewMode === "table" ? <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-[#350866] text-xs uppercase tracking-wider text-[#FCD34D]">
                                 <tr><th className="px-6 py-4">Title</th><th className="px-6 py-4">Category</th><th className="px-6 py-4">Amount</th><th className="px-6 py-4">Date</th><th className="px-6 py-4">Payment</th></tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {incomes.map((income) => (
+                                {visibleIncomes.map((income) => (
                                     <tr key={income.id} className="text-slate-700">
                                         <td className="px-6 py-4 font-bold">{income.title}</td>
                                         <td className="px-6 py-4">{income.category}</td>
@@ -114,9 +183,20 @@ const Billing = () => {
                                 ))}
                             </tbody>
                         </table>
+                    </div> : <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
+                        {visibleIncomes.map((income) => (
+                            <div key={income.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div><p className="font-bold text-slate-800">{income.title}</p><p className="text-xs text-slate-500">{income.category || "Uncategorized"}</p></div>
+                                    <p className="font-black text-[#4b0b78]">₹{Number(income.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                                </div>
+                                <p className="mt-4 text-xs text-slate-500">{income.income_date} · {income.payment_method || "-"}</p>
+                            </div>
+                        ))}
+                    </div>}
+                    {visibleIncomes.length === 0 && <p className="p-8 text-center text-sm font-semibold text-slate-400">No income records found.</p>}
                     </div>
-                    {incomes.length === 0 && <p className="p-8 text-center text-sm font-semibold text-slate-400">No income records found.</p>}
-                </div>
+                </>
             ) : (
                 <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm"><p className="text-sm font-semibold text-slate-400">No billing records found.</p></div>
             )}
@@ -194,5 +274,20 @@ const Billing = () => {
         </div>
     );
 };
+
+const IncomeStatCard = ({ label, value, caption, color, icon, isCount = false }) => (
+    <div className="flex min-h-33 items-center gap-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.08)]">
+        <div className={`flex h-17.5 w-17.5 shrink-0 items-center justify-center rounded-[1.25rem] text-3xl font-black text-white shadow-lg ${color}`}>
+            {icon}
+        </div>
+        <div className="min-w-0">
+            <p className="mb-1 text-sm font-bold text-slate-400">{label}</p>
+            <h2 className="text-2xl font-black leading-none text-slate-800">
+                {isCount ? value : `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}
+            </h2>
+            <p className="mt-2 text-xs font-medium text-slate-400">{caption}</p>
+        </div>
+    </div>
+);
 
 export default Billing;

@@ -196,6 +196,17 @@ const initializeDatabase = async () => {
       attachment TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS transfers (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      amount DECIMAL(12,2) NOT NULL,
+      category VARCHAR(100) NOT NULL,
+      transfer_from VARCHAR(100) NOT NULL,
+      transfer_to VARCHAR(100) NOT NULL,
+      transfer_date DATE NOT NULL,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS order_items (
       id INT AUTO_INCREMENT PRIMARY KEY,
       order_id INT,
