@@ -29,6 +29,10 @@ const Billing = () => {
     useEffect(() => {
         if (!isIncomePage) return;
 
+        if (location.state?.openAddIncome) {
+            setIsModalOpen(true);
+        }
+
         const loadIncome = async () => {
             try {
                 const response = await api.get("/incomes");

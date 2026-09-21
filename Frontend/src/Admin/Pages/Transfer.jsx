@@ -18,6 +18,7 @@ const Transfer = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState(createEmptyForm);
     const [transfers, setTransfers] = useState([]);
+    const [incomes, setIncomes] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,6 +34,17 @@ const Transfer = () => {
         };
 
         loadTransfers();
+
+        const loadIncomeOptions = async () => {
+            try {
+                const response = await api.get("/incomes");
+                setIncomes(response.data || []);
+            } catch (error) {
+                console.error("Fetch Income Options Error:", error);
+            }
+        };
+
+        loadIncomeOptions();
     }, []);
 
     const handleChange = (event) => {
@@ -131,7 +143,8 @@ const Transfer = () => {
                             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                                 <label><span className="mb-2 block text-sm font-bold text-slate-700">From Account *</span><select name="fromAccount" required value={formData.fromAccount} onChange={handleChange} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"><option value="">Select source</option><option>Bank</option><option>UPI</option><option>Cash</option><option>Other</option></select></label>
                                 <label><span className="mb-2 block text-sm font-bold text-slate-700">To Account *</span><select name="toAccount" required value={formData.toAccount} onChange={handleChange} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"><option value="">Select destination</option><option>Main Account</option><option>Savings</option><option>Wallet</option><option>Other</option></select></label>
-                                <label><span className="mb-2 block text-sm font-bold text-slate-700">Transfer Amount *</span><span className="relative block"><FiDollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input type="number" name="amount" required min="0.01" step="0.01" value={formData.amount} onChange={handleChange} placeholder="0.00" className="w-full rounded-lg border border-slate-200 py-3 pl-10 pr-4 outline-none focus:border-purple-500" /></span><button type="button" onClick={() => { closeModal(); navigate("/admin/more/income"); }} className="mt-2 text-sm font-bold text-purple-700 hover:text-purple-900">+ Add Income Instead</button></label>
+                                <label><span className="mb-2 block text-sm font-bold text-slate-700">Transfer Amount *</span><span className="relative block"><FiDollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input type="number" name="amount" required min="0.01" step="0.01" value={formData.amount} onChange={handleChange} placeholder="0.00" className="w-full rounded-lg border border-slate-200 py-3 pl-10 pr-4 outline-none focus:border-purple-500" /></span><button type="button" onClick={() => { closeModal(); navigate("/admin/more/income", { state: { openAddIncome: true } }); }} className="mt-2 text-sm font-bold text-purple-700 hover:text-purple-900">+ Add Income Instead</button></label>
+                                <label><span className="mb-2 block text-sm font-bold text-slate-700">Select Income Amount</span><select value="" onChange={(event) => setFormData((current) => ({ ...current, amount: event.target.value }))} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"><option value="">Choose an income record</option>{incomes.map((income) => <option key={income.id} value={income.amount}>{income.title} - ₹{Number(income.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</option>)}</select></label>
                                 <label><span className="mb-2 block text-sm font-bold text-slate-700">Date *</span><input type="date" name="date" required value={formData.date} onChange={handleChange} className="w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-purple-500" /></label>
                             </div>
                             <label className="block"><span className="mb-2 block text-sm font-bold text-slate-700">Category *</span><select name="category" required value={formData.category} onChange={handleChange} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"><option value="">Select category</option><option>Savings</option><option>Investment</option><option>Budget Transfer</option><option>Other</option></select></label>
