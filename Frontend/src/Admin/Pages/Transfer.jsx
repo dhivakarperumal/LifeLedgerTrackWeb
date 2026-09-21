@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FiDollarSign, FiSend, FiX, FiPlus, FiSearch, FiGrid, FiList, FiArrowRight } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -15,16 +15,31 @@ const createEmptyForm = () => ({
     notes: "",
 });
 
+const formatCurrency = (value) => {
+    const numeric = Number(value || 0);
+    return `₹${numeric.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
 const Transfer = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState(createEmptyForm);
     const [transfers, setTransfers] = useState([]);
     const [incomes, setIncomes] = useState([]);
+    const [selectedIncomeId, setSelectedIncomeId] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [transferFilter, setTransferFilter] = useState("All Transfers");
     const [viewMode, setViewMode] = useState("table");
+
+    const loadIncomeOptions = async () => {
+        try {
+            const response = await api.get("/incomes");
+            setIncomes(response.data || []);
+        } catch (error) {
+            console.error("Fetch Income Options Error:", error);
+        }
+    };
 
     useEffect(() => {
         const loadTransfers = async () => {
@@ -38,44 +53,66 @@ const Transfer = () => {
         };
 
         loadTransfers();
-
-        const loadIncomeOptions = async () => {
-            try {
-                const response = await api.get("/incomes");
-                setIncomes(response.data || []);
-            } catch (error) {
-                console.error("Fetch Income Options Error:", error);
-            }
-        };
-
         loadIncomeOptions();
     }, []);
+
+    const selectedIncome = useMemo(
+        () => incomes.find((income) => String(income.id) === String(selectedIncomeId)) || null,
+        [incomes, selectedIncomeId],
+    );
+
+    const availableBalance = Number(selectedIncome?.remaining_amount ?? selectedIncome?.amount ?? 0);
+    const transferAmount = Number(formData.amount || 0);
+    const remainingAfterTransfer = selectedIncome ? Math.max(availableBalance - transferAmount, 0) : 0;
 
     const handleChange = (event) => {
         const { name, value } = event.target;
         setFormData((current) => ({ ...current, [name]: value }));
     };
 
+    const handleIncomeSelect = (event) => {
+        const incomeId = event.target.value;
+        const nextIncome = incomes.find((income) => String(income.id) === String(incomeId)) || null;
+        setSelectedIncomeId(incomeId);
+
+        setFormData((current) => ({
+            ...current,
+            amount: "",
+            category: current.category || nextIncome?.category || "",
+            title: current.title || nextIncome?.title || "",
+        }));
+    };
+
     const closeModal = () => {
         setIsModalOpen(false);
+        setSelectedIncomeId("");
         setFormData(createEmptyForm());
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        const numericAmount = Number(formData.amount);
+
+        if (selectedIncome && numericAmount > availableBalance) {
+            toast.error(`Insufficient income balance. Available amount: ${formatCurrency(availableBalance)}`);
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const response = await api.post("/transfers", {
                 title: formData.title,
-                amount: formData.amount,
+                amount: numericAmount,
                 category: formData.category,
                 paymentMethod: formData.paymentMethod,
                 transferFrom: formData.fromAccount,
                 transferTo: formData.toAccount,
                 date: formData.date,
                 notes: formData.notes,
+                sourceIncomeId: selectedIncome ? selectedIncome.id : null,
             });
             setTransfers((current) => [response.data.transfer, ...current]);
+            await loadIncomeOptions();
             toast.success("Transfer completed successfully!");
             closeModal();
         } catch (error) {
@@ -95,7 +132,6 @@ const Transfer = () => {
 
     return (
         <div className="space-y-6 pb-20">
-          
             <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                 <TransferStatCard label="Total Transfers" value={transfers.length} caption="All transfer records" color="bg-[#4b0b78]" icon={<FiSend />} />
                 <TransferStatCard label="Amount Transferred" value={`₹${totalTransferred.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} caption="Total moved amount" color="bg-[#00bfa5]" icon={<FiDollarSign />} />
@@ -168,11 +204,56 @@ const Transfer = () => {
                                 <span className="mb-2 block text-sm font-bold text-slate-700">Transfer Title *</span>
                                 <input type="text" name="title" required value={formData.title} onChange={handleChange} placeholder="e.g. Move monthly savings" className="w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-purple-500" />
                             </label>
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Available Income</p>
+                                    <p className="mt-2 text-lg font-black text-slate-800">{selectedIncome ? formatCurrency(availableBalance) : "—"}</p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Transfer Amount</p>
+                                    <p className="mt-2 text-lg font-black text-purple-800">{formatCurrency(transferAmount)}</p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Remaining Income</p>
+                                    <p className="mt-2 text-lg font-black text-emerald-700">{selectedIncome ? formatCurrency(remainingAfterTransfer) : "—"}</p>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                                <label><span className="mb-2 block text-sm font-bold text-slate-700">Payment Method *</span><select name="paymentMethod" required value={formData.paymentMethod} onChange={handleChange} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"><option>Cash</option><option>Bank Transfer</option><option>UPI</option><option>Card</option><option>Other</option></select></label>
-                                <label><span className="mb-2 block text-sm font-bold text-slate-700">Transfer Amount *</span><span className="relative block"><FiDollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input type="number" name="amount" required min="0.01" step="0.01" value={formData.amount} onChange={handleChange} placeholder="0.00" className="w-full rounded-lg border border-slate-200 py-3 pl-10 pr-4 outline-none focus:border-purple-500" /></span><button type="button" onClick={() => { closeModal(); navigate("/admin/more/income", { state: { openAddIncome: true } }); }} className="mt-2 text-sm font-bold text-purple-700 hover:text-purple-900">+ Add Income Instead</button></label>
-                                <label><span className="mb-2 block text-sm font-bold text-slate-700">Select Income Amount</span><select value="" onChange={(event) => setFormData((current) => ({ ...current, amount: event.target.value }))} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"><option value="">Choose an income record</option>{incomes.map((income) => <option key={income.id} value={income.amount}>{income.title} - ₹{Number(income.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</option>)}</select></label>
-                                <label><span className="mb-2 block text-sm font-bold text-slate-700">Date *</span><input type="date" name="date" required value={formData.date} onChange={handleChange} className="w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-purple-500" /></label>
+                                <label>
+                                    <span className="mb-2 block text-sm font-bold text-slate-700">Payment Method *</span>
+                                    <select name="paymentMethod" required value={formData.paymentMethod} onChange={handleChange} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500">
+                                        <option>Cash</option>
+                                        <option>Bank Transfer</option>
+                                        <option>UPI</option>
+                                        <option>Card</option>
+                                        <option>Other</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <span className="mb-2 block text-sm font-bold text-slate-700">Transfer Amount *</span>
+                                    <span className="relative block">
+                                        <FiDollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input type="number" name="amount" required min="0.01" step="0.01" value={formData.amount} onChange={handleChange} placeholder="0.00" className="w-full rounded-lg border border-slate-200 py-3 pl-10 pr-4 outline-none focus:border-purple-500" />
+                                    </span>
+                                    <button type="button" onClick={() => { closeModal(); navigate("/admin/more/income", { state: { openAddIncome: true } }); }} className="mt-2 text-sm font-bold text-purple-700 hover:text-purple-900">+ Add Income Instead</button>
+                                </label>
+                                <label className="sm:col-span-2">
+                                    <span className="mb-2 block text-sm font-bold text-slate-700">Select Existing Income Record</span>
+                                    <select value={selectedIncomeId} onChange={handleIncomeSelect} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500">
+                                        <option value="">Choose an income record</option>
+                                        {incomes.map((income) => (
+                                            <option key={income.id} value={income.id}>
+                                                {income.title} — {formatCurrency(income.remaining_amount ?? income.amount ?? 0)} available
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label>
+                                    <span className="mb-2 block text-sm font-bold text-slate-700">Date *</span>
+                                    <input type="date" name="date" required value={formData.date} onChange={handleChange} className="w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-purple-500" />
+                                </label>
                             </div>
                             <label className="block"><span className="mb-2 block text-sm font-bold text-slate-700">Category *</span><select name="category" required value={formData.category} onChange={handleChange} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"><option value="">Select category</option><option>Savings</option><option>Investment</option><option>Budget Transfer</option><option>Other</option></select></label>
                             <label className="block"><span className="mb-2 block text-sm font-bold text-slate-700">Notes</span><textarea name="notes" rows="3" value={formData.notes} onChange={handleChange} placeholder="Add any notes here..." className="w-full resize-none rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-purple-500" /></label>

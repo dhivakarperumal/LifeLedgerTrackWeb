@@ -188,6 +188,7 @@ const initializeDatabase = async () => {
       id INT AUTO_INCREMENT PRIMARY KEY,
       title VARCHAR(255) NOT NULL,
       amount DECIMAL(12,2) NOT NULL,
+      remaining_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
       category VARCHAR(100) NOT NULL,
       income_date DATE NOT NULL,
       payment_method VARCHAR(100),
@@ -200,6 +201,7 @@ const initializeDatabase = async () => {
       id INT AUTO_INCREMENT PRIMARY KEY,
       title VARCHAR(255) NOT NULL,
       amount DECIMAL(12,2) NOT NULL,
+      source_income_id INT NULL,
       category VARCHAR(100) NOT NULL,
       transfer_from VARCHAR(100) NOT NULL,
       transfer_to VARCHAR(100) NOT NULL,
@@ -235,11 +237,57 @@ const initializeDatabase = async () => {
       country VARCHAR(100),
       zip_code VARCHAR(50),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS expenses (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      expense_amount DECIMAL(12,2) NOT NULL,
+      transfer_amount DECIMAL(12,2) DEFAULT NULL,
+      remaining_amount DECIMAL(12,2) DEFAULT NULL,
+      category VARCHAR(100) NOT NULL,
+      payment_method VARCHAR(100) DEFAULT 'Cash',
+      expense_date DATE NOT NULL,
+      notes TEXT,
+      recurring ENUM('Yes', 'No') NOT NULL DEFAULT 'No',
+      attachment TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`
   ];
 
   for (const statement of schemaStatements) {
     await pool.query(statement);
+  }
+
+  const [incomeBalanceColumn] = await pool.query(
+    `SELECT COUNT(*) AS columnCount
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'income'
+       AND column_name = 'remaining_amount'`
+  );
+
+  if (incomeBalanceColumn[0].columnCount === 0) {
+    await pool.query(
+      "ALTER TABLE income ADD COLUMN remaining_amount DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER amount"
+    );
+  }
+
+  await pool.query(
+    "UPDATE income SET remaining_amount = amount WHERE remaining_amount IS NULL OR remaining_amount = 0"
+  );
+
+  const [transferSourceColumn] = await pool.query(
+    `SELECT COUNT(*) AS columnCount
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'transfers'
+       AND column_name = 'source_income_id'`
+  );
+
+  if (transferSourceColumn[0].columnCount === 0) {
+    await pool.query(
+      "ALTER TABLE transfers ADD COLUMN source_income_id INT NULL AFTER amount"
+    );
   }
 
   const [categoryStatusColumn] = await pool.query(

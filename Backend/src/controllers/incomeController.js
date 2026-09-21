@@ -25,9 +25,9 @@ exports.createIncome = async (req, res) => {
 
         const [result] = await db.query(
             `INSERT INTO income
-                (title, amount, category, income_date, payment_method, notes, recurring, attachment)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [title.trim(), numericAmount, category, date, paymentMethod || null, notes || null, recurring === "Yes" ? "Yes" : "No", req.file ? `/uploads/income-receipts/${req.file.filename}` : null]
+                (title, amount, remaining_amount, category, income_date, payment_method, notes, recurring, attachment)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [title.trim(), numericAmount, numericAmount, category, date, paymentMethod || null, notes || null, recurring === "Yes" ? "Yes" : "No", req.file ? `/uploads/income-receipts/${req.file.filename}` : null]
         );
 
         const [rows] = await db.query("SELECT * FROM income WHERE id = ?", [result.insertId]);
