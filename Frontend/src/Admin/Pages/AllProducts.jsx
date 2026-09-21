@@ -275,10 +275,11 @@ const AllProducts = () => {
                         </button>
                     </div>
                     <button
-                        onClick={() => navigate("/admin/products/add")}
+                        type="button"
+                        onClick={() => setIsRapidAddOpen(true)}
                         className="flex items-center gap-2 bg-gradient-to-r from-[#240046] to-[#7b2cbf] hover:from-[#10002b] hover:to-[#5a189a] text-white px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-purple-900/30 active:scale-95"
                     >
-                        <FiPlus size={16} /> Add New Saree
+                        <FiPlus size={16} /> Add New Expensive
                     </button>
                 </div>
                     </div>
