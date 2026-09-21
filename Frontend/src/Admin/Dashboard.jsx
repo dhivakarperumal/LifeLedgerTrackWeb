@@ -1,0 +1,495 @@
+import React, { useContext, useEffect, useState } from "react";
+import { AuthContext } from "../PrivateRouter/AuthContext";
+import { useAdmin } from "../PrivateRouter/AdminContext";
+import api from "../api";
+import { toast, Toaster } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+import {
+    FiShoppingBag,
+    FiUsers,
+    FiBox,
+    FiClock,
+    FiCheckCircle,
+    FiAlertTriangle,
+    FiMapPin,
+    FiTrendingUp,
+    FiTrendingDown,
+    FiEye,
+    FiTag
+} from "react-icons/fi";
+import { FaRupeeSign, FaTshirt, FaTruck } from "react-icons/fa";
+import { Bar, Doughnut } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+    BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler
+} from 'chart.js';
+
+const backendUrl = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "");
+
+const getDashboardImageUrl = (image) => {
+    if (!image || /^(https?:|data:|blob:)/i.test(image)) return image;
+    return `${backendUrl}${image.startsWith("/") ? image : `/${image}`}`;
+};
+
+const formatOrderDate = (value) => {
+    if (!value) return "Date unavailable";
+
+    let date = new Date(value);
+    if (Number.isNaN(date.getTime()) && typeof value === "string") {
+        date = new Date(value.replace(" ", "T"));
+    }
+
+    return Number.isNaN(date.getTime())
+        ? "Date unavailable"
+        : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+    BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler
+);
+
+const Dashboard = () => {
+    const navigate = useNavigate();
+    const { user } = useContext(AuthContext);
+    const { dashboardData, setDashboardCached } = useAdmin();
+    const [loading, setLoading] = useState(!dashboardData);
+    const [salesRange, setSalesRange] = useState("week");
+
+    useEffect(() => {
+        fetchDashboardData("week");
+    }, []);
+
+    const fetchDashboardData = async (range = salesRange) => {
+        if (!dashboardData) setLoading(true);
+        try {
+            const response = await api.get('/dashboard', { params: { range } });
+            setDashboardCached(response.data);
+        } catch (error) {
+            console.error("Fetch Dashboard Error:", error);
+            toast.error("Failed to load dashboard data");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getStatusStyle = (status) => {
+        switch (status) {
+            case "Delivered": return "bg-green-100 text-green-700";
+            case "Confirmed": return "bg-blue-100 text-blue-700";
+            case "Shipped": return "bg-orange-100 text-orange-700";
+            case "Packed": return "bg-purple-100 text-purple-700";
+            case "Pending": return "bg-yellow-100 text-yellow-700";
+            case "Cancelled": return "bg-red-100 text-red-700";
+            default: return "bg-gray-100 text-gray-700";
+        }
+    };
+
+    const getStatIcon = (iconStr) => {
+        switch (iconStr) {
+            case "saree": return <FaTshirt className="text-white" size={22} />;
+            case "bag": return <FiShoppingBag className="text-white" size={22} />;
+            case "rupee": return <FaRupeeSign className="text-white" size={22} />;
+            case "pending": return <FiClock className="text-white" size={22} />;
+            case "truck": return <FaTruck className="text-white" size={22} />;
+            case "users": return <FiUsers className="text-white" size={22} />;
+            case "lowstock": return <FiBox className="text-white" size={22} />;
+            case "offer": return <FiTag className="text-white" size={22} />;
+            default: return <FiBox className="text-white" size={22} />;
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24 gap-4 h-[60vh]">
+                <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+                <p className="text-gray-300 font-bold text-sm">Loading Dashboard...</p>
+            </div>
+        )
+    }
+
+    if (!dashboardData) {
+        return (
+            <div className="flex items-center justify-center h-[60vh]">
+                <p className="text-gray-400 font-bold text-sm">No data available</p>
+            </div>
+        )
+    }
+
+    const { stats, recentOrders, topProducts, lowStockAlerts, revenueTrends = [], orderStatusCounts = {} } = dashboardData;
+
+    // ── Bar Chart: Real Revenue Trends ──────────────────────────────
+    const barChartData = {
+        labels: revenueTrends.length > 0
+            ? revenueTrends.map(t => t.month)
+            : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        datasets: [{
+            label: 'Revenue',
+            data: revenueTrends.length > 0
+                ? revenueTrends.map(t => t.revenue)
+                : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            backgroundColor: '#D4AF37',
+            borderColor: '#B8941F',
+            borderWidth: 1,
+            borderRadius: 6,
+            borderSkipped: false,
+            categoryPercentage: 0.7,
+            barPercentage: 0.8,
+        }]
+    };
+
+    const barChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#fff',
+                titleColor: '#333',
+                bodyColor: '#333',
+                borderColor: '#eee',
+                borderWidth: 1,
+                callbacks: {
+                    label: (context) => `Revenue: ₹${context.parsed.y.toLocaleString('en-IN')}`
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: (value) => `₹${(value / 1000).toFixed(0)}k`,
+                    color: '#9ca3af',
+                    font: { size: 10 }
+                },
+                grid: { color: '#f3f4f6', drawBorder: false }
+            },
+            x: {
+                ticks: { color: '#9ca3af', font: { size: 10 } },
+                grid: { display: false, drawBorder: false }
+            }
+        }
+    };
+
+    const salesRangeOptions = [
+        { value: "week", label: "This Week" },
+        { value: "month", label: "This Month" },
+        { value: "all", label: "All Time" },
+    ];
+
+    // ── Doughnut Chart: Real Order Status Counts ─────────────────────
+    const statusLabels  = ['Order Placed', 'Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
+    const statusColors  = ['#fbbf24', '#3b82f6', '#a855f7', '#f97316', '#10b981', '#ef4444'];
+    const statusBgCols  = ['bg-yellow-400', 'bg-blue-500', 'bg-purple-500', 'bg-orange-500', 'bg-emerald-500', 'bg-red-500'];
+
+    const statusCounts  = statusLabels.map(s => orderStatusCounts[s] || 0);
+    const totalOrders   = statusCounts.reduce((a, b) => a + b, 0);
+
+    const doughnutData = {
+        labels: statusLabels,
+        datasets: [{
+            data: statusCounts,
+            backgroundColor: statusColors,
+            borderWidth: 0,
+            cutout: '70%',
+        }]
+    };
+
+    const doughnutOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } }
+    };
+
+    const orderStats = statusLabels.map((label, i) => ({
+        label,
+        count: statusCounts[i],
+        pct: totalOrders > 0 ? `${((statusCounts[i] / totalOrders) * 100).toFixed(1)}%` : '0%',
+        color: statusBgCols[i]
+    }));
+
+    const cardStyles = [
+        { gradient: "from-[#6C3DE8] to-[#A855F7]", icon_bg: "bg-white/20" },
+        { gradient: "from-[#2563EB] to-[#0EA5E9]", icon_bg: "bg-white/20" },
+        { gradient: "from-[#059669] to-[#10B981]", icon_bg: "bg-white/20" },
+        { gradient: "from-[#F59E0B] to-[#FBBF24]", icon_bg: "bg-white/20" },
+        { gradient: "from-[#EF4444] to-[#F97316]", icon_bg: "bg-white/20" },
+        { gradient: "from-[#0891B2] to-[#06B6D4]", icon_bg: "bg-white/20" },
+        { gradient: "from-[#DB2777] to-[#EC4899]", icon_bg: "bg-white/20" },
+        { gradient: "from-[#7C3AED] to-[#6D28D9]", icon_bg: "bg-white/20" },
+    ];
+
+    return (
+        <div className="space-y-6 pb-12 bg-slate-50 min-h-screen">
+            <Toaster position="top-right" />
+
+            {/* Top Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {stats.map((stat, i) => {
+                    const style = cardStyles[i % cardStyles.length];
+                    return (
+                        <div key={i} className={`relative bg-gradient-to-br ${style.gradient} rounded-2xl p-4 overflow-hidden shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer`}>
+                            {/* Decorative circle background */}
+                            <div className="absolute -top-6 -right-6 w-32 h-32 bg-white/10 rounded-full" />
+                            <div className="absolute -bottom-8 -right-2 w-24 h-24 bg-white/5 rounded-full" />
+
+                            {/* Top row: icon + trend */}
+                            <div className="flex items-center justify-between mb-3 relative z-10">
+                                <div className={`w-11 h-11 ${style.icon_bg} backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30`}>
+                                    {getStatIcon(stat.icon)}
+                                </div>
+                                <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white">
+                                    {stat.trendUp ? <FiTrendingUp size={10} /> : <FiTrendingDown size={10} />}
+                                    {stat.trend.replace('+', '').replace('↓', '').trim()}
+                                </span>
+                            </div>
+
+                            {/* Value */}
+                            <div className="relative z-10">
+                                <h3 className="text-3xl font-black text-white leading-none">{stat.value}</h3>
+                                <p className="text-white/70 text-xs font-semibold mt-1">{stat.label}</p>
+                            </div>
+
+                            {/* Bottom divider */}
+                            <div className="mt-3 pt-3 border-t border-white/20 relative z-10">
+                                <p className="text-white/60 text-[10px] font-medium">
+                                    {stat.trendUp ? '▲' : '▼'} {stat.trend.replace('+', '').replace('↓', '').trim()} vs last month
+                                </p>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Quick Actions</h3>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Shortcuts</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {[
+                        { label: "Add Product",    icon: <FiBox size={20} />,          color: "from-[#6C3DE8] to-[#A855F7]", path: "/admin/products/add" },
+                        { label: "New Order",      icon: <FiShoppingBag size={20} />,  color: "from-[#2563EB] to-[#0EA5E9]", path: "/admin/orders/create" },
+                        { label: "All Orders",     icon: <FaTruck size={20} />,         color: "from-[#059669] to-[#10B981]", path: "/admin/orders/all" },
+                        { label: "Customers",      icon: <FiUsers size={20} />,        color: "from-[#F59E0B] to-[#FBBF24]", path: "/admin/users/all" },
+                        { label: "Stock Details",  icon: <FiAlertTriangle size={20} />,color: "from-[#EF4444] to-[#F97316]", path: "/admin/products/stock" },
+                        { label: "Reports",        icon: <FiTrendingUp size={20} />,   color: "from-[#DB2777] to-[#EC4899]", path: "/admin/reports" },
+                    ].map((action, i) => (
+                        <button
+                            key={i}
+                            onClick={() => navigate(action.path)}
+                            className="flex flex-col items-center gap-2.5 p-4 rounded-2xl border border-gray-100 hover:border-transparent hover:shadow-lg transition-all duration-200 group hover:-translate-y-0.5"
+                        >
+                            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${action.color} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-200`}>
+                                {action.icon}
+                            </div>
+                            <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 text-center leading-tight">{action.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Middle Section: Charts & Low Stock */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* Sales Overview Bar Chart */}
+                <div className="lg:col-span-6 bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-slate-800">Sales Overview</h3>
+                        <label className="flex items-center gap-2 text-xs text-gray-500 border border-gray-200 rounded px-2 py-1">
+                            <FiClock />
+                            <select
+                                value={salesRange}
+                                onChange={(event) => {
+                                    const range = event.target.value;
+                                    setSalesRange(range);
+                                    fetchDashboardData(range);
+                                }}
+                                className="bg-transparent text-xs text-gray-600 outline-none cursor-pointer"
+                            >
+                                {salesRangeOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                        </label>
+                    </div>
+                    <div className="flex-1 min-h-[250px]">
+                        <Bar data={barChartData} options={barChartOptions} />
+                    </div>
+                </div>
+
+                {/* Orders Overview Pie Chart */}
+                <div className="lg:col-span-3 bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col">
+                    <h3 className="text-lg font-bold text-slate-800 mb-4">Orders Overview</h3>
+                    <div className="flex flex-col flex-1">
+                        <div className="relative h-40 flex items-center justify-center mb-6">
+                            <Doughnut data={doughnutData} options={doughnutOptions} />
+                            <div className="absolute flex flex-col items-center">
+                                <span className="text-xl font-bold text-slate-800">{totalOrders.toLocaleString('en-IN')}</span>
+                                <span className="text-xs text-gray-500">Total Orders</span>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            {orderStats.map((item, i) => (
+                                <div key={i} className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-2 text-gray-600">
+                                        <div className={`w-2 h-2 rounded ${item.color}`}></div>
+                                        {item.label}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-slate-800">{item.count}</span>
+                                        <span className="text-gray-400">({item.pct})</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Low Stock Alert */}
+                <div className="lg:col-span-3 bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-slate-800">Low Stock Alert</h3>
+                        <a href="#" className="text-xs font-bold text-purple-600 hover:underline">View All</a>
+                    </div>
+                    <div className="flex-1 space-y-4 overflow-y-auto max-h-[300px]">
+                        {lowStockAlerts.map((item, i) => (
+                            <div key={i} className="flex items-center gap-3">
+                                <img
+                                    src={getDashboardImageUrl(item.img)}
+                                    alt={item.name}
+                                    className="w-10 h-10 rounded object-cover border border-gray-200"
+                                    onError={(event) => {
+                                        event.currentTarget.onerror = null;
+                                        event.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=EDE9FE&color=7C3AED`;
+                                    }}
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-slate-800 truncate">{item.name}</p>
+                                    <p className="text-xs text-gray-500">Stock: <span className="text-red-500 font-bold">{item.stock}</span></p>
+                                </div>
+                                <span className="text-[10px] bg-red-50 text-red-500 px-2 py-1 rounded font-semibold whitespace-nowrap">Low Stock</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Section: Recent Orders & Top Selling */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* Recent Orders */}
+                <div className="lg:col-span-8 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                    <div className="flex justify-between items-center mb-5">
+                        <h3 className="text-base font-black text-slate-800">Recent Orders</h3>
+                        <button onClick={() => navigate('/admin/orders/all')} className="text-xs font-bold text-purple-600 hover:underline">View All →</button>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead>
+                                <tr className="text-[11px] text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                                    <th className="pb-3 font-bold">Order ID</th>
+                                    <th className="pb-3 font-bold">Customer</th>
+                                    <th className="pb-3 font-bold">Date</th>
+                                    <th className="pb-3 font-bold">Amount</th>
+                                    <th className="pb-3 font-bold">Status</th>
+                                    <th className="pb-3 font-bold text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {recentOrders && recentOrders.length > 0 ? recentOrders.map((order, i) => (
+                                    <tr key={i} className="hover:bg-slate-50/60 transition-colors group">
+                                        <td className="py-3 font-bold text-purple-600 text-xs">{order.id}</td>
+                                        <td className="py-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-black shrink-0">
+                                                    {(order.customer || 'G').charAt(0).toUpperCase()}
+                                                </div>
+                                                <span className="font-semibold text-slate-800 text-xs truncate max-w-[100px]">{order.customer}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-3 text-gray-400 text-xs">{formatOrderDate(order.date)}</td>
+                                        <td className="py-3 font-bold text-slate-800 text-xs">{order.amount}</td>
+                                        <td className="py-3">
+                                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${getStatusStyle(order.status)}`}>
+                                                {order.status}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 text-center">
+                                            <button
+                                                onClick={() => navigate(`/admin/orders/${order.id.replace('#ORD-0', '')}`)}
+                                                className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mx-auto hover:bg-purple-600 hover:text-white transition-all"
+                                            >
+                                                <FiEye size={13} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={6} className="py-10 text-center text-gray-400 text-sm font-semibold">No recent orders found</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Top Selling Sarees */}
+                <div className="lg:col-span-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                    <div className="flex justify-between items-center mb-5">
+                        <h3 className="text-base font-black text-slate-800">Top Selling Sarees</h3>
+                        <button onClick={() => navigate('/admin/products/all')} className="text-xs font-bold text-purple-600 hover:underline">View All →</button>
+                    </div>
+                    <div className="space-y-3">
+                        {topProducts && topProducts.length > 0 ? topProducts.map((item, i) => (
+                            <div key={i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group">
+                                <div className="relative shrink-0">
+                                    <img
+                                        src={getDashboardImageUrl(item.img)}
+                                        alt={item.name}
+                                        className="w-12 h-12 rounded-xl object-cover border border-gray-100"
+                                        onError={(event) => {
+                                            event.currentTarget.onerror = null;
+                                            event.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=EDE9FE&color=7C3AED`;
+                                        }}
+                                    />
+                                    <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white text-[9px] font-black flex items-center justify-center shadow">
+                                        {i + 1}
+                                    </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-slate-800 truncate">{item.name}</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">{item.cat}</p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <p className="text-sm font-black text-purple-600">{item.sales}</p>
+                                    <p className="text-[10px] text-gray-400">sold</p>
+                                </div>
+                            </div>
+                        )) : (
+                            <p className="text-center text-gray-400 text-sm font-semibold py-8">No data available</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Dashboard;
