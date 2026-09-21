@@ -440,7 +440,7 @@ const AllExpensive = () => {
                                     <div className="flex items-center justify-between">
                                         <label className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                             <span className="text-[#7b2cbf]"><FiRepeat size={11} /></span>
-                                            Transfer Amount ₹ — Optional
+                                            Transfer Amount ₹
                                         </label>
                                         <button
                                             type="button"
@@ -479,41 +479,65 @@ const AllExpensive = () => {
                                             {transfers.length === 0 && (
                                                 <option disabled>No transfer records found</option>
                                             )}
-                                            {transfers.map((t) => (
-                                                <option key={t.id} value={t.amount}>
-                                                    {t.title} — ₹{Number(t.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                                    {t.transfer_date ? `  (${t.transfer_date})` : ""}
-                                                </option>
-                                            ))}
+                                            {transfers.map((t) => {
+                                                // trim ISO datetime to just YYYY-MM-DD
+                                                const dateStr = t.transfer_date
+                                                    ? String(t.transfer_date).split("T")[0]
+                                                    : "";
+                                                return (
+                                                    <option key={t.id} value={t.amount}>
+                                                        {t.title} — ₹{Number(t.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                       
+                                                    </option>
+                                                );
+                                            })}
                                         </select>
                                     )}
                                 </div>
                             </div>
 
-                            {/* ── LIVE CALCULATION BOX ── */}
-                            {form.transfer_amount !== "" && (
-                                <div className="rounded-2xl border-2 border-[#7b2cbf]/20 bg-[#240046]/5 p-4 space-y-2">
-                                    <p className="text-[10px] font-black text-[#7b2cbf] uppercase tracking-widest flex items-center gap-1.5">
-                                        <FiInfo size={12} /> Calculation
+                            {/* ── LIVE CALCULATION BOX — appears as soon as transfer is selected ── */}
+                            {trfAmt > 0 && (
+                                <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                        <FiInfo size={12} /> Live Calculation
                                     </p>
-                                    <div className="grid grid-cols-3 gap-3 text-center">
-                                        <CalcBlock label="Transfer Amount" value={`₹${fmt(trfAmt)}`} color="text-amber-600" />
-                                        <div className="flex flex-col items-center justify-center">
-                                            <span className="text-xl font-black text-gray-300">−</span>
-                                        </div>
-                                        <CalcBlock label="Expense Amount" value={`₹${fmt(expAmt)}`} color="text-rose-600" />
+
+                                    {/* Row: Transfer */}
+                                    <div className="flex items-center justify-between py-2 border-b border-slate-200">
+                                        <span className="text-sm text-gray-500 font-medium">Transfer Amount</span>
+                                        <span className="text-sm font-black text-amber-600">₹{fmt(trfAmt)}</span>
                                     </div>
-                                    <div className="border-t border-[#7b2cbf]/15 pt-3 flex items-center justify-between">
-                                        <p className="text-xs font-bold text-slate-700">
-                                            {remaining >= 0 ? "✅ Remaining Balance" : "⚠️ Over Budget"}
-                                        </p>
-                                        <p className={`text-lg font-black ${remaining >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                                            ₹{fmt(remaining)}
-                                        </p>
+
+                                    {/* Row: Expense */}
+                                    <div className="flex items-center justify-between py-2 border-b border-slate-200">
+                                        <span className="text-sm text-gray-500 font-medium">Expense Amount</span>
+                                        <span className="text-sm font-black text-rose-600">
+                                            {expAmt > 0 ? `− ₹${fmt(expAmt)}` : <span className="text-gray-300 font-medium text-xs italic">Enter expense above ↑</span>}
+                                        </span>
                                     </div>
-                                    <p className="text-[10px] text-gray-400">
-                                        Net Expense = Transfer Amount − Expense Amount. The transfer amount is the source/payment fund; only the expense amount is counted as cost.
-                                    </p>
+
+                                    {/* Row: Remaining */}
+                                    <div className={`flex items-center justify-between pt-3 mt-1 rounded-xl px-3 py-2 ${
+                                        expAmt > 0
+                                            ? remaining >= 0
+                                                ? "bg-emerald-100 border border-emerald-200"
+                                                : "bg-red-100 border border-red-200"
+                                            : "bg-gray-100 border border-gray-200"
+                                    }`}>
+                                        <span className="text-sm font-black text-slate-700">
+                                            {expAmt > 0
+                                                ? remaining >= 0 ? "✅ Remaining Balance" : "⚠️ Over Budget"
+                                                : "Remaining Balance"}
+                                        </span>
+                                        <span className={`text-xl font-black ${
+                                            expAmt > 0
+                                                ? remaining >= 0 ? "text-emerald-600" : "text-red-600"
+                                                : "text-gray-400"
+                                        }`}>
+                                            ₹{expAmt > 0 ? fmt(remaining) : fmt(trfAmt)}
+                                        </span>
+                                    </div>
                                 </div>
                             )}
 
