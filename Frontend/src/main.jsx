@@ -111,6 +111,7 @@ const router = createBrowserRouter([
 
       // Finance
       { path: "billing", element: <Billing /> },
+      { path: "more/income", element: <Billing /> },
       { path: "dealers", element: <Dealers /> },
       { path: "invoices/add", element: <AddInvoice /> },
       { path: "reviews", element: <Reviews /> },

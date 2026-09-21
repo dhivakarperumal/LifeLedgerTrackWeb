@@ -184,6 +184,18 @@ const initializeDatabase = async () => {
       customer_phone VARCHAR(50),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS income (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      amount DECIMAL(12,2) NOT NULL,
+      category VARCHAR(100) NOT NULL,
+      income_date DATE NOT NULL,
+      payment_method VARCHAR(100),
+      notes TEXT,
+      recurring ENUM('Yes', 'No') NOT NULL DEFAULT 'No',
+      attachment TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS order_items (
       id INT AUTO_INCREMENT PRIMARY KEY,
       order_id INT,

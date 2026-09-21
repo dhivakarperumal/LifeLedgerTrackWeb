@@ -30,6 +30,7 @@ app.use("/api/addresses", require("./src/routes/addressRoutes"));
 app.use("/api/reviews", require("./src/routes/reviewRoutes"));
 app.use("/api/dashboard", require("./src/routes/dashboardRoutes"));
 app.use("/api/reports", require("./src/routes/reportRoutes"));
+app.use("/api/incomes", require("./src/routes/incomeRoutes"));
 
 app.use((error, req, res, next) => {
   console.error(error);
