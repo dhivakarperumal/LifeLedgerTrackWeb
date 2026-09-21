@@ -204,6 +204,7 @@ const initializeDatabase = async () => {
       transfer_from VARCHAR(100) NOT NULL,
       transfer_to VARCHAR(100) NOT NULL,
       transfer_date DATE NOT NULL,
+      payment_method VARCHAR(100),
       notes TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
@@ -266,6 +267,20 @@ const initializeDatabase = async () => {
   if (categoryTypeColumn[0].columnCount === 0) {
     await pool.query(
       "ALTER TABLE categories ADD COLUMN catType VARCHAR(50) DEFAULT 'Expensive' AFTER status"
+    );
+  }
+
+  const [transferPaymentColumn] = await pool.query(
+    `SELECT COUNT(*) AS columnCount
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'transfers'
+       AND column_name = 'payment_method'`
+  );
+
+  if (transferPaymentColumn[0].columnCount === 0) {
+    await pool.query(
+      "ALTER TABLE transfers ADD COLUMN payment_method VARCHAR(100) AFTER transfer_date"
     );
   }
 

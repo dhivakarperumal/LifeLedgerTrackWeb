@@ -12,12 +12,9 @@ exports.getAllTransfers = async (req, res) => {
 
 exports.createTransfer = async (req, res) => {
     try {
-        const { title, amount, category, transferFrom, transferTo, date, notes } = req.body;
-        if (!title || !amount || !category || !transferFrom || !transferTo || !date) {
-            return res.status(400).json({ message: "Title, amount, accounts, category, and date are required." });
-        }
-        if (transferFrom === transferTo) {
-            return res.status(400).json({ message: "Transfer From and Transfer To must be different." });
+        const { title, amount, category, paymentMethod, date, notes } = req.body;
+        if (!title || !amount || !category || !date) {
+            return res.status(400).json({ message: "Title, amount, category, and date are required." });
         }
         const numericAmount = Number(amount);
         if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
@@ -25,9 +22,9 @@ exports.createTransfer = async (req, res) => {
         }
         const [result] = await db.query(
             `INSERT INTO transfers
-                (title, amount, category, transfer_from, transfer_to, transfer_date, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [title.trim(), numericAmount, category, transferFrom, transferTo, date, notes || null]
+                (title, amount, category, transfer_from, transfer_to, transfer_date, payment_method, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [title.trim(), numericAmount, category, "Account", "Account", date, paymentMethod || "Cash", notes || null]
         );
         const [rows] = await db.query("SELECT * FROM transfers WHERE id = ?", [result.insertId]);
         res.status(201).json({ message: "Transfer saved successfully", transfer: rows[0] });

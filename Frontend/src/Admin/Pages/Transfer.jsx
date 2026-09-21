@@ -9,6 +9,7 @@ const createEmptyForm = () => ({
     fromAccount: "",
     toAccount: "",
     amount: "",
+    paymentMethod: "Cash",
     category: "",
     date: new Date().toISOString().split("T")[0],
     notes: "",
@@ -68,6 +69,7 @@ const Transfer = () => {
                 title: formData.title,
                 amount: formData.amount,
                 category: formData.category,
+                paymentMethod: formData.paymentMethod,
                 transferFrom: formData.fromAccount,
                 transferTo: formData.toAccount,
                 date: formData.date,
@@ -93,16 +95,7 @@ const Transfer = () => {
 
     return (
         <div className="space-y-6 pb-20">
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                <div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-purple-600">Finance Management</p>
-                    <h1 className="mt-1 flex items-center gap-2 text-3xl font-black text-slate-800">
-                        <FiSend className="text-purple-700" /> All Transfer Amounts
-                    </h1>
-                    <p className="mt-1 text-sm text-slate-500">Track money moved between your accounts.</p>
-                </div>
-            </div>
-
+          
             <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                 <TransferStatCard label="Total Transfers" value={transfers.length} caption="All transfer records" color="bg-[#4b0b78]" icon={<FiSend />} />
                 <TransferStatCard label="Amount Transferred" value={`₹${totalTransferred.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} caption="Total moved amount" color="bg-[#00bfa5]" icon={<FiDollarSign />} />
@@ -136,6 +129,7 @@ const Transfer = () => {
                                 <th className="px-6 py-4">To</th>
                                 <th className="px-6 py-4">Category</th>
                                 <th className="px-6 py-4">Amount</th>
+                                <th className="px-6 py-4">Payment Method</th>
                                 <th className="px-6 py-4">Date</th>
                             </tr>
                         </thead>
@@ -147,6 +141,7 @@ const Transfer = () => {
                                     <td className="px-6 py-4">{transfer.transfer_to || "-"}</td>
                                     <td className="px-6 py-4">{transfer.category || "-"}</td>
                                     <td className="px-6 py-4 font-bold text-purple-800">₹{Number(transfer.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                                    <td className="px-6 py-4">{transfer.payment_method || "-"}</td>
                                     <td className="px-6 py-4">{transfer.transfer_date || "-"}</td>
                                 </tr>
                             ))}
@@ -174,8 +169,7 @@ const Transfer = () => {
                                 <input type="text" name="title" required value={formData.title} onChange={handleChange} placeholder="e.g. Move monthly savings" className="w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-purple-500" />
                             </label>
                             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                                <label><span className="mb-2 block text-sm font-bold text-slate-700">From Account *</span><select name="fromAccount" required value={formData.fromAccount} onChange={handleChange} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"><option value="">Select source</option><option>Bank</option><option>UPI</option><option>Cash</option><option>Other</option></select></label>
-                                <label><span className="mb-2 block text-sm font-bold text-slate-700">To Account *</span><select name="toAccount" required value={formData.toAccount} onChange={handleChange} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"><option value="">Select destination</option><option>Main Account</option><option>Savings</option><option>Wallet</option><option>Other</option></select></label>
+                                <label><span className="mb-2 block text-sm font-bold text-slate-700">Payment Method *</span><select name="paymentMethod" required value={formData.paymentMethod} onChange={handleChange} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"><option>Cash</option><option>Bank Transfer</option><option>UPI</option><option>Card</option><option>Other</option></select></label>
                                 <label><span className="mb-2 block text-sm font-bold text-slate-700">Transfer Amount *</span><span className="relative block"><FiDollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input type="number" name="amount" required min="0.01" step="0.01" value={formData.amount} onChange={handleChange} placeholder="0.00" className="w-full rounded-lg border border-slate-200 py-3 pl-10 pr-4 outline-none focus:border-purple-500" /></span><button type="button" onClick={() => { closeModal(); navigate("/admin/more/income", { state: { openAddIncome: true } }); }} className="mt-2 text-sm font-bold text-purple-700 hover:text-purple-900">+ Add Income Instead</button></label>
                                 <label><span className="mb-2 block text-sm font-bold text-slate-700">Select Income Amount</span><select value="" onChange={(event) => setFormData((current) => ({ ...current, amount: event.target.value }))} className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"><option value="">Choose an income record</option>{incomes.map((income) => <option key={income.id} value={income.amount}>{income.title} - ₹{Number(income.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</option>)}</select></label>
                                 <label><span className="mb-2 block text-sm font-bold text-slate-700">Date *</span><input type="date" name="date" required value={formData.date} onChange={handleChange} className="w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-purple-500" /></label>
