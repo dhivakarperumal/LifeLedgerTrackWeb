@@ -19,7 +19,7 @@ const Register = React.lazy(() => import("./Components/Auth/Register.jsx"));
 // Lazy Load Admin Components
 const AdminPanel = React.lazy(() => import("./Admin/AdminPanel.jsx"));
 const Dashboard = React.lazy(() => import("./Admin/Dashboard.jsx"));
-const AllProducts = React.lazy(() => import("./Admin/Pages/AllProducts.jsx"));
+const AllExpensive = React.lazy(() => import("./Admin/Pages/AllExpensive.jsx"));
 const Category = React.lazy(() => import("./Admin/Pages/Category.jsx"));
 
 
@@ -58,8 +58,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       // Products
-      { path: "products/all", element: <AllProducts /> },
-      { path: "products/category", element: <Category /> },
+      { path: "expensive/all", element: <AllExpensive /> },
+      { path: "expensive/category", element: <Category /> },
       
       // Others
       { path: "users/all", element: <Users initialTab="All" /> },

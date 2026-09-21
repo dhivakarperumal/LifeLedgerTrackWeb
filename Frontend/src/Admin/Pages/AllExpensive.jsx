@@ -21,7 +21,7 @@ import {
     FiDatabase
 } from "react-icons/fi";
 
-const AllProducts = () => {
+const AllExpensive = () => {
     const navigate = useNavigate();
     const { productsCache, setProductsCached } = useAdmin();
 
@@ -617,4 +617,4 @@ const FiCheckCircle = () => <svg stroke="currentColor" fill="none" strokeWidth="
 const FiAlertCircle = () => <svg stroke="currentColor" fill="none" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
 const FiXCircle = () => <svg stroke="currentColor" fill="none" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
 
-export default AllProducts;
+export default AllExpensive;

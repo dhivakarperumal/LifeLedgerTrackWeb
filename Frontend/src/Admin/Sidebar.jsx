@@ -34,10 +34,9 @@ const navItems = [
     label: "Expensive ",
     icon: Package,
     children: [
-      { path: "/admin/products/all", label: "All Expensive", icon: List },
-      { path: "/admin/products/add", label: "Add Expensive", icon: PlusCircle },
+      { path: "/admin/expensive/all", label: "All Expensive", icon: List },
       {
-        path: "/admin/products/category",
+        path: "/admin/expensive/category",
         label: "Add Expensive Categories",
         icon: Layers,
       },
