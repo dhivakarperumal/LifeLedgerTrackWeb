@@ -52,11 +52,6 @@ router.post("/categories", memoryController.createMemoryCategory);
 router.put("/categories/:id", memoryController.updateMemoryCategory);
 router.delete("/categories/:id", memoryController.deleteMemoryCategory);
 
-router.get("/albums", memoryController.getMemoryAlbums);
-router.post("/albums", memoryController.createMemoryAlbum);
-router.put("/albums/:id", memoryController.updateMemoryAlbum);
-router.delete("/albums/:id", memoryController.deleteMemoryAlbum);
-
 router.get("/", memoryController.getMemories);
 router.get("/:id", memoryController.getMemoryById);
 router.post("/", upload.array("media", 10), memoryController.createMemory);

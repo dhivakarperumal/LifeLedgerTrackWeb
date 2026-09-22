@@ -323,13 +323,25 @@ const Dashboard = () => {
         { gradient: "from-[#7C3AED] to-[#6D28D9]", icon_bg: "bg-white/20" },
     ];
 
+    const savedMonthlyBudget = Number(localStorage.getItem("lifeLedgerMonthlyBudget") || 0);
+    const dashboardStats = stats.map((stat) => {
+        if (stat.label === "Monthly Budget") {
+            const budgetValue = Number.isFinite(savedMonthlyBudget) && savedMonthlyBudget > 0 ? savedMonthlyBudget : 0;
+            return {
+                ...stat,
+                value: `₹${budgetValue.toLocaleString("en-IN")}`,
+            };
+        }
+        return stat;
+    });
+
     return (
         <div className="space-y-6 pb-12 bg-slate-50 min-h-screen">
             <Toaster position="top-right" />
 
             {/* Top Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {stats.map((stat, i) => {
+                {dashboardStats.map((stat, i) => {
                     const style = cardStyles[i % cardStyles.length];
                     return (
                         <div key={i} className={`relative bg-gradient-to-br ${style.gradient} rounded-2xl p-4 overflow-hidden shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer`}>

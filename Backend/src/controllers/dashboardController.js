@@ -111,6 +111,7 @@ exports.getDashboardData = async (req, res) => {
         const hasUsers = await tableExists("users");
         const hasCategories = await tableExists("categories");
         const hasTransfers = await tableExists("transfers");
+        const hasMemories = await tableExists("memories");
 
         const defaultUserCount = { totalCustomers: 0 };
         const defaultCategoryCount = { totalCategories: 0 };
@@ -136,11 +137,16 @@ exports.getDashboardData = async (req, res) => {
             ? await db.query("SELECT COALESCE(SUM(amount), 0) AS totalTransfers FROM transfers")
             : [ [defaultFinancial] ];
 
+        const [[memoriesResult]] = hasMemories
+            ? await db.query("SELECT COUNT(*) AS totalMemories FROM memories")
+            : [ [{ totalMemories: 0 }] ];
+
         const totalIncome = safeNumber(incomeResult.totalIncome || 0);
         const totalExpenses = safeNumber(expenseResult.totalExpenses || 0);
         const totalTransfers = safeNumber(transferResult.totalTransfers || 0);
         const totalCustomers = safeNumber(customerResult.totalCustomers || 0);
         const totalCategories = safeNumber(categoryResult.totalCategories || 0);
+        const totalMemories = safeNumber(memoriesResult.totalMemories || 0);
 
         const totalRevenue = hasOrders
             ? safeNumber(0)
@@ -166,7 +172,7 @@ exports.getDashboardData = async (req, res) => {
             stats: [
                 { label: "Total Income", value: formatCurrency(totalIncome), trend: "+ 0%", trendUp: true, icon: "rupee" },
                 { label: "Total Expenses", value: formatCurrency(totalExpenses), trend: "- 0%", trendUp: false, icon: "bag" },
-                { label: "Net Balance", value: formatCurrency(netBalance), trend: "+ 0%", trendUp: true, icon: "saree" },
+                { label: "Total Memories", value: totalMemories.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "memories" },
                 { label: "Customers", value: totalCustomers.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "users" },
                 { label: "Categories", value: totalCategories.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "tag" },
                 { label: "Transactions", value: `${safeNumber(incomeResult.incomeCount || 0) + safeNumber(expenseResult.expenseCount || 0)}`.toString(), trend: "+ 0%", trendUp: true, icon: "truck" },

@@ -177,80 +177,13 @@ const deleteMemoryCategory = async (req, res) => {
   }
 };
 
-const getMemoryAlbums = async (req, res) => {
-  try {
-    const [rows] = await db.query(
-      `SELECT * FROM memory_albums WHERE user_id = ? ORDER BY created_at DESC`,
-      [req.user.user_id]
-    );
-    res.json(rows);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch memory albums", error: error.message });
-  }
-};
-
-const createMemoryAlbum = async (req, res) => {
-  try {
-    const { name, description, cover_image } = req.body;
-    if (!name || !String(name).trim()) {
-      return res.status(400).json({ message: "Album name is required." });
-    }
-
-    const [result] = await db.query(
-      `INSERT INTO memory_albums (user_id, name, description, cover_image, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.user.user_id, String(name).trim(), description || "", cover_image || "", req.user.user_id, req.user.user_id]
-    );
-
-    const [rows] = await db.query("SELECT * FROM memory_albums WHERE id = ?", [result.insertId]);
-    res.status(201).json(rows[0]);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to create memory album", error: error.message });
-  }
-};
-
-const updateMemoryAlbum = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description, cover_image } = req.body;
-
-    const [rows] = await db.query("SELECT * FROM memory_albums WHERE id = ? AND user_id = ?", [id, req.user.user_id]);
-    if (!rows.length) {
-      return res.status(404).json({ message: "Memory album not found." });
-    }
-
-    await db.query(
-      `UPDATE memory_albums
-       SET name = ?, description = ?, cover_image = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ? AND user_id = ?`,
-      [String(name || rows[0].name).trim(), description ?? rows[0].description, cover_image ?? rows[0].cover_image, req.user.user_id, id, req.user.user_id]
-    );
-
-    const [updated] = await db.query("SELECT * FROM memory_albums WHERE id = ?", [id]);
-    res.json(updated[0]);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to update memory album", error: error.message });
-  }
-};
-
-const deleteMemoryAlbum = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await db.query("DELETE FROM memory_albums WHERE id = ? AND user_id = ?", [id, req.user.user_id]);
-    res.json({ message: "Memory album deleted successfully." });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to delete memory album", error: error.message });
-  }
-};
-
 const getMemories = async (req, res) => {
   try {
-    const { search = "", category = "all", album = "all", favorite = "", status = "all" } = req.query;
+    const { search = "", category = "all", favorite = "", status = "all" } = req.query;
     let query = `
-      SELECT m.*, c.name AS category_name, c.color AS category_color, a.name AS album_name
+      SELECT m.*, c.name AS category_name, c.color AS category_color
       FROM memories m
       LEFT JOIN memory_categories c ON c.id = m.category_id
-      LEFT JOIN memory_albums a ON a.id = m.album_id
       WHERE m.user_id = ?
     `;
     const values = [req.user.user_id];
@@ -264,11 +197,6 @@ const getMemories = async (req, res) => {
     if (category && category !== "all") {
       query += " AND m.category_id = ?";
       values.push(category);
-    }
-
-    if (album && album !== "all") {
-      query += " AND m.album_id = ?";
-      values.push(album);
     }
 
     if (favorite === "true") {
@@ -293,10 +221,9 @@ const getMemoryById = async (req, res) => {
   try {
     const { id } = req.params;
     const [rows] = await db.query(
-      `SELECT m.*, c.name AS category_name, a.name AS album_name
+      `SELECT m.*, c.name AS category_name
        FROM memories m
        LEFT JOIN memory_categories c ON c.id = m.category_id
-       LEFT JOIN memory_albums a ON a.id = m.album_id
        WHERE m.id = ? AND m.user_id = ?`,
       [id, req.user.user_id]
     );
@@ -315,7 +242,7 @@ const getMemoryById = async (req, res) => {
 
 const createMemory = async (req, res) => {
   try {
-    const { title, description, category_id, album_id, memory_date, location, tags, mood, status, is_favorite, voice_note } = req.body;
+    const { title, description, category_id, memory_date, location, tags, mood, status, is_favorite, voice_note } = req.body;
     if (!title || !String(title).trim()) {
       return res.status(400).json({ message: "Memory title is required." });
     }
@@ -335,16 +262,15 @@ const createMemory = async (req, res) => {
 
     const [result] = await db.query(
       `INSERT INTO memories (
-        user_id, title, description, category_id, album_id, memory_date, location, mood,
+        user_id, title, description, category_id, memory_date, location, mood,
         tags, status, is_favorite, media_url, media_gallery, media_type, voice_note, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         req.user.user_id,
         String(title).trim(),
         description || "",
         resolvedCategoryId || null,
-        album_id || null,
         memory_date || new Date().toISOString().slice(0, 10),
         location || "",
         mood || "Happy",
@@ -375,7 +301,7 @@ const updateMemory = async (req, res) => {
       return res.status(404).json({ message: "Memory not found." });
     }
 
-    const { title, description, category_id, album_id, memory_date, location, tags, mood, status, is_favorite, voice_note } = req.body;
+    const { title, description, category_id, memory_date, location, tags, mood, status, is_favorite, voice_note } = req.body;
     const resolvedCategoryId = await syncMemoryCategoryFromShared(req.user.user_id, category_id ?? existing[0][0].category_id, req.body.category_name || req.body.category || null);
     const uploadedFiles = Array.isArray(req.files) ? req.files : [];
     const gallery = uploadedFiles.length
@@ -397,14 +323,13 @@ const updateMemory = async (req, res) => {
 
     await db.query(
       `UPDATE memories
-       SET title = ?, description = ?, category_id = ?, album_id = ?, memory_date = ?, location = ?, mood = ?, tags = ?,
+       SET title = ?, description = ?, category_id = ?, memory_date = ?, location = ?, mood = ?, tags = ?,
            status = ?, is_favorite = ?, media_url = ?, media_gallery = ?, media_type = ?, voice_note = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ? AND user_id = ?`,
       [
         title || existing[0][0].title,
         description ?? existing[0][0].description,
         resolvedCategoryId ?? existing[0][0].category_id,
-        album_id ?? existing[0][0].album_id,
         memory_date || existing[0][0].memory_date,
         location ?? existing[0][0].location,
         mood || existing[0][0].mood,
@@ -469,10 +394,6 @@ module.exports = {
   createMemoryCategory,
   updateMemoryCategory,
   deleteMemoryCategory,
-  getMemoryAlbums,
-  createMemoryAlbum,
-  updateMemoryAlbum,
-  deleteMemoryAlbum,
   getMemories,
   getMemoryById,
   createMemory,
