@@ -41,7 +41,6 @@ const initialForm = {
   title: "",
   description: "",
   category_id: "",
-  album_id: "",
   memory_date: new Date().toISOString().slice(0, 10),
   location: "",
   mood: "Happy",
@@ -54,10 +53,8 @@ const initialForm = {
 const MemoriesManagement = () => {
   const [memories, setMemories] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [albums, setAlbums] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedAlbum, setSelectedAlbum] = useState("all");
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [viewMode, setViewMode] = useState("table");
   const [loading, setLoading] = useState(true);
@@ -75,10 +72,9 @@ const MemoriesManagement = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [memoriesRes, categoriesRes, albumsRes] = await Promise.all([
+      const [memoriesRes, categoriesRes] = await Promise.all([
         api.get("/memories"),
         api.get("/categories"),
-        api.get("/memories/albums"),
       ]);
 
       const sharedCategories = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
@@ -89,7 +85,6 @@ const MemoriesManagement = () => {
 
       setMemories(Array.isArray(memoriesRes.data) ? memoriesRes.data : []);
       setCategories(memoryOnlyCategories);
-      setAlbums(Array.isArray(albumsRes.data) ? albumsRes.data : []);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load memories.");
     } finally {
@@ -112,8 +107,8 @@ const MemoriesManagement = () => {
     total: memories.length,
     favorites: memories.filter((item) => item.is_favorite).length,
     thisYear: memories.filter((item) => new Date(item.memory_date).getFullYear() === new Date().getFullYear()).length,
-    albums: albums.length,
-  }), [memories, albums]);
+    albums: 0,
+  }), [memories]);
 
   const filteredMemories = useMemo(() => {
     return memories.filter((item) => {
@@ -130,11 +125,10 @@ const MemoriesManagement = () => {
 
       const matchesSearch = !search || haystack.includes(search.toLowerCase());
       const matchesCategory = selectedCategory === "all" || String(item.category_id) === String(selectedCategory);
-      const matchesAlbum = selectedAlbum === "all" || String(item.album_id) === String(selectedAlbum);
       const matchesFavorite = !favoriteOnly || item.is_favorite;
-      return matchesSearch && matchesCategory && matchesAlbum && matchesFavorite;
+      return matchesSearch && matchesCategory && matchesFavorite;
     });
-  }, [memories, search, selectedCategory, selectedAlbum, favoriteOnly]);
+  }, [memories, search, selectedCategory, favoriteOnly]);
 
   const openNewMemory = () => {
     setEditingId(null);
@@ -143,7 +137,6 @@ const MemoriesManagement = () => {
     setForm({
       ...initialForm,
       category_id: memoryCategories[0]?.id || "",
-      album_id: albums[0]?.id || "",
     });
     setIsEditorOpen(true);
   };
@@ -155,7 +148,6 @@ const MemoriesManagement = () => {
       title: memory.title || "",
       description: memory.description || "",
       category_id: memory.category_id || "",
-      album_id: memory.album_id || "",
       memory_date: memory.memory_date || new Date().toISOString().slice(0, 10),
       location: memory.location || "",
       mood: memory.mood || "Happy",
@@ -192,7 +184,7 @@ const MemoriesManagement = () => {
           formData.append(key, value ? "true" : "false");
           return;
         }
-        if (key === "category_id" || key === "album_id") {
+        if (key === "category_id") {
           if (value) formData.append(key, value);
           return;
         }
@@ -239,18 +231,6 @@ const MemoriesManagement = () => {
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Unable to toggle favorite.");
-    }
-  };
-
-  const addSampleAlbum = async () => {
-    const name = window.prompt("Album name");
-    if (!name) return;
-    try {
-      await api.post("/memories/albums", { name, description: "Created from memories manager" });
-      toast.success("Album created.");
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to create album.");
     }
   };
 
@@ -547,16 +527,6 @@ const MemoriesManagement = () => {
                     <option value="">Select category</option>
                     {memoryCategories.map((category) => (
                       <option key={category.id} value={category.id}>{category.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Album</label>
-                  <select name="album_id" value={form.album_id} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500">
-                    <option value="">Select album</option>
-                    {albums.map((album) => (
-                      <option key={album.id} value={album.id}>{album.name}</option>
                     ))}
                   </select>
                 </div>
