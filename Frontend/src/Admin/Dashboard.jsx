@@ -367,6 +367,214 @@ const Dashboard = () => {
                 </div>
             </div>
 
+            {/* ══════════ TODAY'S ACTIVITY SECTION ══════════ */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#240046] to-[#7b2cbf] flex items-center justify-center text-white">
+                            <FiCalendar size={15} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Today's Activity</h3>
+                            <p className="text-[10px] text-gray-400 font-medium">
+                                {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={fetchRecentActivity}
+                        className="text-xs font-bold text-purple-600 border border-purple-100 px-3 py-1.5 rounded-lg hover:bg-purple-50 transition-all"
+                    >
+                        ↻ Refresh
+                    </button>
+                </div>
+
+                {activityLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="w-8 h-8 border-4 border-[#7b2cbf]/20 border-t-[#7b2cbf] rounded-full animate-spin" />
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+
+                        {/* ── Recent Expenses ── */}
+                        <div className="rounded-xl border border-rose-100 bg-rose-50/40 p-4 flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center text-white shadow-sm">
+                                        <FiRepeat size={14} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-800">Expenses</p>
+                                        <p className="text-[10px] text-gray-400">{recentExpenses.length} record{recentExpenses.length !== 1 ? "s" : ""}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => navigate("/admin/expensive/all")} className="text-[10px] text-rose-500 font-bold hover:underline flex items-center gap-1">
+                                    View All <FiArrowRight size={10} />
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {recentExpenses.length === 0 ? (
+                                    <p className="text-center text-gray-300 text-xs py-4 font-semibold">No expense records today</p>
+                                ) : recentExpenses.map((e) => (
+                                    <div key={e.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 shadow-sm border border-rose-100/60">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-slate-700 truncate">{e.title}</p>
+                                            <p className="text-[10px] text-gray-400 truncate">{e.category || "—"}</p>
+                                        </div>
+                                        <div className="text-right shrink-0 ml-2">
+                                            <p className="text-xs font-black text-rose-600">₹{Number(e.expense_amount || 0).toLocaleString("en-IN")}</p>
+                                            <p className="text-[10px] text-gray-400">{e.payment_method || "Cash"}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            {recentExpenses.length > 0 && (
+                                <div className="bg-white rounded-lg px-3 py-2 border border-rose-100 flex items-center justify-between mt-auto">
+                                    <span className="text-[10px] text-gray-400 font-semibold">Total Spent</span>
+                                    <span className="text-xs font-black text-rose-600">
+                                        ₹{recentExpenses.reduce((s, e) => s + Number(e.expense_amount || 0), 0).toLocaleString("en-IN")}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ── Recent Transfers ── */}
+                        <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-sm">
+                                        <FiSend size={14} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-800">Transfers</p>
+                                        <p className="text-[10px] text-gray-400">{recentTransfers.length} record{recentTransfers.length !== 1 ? "s" : ""}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => navigate("/admin/more/transfer")} className="text-[10px] text-blue-500 font-bold hover:underline flex items-center gap-1">
+                                    View All <FiArrowRight size={10} />
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {recentTransfers.length === 0 ? (
+                                    <p className="text-center text-gray-300 text-xs py-4 font-semibold">No transfer records today</p>
+                                ) : recentTransfers.map((t) => (
+                                    <div key={t.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 shadow-sm border border-blue-100/60">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-slate-700 truncate">{t.title}</p>
+                                            <p className="text-[10px] text-gray-400 truncate">{t.category || "—"}</p>
+                                        </div>
+                                        <div className="text-right shrink-0 ml-2">
+                                            <p className="text-xs font-black text-blue-600">₹{Number(t.amount || 0).toLocaleString("en-IN")}</p>
+                                            <p className="text-[10px] text-emerald-500 font-semibold">Rem: ₹{Number(t.remaining_amount || 0).toLocaleString("en-IN")}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            {recentTransfers.length > 0 && (
+                                <div className="bg-white rounded-lg px-3 py-2 border border-blue-100 flex items-center justify-between mt-auto">
+                                    <span className="text-[10px] text-gray-400 font-semibold">Total Transferred</span>
+                                    <span className="text-xs font-black text-blue-600">
+                                        ₹{recentTransfers.reduce((s, t) => s + Number(t.amount || 0), 0).toLocaleString("en-IN")}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ── Recent Memories ── */}
+                        <div className="rounded-xl border border-amber-100 bg-amber-50/40 p-4 flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-sm">
+                                        <FiImage size={14} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-800">Memories</p>
+                                        <p className="text-[10px] text-gray-400">{recentMemories.length} record{recentMemories.length !== 1 ? "s" : ""}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => navigate("/admin/users/memories")} className="text-[10px] text-amber-500 font-bold hover:underline flex items-center gap-1">
+                                    View All <FiArrowRight size={10} />
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {recentMemories.length === 0 ? (
+                                    <p className="text-center text-gray-300 text-xs py-4 font-semibold">No memory records today</p>
+                                ) : recentMemories.map((m) => (
+                                    <div key={m.id} className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 shadow-sm border border-amber-100/60">
+                                        {m.thumbnail_url || m.cover_image ? (
+                                            <img
+                                                src={`${(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "")}${m.thumbnail_url || m.cover_image}`}
+                                                className="w-8 h-8 rounded-lg object-cover border border-amber-100 shrink-0"
+                                                alt={m.title}
+                                                onError={(ev) => { ev.currentTarget.style.display = "none"; }}
+                                            />
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                                                <FiImage size={14} className="text-amber-400" />
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-slate-700 truncate">{m.title || "Untitled"}</p>
+                                            <p className="text-[10px] text-gray-400 truncate">{m.category_name || m.location || "—"}</p>
+                                        </div>
+                                        {m.is_favorite && <span className="text-amber-400 text-sm shrink-0">★</span>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* ── Recent Diary Entries ── */}
+                        <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-sm">
+                                        <FiBook size={14} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-800">My Diary</p>
+                                        <p className="text-[10px] text-gray-400">{recentDiary.length} entr{recentDiary.length !== 1 ? "ies" : "y"}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => navigate("/admin/users/diary")} className="text-[10px] text-emerald-600 font-bold hover:underline flex items-center gap-1">
+                                    View All <FiArrowRight size={10} />
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {recentDiary.length === 0 ? (
+                                    <p className="text-center text-gray-300 text-xs py-4 font-semibold">No diary entries today</p>
+                                ) : recentDiary.map((d) => (
+                                    <div key={d.id} className="bg-white rounded-lg px-3 py-2 shadow-sm border border-emerald-100/60">
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <p className="text-xs font-bold text-slate-700 truncate flex-1">{d.title || "Untitled Entry"}</p>
+                                            {d.mood && (
+                                                <span className="text-sm ml-1 shrink-0">{
+                                                    d.mood === "happy" ? "😊" :
+                                                    d.mood === "sad" ? "😢" :
+                                                    d.mood === "angry" ? "😠" :
+                                                    d.mood === "excited" ? "🤩" :
+                                                    d.mood === "anxious" ? "😰" : "📝"
+                                                }</span>
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 line-clamp-1">
+                                            {d.content ? d.content.replace(/<[^>]*>/g, "").slice(0, 60) : d.category_name || "—"}
+                                        </p>
+                                        {d.tags && d.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                {(Array.isArray(d.tags) ? d.tags : []).slice(0, 2).map((tag, ti) => (
+                                                    <span key={ti} className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600 font-semibold">#{tag}</span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                    </div>
+                )}
+            </div>
+
             {/* Middle Section: Charts & Low Stock */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Sales Overview Bar Chart */}
@@ -423,31 +631,27 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* Low Stock Alert */}
+                {/* Low Transfer Balance */}
                 <div className="lg:col-span-3 bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-slate-800">Low Stock Alert</h3>
-                        <a href="#" className="text-xs font-bold text-purple-600 hover:underline">View All</a>
+                        <h3 className="text-lg font-bold text-slate-800">Low Transfer Balance</h3>
+                        <button onClick={() => navigate('/admin/more/transfer')} className="text-xs font-bold text-purple-600 hover:underline">View All</button>
                     </div>
                     <div className="flex-1 space-y-4 overflow-y-auto max-h-[300px]">
-                        {lowStockAlerts.map((item, i) => (
-                            <div key={i} className="flex items-center gap-3">
-                                <img
-                                    src={getDashboardImageUrl(item.img)}
-                                    alt={item.name}
-                                    className="w-10 h-10 rounded object-cover border border-gray-200"
-                                    onError={(event) => {
-                                        event.currentTarget.onerror = null;
-                                        event.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=EDE9FE&color=7C3AED`;
-                                    }}
-                                />
+                        {lowStockAlerts.length > 0 ? lowStockAlerts.map((item, i) => (
+                            <div key={item.id || i} className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm font-black shrink-0">
+                                    {(item.name || 'T').charAt(0).toUpperCase()}
+                                </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold text-slate-800 truncate">{item.name}</p>
-                                    <p className="text-xs text-gray-500">Stock: <span className="text-red-500 font-bold">{item.stock}</span></p>
+                                    <p className="text-xs text-gray-500">Remaining: <span className="text-red-500 font-bold">₹{Number(item.remaining || item.stock || 0).toLocaleString('en-IN')}</span></p>
                                 </div>
-                                <span className="text-[10px] bg-red-50 text-red-500 px-2 py-1 rounded font-semibold whitespace-nowrap">Low Stock</span>
+                                <span className="text-[10px] bg-red-50 text-red-500 px-2 py-1 rounded font-semibold whitespace-nowrap">Low</span>
                             </div>
-                        ))}
+                        )) : (
+                            <p className="text-center text-gray-400 text-sm font-semibold py-8">No low transfer balances</p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -510,40 +714,34 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* Top Selling Sarees */}
+                {/* Top Expense Categories */}
                 <div className="lg:col-span-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex justify-between items-center mb-5">
-                        <h3 className="text-base font-black text-slate-800">Top Selling Sarees</h3>
-                        <button onClick={() => navigate('/admin/products/all')} className="text-xs font-bold text-purple-600 hover:underline">View All →</button>
+                        <h3 className="text-base font-black text-slate-800">Top Expense Categories</h3>
+                        <button onClick={() => navigate('/admin/expensive/category')} className="text-xs font-bold text-purple-600 hover:underline">View All →</button>
                     </div>
                     <div className="space-y-3">
                         {topProducts && topProducts.length > 0 ? topProducts.map((item, i) => (
                             <div key={i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group">
                                 <div className="relative shrink-0">
-                                    <img
-                                        src={getDashboardImageUrl(item.img)}
-                                        alt={item.name}
-                                        className="w-12 h-12 rounded-xl object-cover border border-gray-100"
-                                        onError={(event) => {
-                                            event.currentTarget.onerror = null;
-                                            event.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=EDE9FE&color=7C3AED`;
-                                        }}
-                                    />
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center font-black text-xs">
+                                        {item.label?.slice(0, 2).toUpperCase() || 'EX'}
+                                    </div>
                                     <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white text-[9px] font-black flex items-center justify-center shadow">
                                         {i + 1}
                                     </span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-slate-800 truncate">{item.name}</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">{item.cat}</p>
+                                    <p className="text-xs font-bold text-slate-800 truncate">{item.label || item.name}</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">{item.count || 0} entries</p>
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <p className="text-sm font-black text-purple-600">{item.sales}</p>
-                                    <p className="text-[10px] text-gray-400">sold</p>
+                                    <p className="text-sm font-black text-purple-600">₹{Number(item.value || item.sales || 0).toLocaleString('en-IN')}</p>
+                                    <p className="text-[10px] text-gray-400">spent</p>
                                 </div>
                             </div>
                         )) : (
-                            <p className="text-center text-gray-400 text-sm font-semibold py-8">No data available</p>
+                            <p className="text-center text-gray-400 text-sm font-semibold py-8">No expense data available</p>
                         )}
                     </div>
                 </div>

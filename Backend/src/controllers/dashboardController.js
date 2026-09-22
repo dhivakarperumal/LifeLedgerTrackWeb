@@ -73,6 +73,36 @@ const getCategoryBreakdown = async (hasExpenses) => {
     }));
 };
 
+const getLowTransferAlerts = async (hasTransfers) => {
+    if (!hasTransfers) {
+        return [];
+    }
+
+    const [rows] = await db.query(
+        `SELECT id,
+                title,
+                amount,
+                remaining_amount,
+                category,
+                transfer_from,
+                transfer_to
+         FROM transfers
+         WHERE remaining_amount IS NOT NULL
+         ORDER BY remaining_amount ASC, amount DESC
+         LIMIT 4`
+    );
+
+    return rows.map((row) => ({
+        id: row.id,
+        name: row.title || `${row.transfer_from || "Transfer"} → ${row.transfer_to || "Account"}`,
+        category: row.category || "Transfer",
+        amount: safeNumber(row.amount, 0),
+        remaining: safeNumber(row.remaining_amount, 0),
+        stock: safeNumber(row.remaining_amount, 0),
+        img: null,
+    }));
+};
+
 exports.getDashboardData = async (req, res) => {
     try {
         const hasOrders = await tableExists("orders");
@@ -121,6 +151,7 @@ exports.getDashboardData = async (req, res) => {
         const monthlyExpenses = hasExpenses ? totalExpenses : 0;
         const monthlyExpenseTrends = await getLastMonthsExpenseTrend(hasExpenses);
         const categoryAnalytics = await getCategoryBreakdown(hasExpenses);
+        const lowStockAlerts = await getLowTransferAlerts(hasTransfers);
 
         const orderStatusCounts = {
             "Order Placed": 0,
@@ -144,8 +175,8 @@ exports.getDashboardData = async (req, res) => {
             ],
             orderStatusCounts,
             recentOrders: [],
-            topProducts: [],
-            lowStockAlerts: [],
+            topProducts: categoryAnalytics,
+            lowStockAlerts,
             categoryAnalytics,
             regionalSales: [],
             revenueTrends: monthlyExpenseTrends
