@@ -84,72 +84,6 @@ const initializeDatabase = async () => {
       images JSON,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
-    `CREATE TABLE IF NOT EXISTS products (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(255),
-      description TEXT,
-      category VARCHAR(120),
-      subcategory VARCHAR(255),
-      mrp DECIMAL(10,2),
-      offer VARCHAR(50),
-      offer_price DECIMAL(10,2),
-      total_stock INT DEFAULT 0,
-      rating DECIMAL(3,2),
-      status VARCHAR(50),
-      material VARCHAR(120),
-      wash_care TEXT,
-      saree_length VARCHAR(80),
-      blouse_length VARCHAR(80),
-      top_length VARCHAR(80),
-      bottom_length VARCHAR(80),
-      dupatta_length VARCHAR(80),
-      gown_length VARCHAR(80),
-      sleeve_type VARCHAR(80),
-      neck_type VARCHAR(80),
-      fit_type VARCHAR(80),
-      work_type VARCHAR(120),
-      zari_color VARCHAR(80),
-      variants JSON,
-      product_code VARCHAR(100),
-      price DECIMAL(10,2),
-      age VARCHAR(50),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE TABLE IF NOT EXISTS banners (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id VARCHAR(50),
-      image TEXT,
-      mobile_image TEXT,
-      title VARCHAR(255),
-      subtitle VARCHAR(255),
-      description TEXT,
-      link VARCHAR(255),
-      type VARCHAR(50) DEFAULT 'hero',
-      active BOOLEAN DEFAULT TRUE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE TABLE IF NOT EXISTS videos (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id VARCHAR(50),
-      videoId VARCHAR(120),
-      title VARCHAR(255),
-      thumbnail TEXT,
-      type VARCHAR(50) DEFAULT 'youtube',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE TABLE IF NOT EXISTS dealers (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(255),
-      contact VARCHAR(255),
-      email VARCHAR(255),
-      phone VARCHAR(50),
-      location VARCHAR(255),
-      image TEXT,
-      rating DECIMAL(3,2),
-      orders INT DEFAULT 0,
-      status VARCHAR(20) DEFAULT 'Active',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`,
     `CREATE TABLE IF NOT EXISTS reviews (
       id INT AUTO_INCREMENT PRIMARY KEY,
       product_id INT,
@@ -161,44 +95,6 @@ const initializeDatabase = async () => {
       review_image TEXT,
       status VARCHAR(50) DEFAULT 'Pending',
       admin_reply TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE TABLE IF NOT EXISTS cart (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id VARCHAR(50),
-      product_id INT,
-      variant_color VARCHAR(100),
-      variant_size VARCHAR(100),
-      image TEXT,
-      quantity INT DEFAULT 1,
-      email VARCHAR(255),
-      price DECIMAL(10,2),
-      total_price DECIMAL(10,2),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE TABLE IF NOT EXISTS wishlist (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id VARCHAR(50),
-      product_id INT,
-      variant_color VARCHAR(100),
-      variant_size VARCHAR(100),
-      image TEXT,
-      email VARCHAR(255),
-      price DECIMAL(10,2),
-      total_price DECIMAL(10,2),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE TABLE IF NOT EXISTS orders (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id VARCHAR(50),
-      total_amount DECIMAL(10,2),
-      subtotal DECIMAL(10,2),
-      order_type VARCHAR(50),
-      payment_method VARCHAR(50),
-      status VARCHAR(50) DEFAULT 'Order Placed',
-      customer_name VARCHAR(255),
-      customer_email VARCHAR(255),
-      customer_phone VARCHAR(50),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS income (
@@ -321,22 +217,13 @@ const initializeDatabase = async () => {
       CONSTRAINT fk_memory_category FOREIGN KEY (category_id) REFERENCES memory_categories(id) ON DELETE SET NULL,
       CONSTRAINT fk_memory_album FOREIGN KEY (album_id) REFERENCES memory_albums(id) ON DELETE SET NULL
     )`,
-    `CREATE TABLE IF NOT EXISTS diary_categories (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id VARCHAR(50) NOT NULL,
-      name VARCHAR(120) NOT NULL,
-      created_by VARCHAR(50) NULL,
-      updated_by VARCHAR(50) NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      UNIQUE KEY uq_diary_category_user_name (user_id, name)
-    )`,
     `CREATE TABLE IF NOT EXISTS diary_entries (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id VARCHAR(50) NOT NULL,
       title VARCHAR(255) NOT NULL,
       content LONGTEXT NOT NULL,
       category_id INT NULL,
+      category_name VARCHAR(120) NULL,
       mood VARCHAR(50) DEFAULT 'Normal',
       tags JSON NULL,
       location VARCHAR(255) NULL,
@@ -346,6 +233,10 @@ const initializeDatabase = async () => {
       is_favorite BOOLEAN DEFAULT FALSE,
       is_private BOOLEAN DEFAULT FALSE,
       is_locked BOOLEAN DEFAULT FALSE,
+      image_path VARCHAR(500) NULL,
+      video_path VARCHAR(500) NULL,
+      file_path VARCHAR(500) NULL,
+      media_files JSON NULL,
       created_by VARCHAR(50) NULL,
       updated_by VARCHAR(50) NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -353,25 +244,17 @@ const initializeDatabase = async () => {
       KEY idx_diary_user_date (user_id, entry_date),
       KEY idx_diary_category (category_id),
       CONSTRAINT fk_diary_entry_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-      CONSTRAINT fk_diary_entry_category FOREIGN KEY (category_id) REFERENCES diary_categories(id) ON DELETE SET NULL
-    )`,
-    `CREATE TABLE IF NOT EXISTS diary_attachments (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      diary_id INT NOT NULL,
-      file_name VARCHAR(255) NOT NULL,
-      file_url VARCHAR(500) NOT NULL,
-      file_type VARCHAR(100) NULL,
-      file_size BIGINT DEFAULT 0,
-      created_by VARCHAR(50) NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      KEY idx_diary_attachment_diary (diary_id),
-      CONSTRAINT fk_diary_attachment_entry FOREIGN KEY (diary_id) REFERENCES diary_entries(id) ON DELETE CASCADE
+      CONSTRAINT fk_diary_entry_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
     )`
   ];
 
   for (const statement of schemaStatements) {
     await pool.query(statement);
   }
+
+  await ensureColumn("memories", "media_gallery", "JSON NULL");
+  await ensureColumn("memories", "media_type", "VARCHAR(50) DEFAULT 'image'");
+  await ensureColumn("memories", "voice_note", "TEXT NULL");
 
   const [incomeBalanceColumn] = await pool.query(
     `SELECT COUNT(*) AS columnCount
@@ -458,6 +341,12 @@ const initializeDatabase = async () => {
       await pool.query("ALTER TABLE diary_entries ADD CONSTRAINT fk_diary_entry_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL");
       await pool.query("ALTER TABLE diary_entries ADD INDEX idx_diary_category (category_id)");
     }
+
+    await ensureColumn("diary_entries", "category_name", "VARCHAR(120) NULL");
+    await ensureColumn("diary_entries", "image_path", "VARCHAR(500) NULL");
+    await ensureColumn("diary_entries", "video_path", "VARCHAR(500) NULL");
+    await ensureColumn("diary_entries", "file_path", "VARCHAR(500) NULL");
+    await ensureColumn("diary_entries", "media_files", "JSON NULL");
   } catch (error) {
     // Ignore if diary table does not exist yet; the initial CREATE TABLE handles it.
   }
@@ -476,51 +365,8 @@ const initializeDatabase = async () => {
       ['updated_by', 'VARCHAR(50) NULL'],
       ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
     ] },
-    { table: 'products', columns: [
-      ['user_id', 'VARCHAR(50) NULL'],
-      ['created_by', 'VARCHAR(50) NULL'],
-      ['updated_by', 'VARCHAR(50) NULL'],
-      ['created_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP'],
-      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
-    ] },
-    { table: 'banners', columns: [
-      ['user_id', 'VARCHAR(50) NULL'],
-      ['created_by', 'VARCHAR(50) NULL'],
-      ['updated_by', 'VARCHAR(50) NULL'],
-      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
-    ] },
-    { table: 'videos', columns: [
-      ['user_id', 'VARCHAR(50) NULL'],
-      ['created_by', 'VARCHAR(50) NULL'],
-      ['updated_by', 'VARCHAR(50) NULL'],
-      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
-    ] },
-    { table: 'dealers', columns: [
-      ['user_id', 'VARCHAR(50) NULL'],
-      ['created_by', 'VARCHAR(50) NULL'],
-      ['updated_by', 'VARCHAR(50) NULL'],
-      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
-    ] },
     { table: 'reviews', columns: [
       ['user_id', 'INT NULL'],
-      ['created_by', 'VARCHAR(50) NULL'],
-      ['updated_by', 'VARCHAR(50) NULL'],
-      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
-    ] },
-    { table: 'cart', columns: [
-      ['user_id', 'VARCHAR(50) NULL'],
-      ['created_by', 'VARCHAR(50) NULL'],
-      ['updated_by', 'VARCHAR(50) NULL'],
-      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
-    ] },
-    { table: 'wishlist', columns: [
-      ['user_id', 'VARCHAR(50) NULL'],
-      ['created_by', 'VARCHAR(50) NULL'],
-      ['updated_by', 'VARCHAR(50) NULL'],
-      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
-    ] },
-    { table: 'orders', columns: [
-      ['user_id', 'VARCHAR(50) NULL'],
       ['created_by', 'VARCHAR(50) NULL'],
       ['updated_by', 'VARCHAR(50) NULL'],
       ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']

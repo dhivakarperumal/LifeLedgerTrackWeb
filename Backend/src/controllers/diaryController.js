@@ -2,18 +2,34 @@ const db = require("../config/db");
 const fs = require("fs");
 const path = require("path");
 
-const normalizeDiaryEntry = (row) => ({
-  ...row,
-  tags: row.tags ? (Array.isArray(row.tags) ? row.tags : String(row.tags).split(",").map((tag) => tag.trim()).filter(Boolean)) : [],
-  attachment_count: Number(row.attachment_count || 0),
-  favorite: Boolean(row.is_favorite),
-  is_favorite: Boolean(row.is_favorite),
-  is_private: Boolean(row.is_private),
-  is_locked: Boolean(row.is_locked),
-  status: row.status || "published",
-  created_at: row.created_at,
-  updated_at: row.updated_at,
-});
+const normalizeDiaryEntry = (row = {}) => {
+  const attachments = Array.isArray(row.media_files)
+    ? row.media_files
+    : parseJsonField(row.media_files) || [];
+
+  const derivedAttachments = [
+    ...(row.image_path ? [{ id: `image-${row.id || Date.now()}`, file_name: path.basename(row.image_path), file_url: row.image_path, file_type: "image" }] : []),
+    ...(row.video_path ? [{ id: `video-${row.id || Date.now()}`, file_name: path.basename(row.video_path), file_url: row.video_path, file_type: "video" }] : []),
+    ...(row.file_path ? [{ id: `file-${row.id || Date.now()}`, file_name: path.basename(row.file_path), file_url: row.file_path, file_type: "file" }] : []),
+    ...attachments,
+  ];
+
+  return {
+    ...row,
+    tags: parseJsonField(row.tags),
+    attachment_count: Number(row.attachment_count || derivedAttachments.length || 0),
+    attachments: derivedAttachments,
+    media_files: derivedAttachments,
+    favorite: Boolean(row.is_favorite),
+    is_favorite: Boolean(row.is_favorite),
+    is_private: Boolean(row.is_private),
+    is_locked: Boolean(row.is_locked),
+    status: row.status || "published",
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    category_name: row.category_name || row.category || row.name || null,
+  };
+};
 
 const ensureDiaryFolders = () => {
   const base = path.join(__dirname, "..", "..", "uploads", "diary");
@@ -39,11 +55,12 @@ const parseJsonField = (value) => {
 };
 
 const diarySelectBase = `
-  d.id, d.user_id, d.title, d.content, d.category_id, dc.name AS category_name, dc.catType AS category_type,
+  d.id, d.user_id, d.title, d.content, d.category_id,
+  COALESCE(d.category_name, dc.name) AS category_name,
+  dc.catType AS category_type,
   d.mood, d.tags, d.location, d.entry_date, d.entry_time, d.status,
-  d.is_favorite, d.is_private, d.is_locked, d.created_at, d.updated_at,
-  d.created_by, d.updated_by,
-  (SELECT COUNT(*) FROM diary_attachments da WHERE da.diary_id = d.id) AS attachment_count
+  d.is_favorite, d.is_private, d.is_locked, d.image_path, d.video_path, d.file_path, d.media_files,
+  d.created_at, d.updated_at, d.created_by, d.updated_by
 `;
 
 const isDiaryCategoryRow = (category) => {
@@ -81,12 +98,13 @@ const createCategory = async (req, res) => {
       return res.status(400).json({ message: "Category name is required." });
     }
 
+    const trimmedName = String(name).trim();
     const [result] = await db.query(
-      "INSERT INTO diary_categories (user_id, name, created_by, updated_by) VALUES (?, ?, ?, ?)",
-      [req.user.user_id, String(name).trim(), req.user.user_id, req.user.user_id]
+      "INSERT INTO categories (user_id, name, catType, status, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+      [req.user.user_id, trimmedName, "Diary", "Active"]
     );
 
-    const [rows] = await db.query("SELECT * FROM diary_categories WHERE id = ?", [result.insertId]);
+    const [rows] = await db.query("SELECT * FROM categories WHERE id = ?", [result.insertId]);
     res.status(201).json(rows[0]);
   } catch (error) {
     res.status(500).json({ message: "Failed to create diary category", error: error.message });
@@ -101,17 +119,17 @@ const updateCategory = async (req, res) => {
       return res.status(400).json({ message: "Category name is required." });
     }
 
-    const [rows] = await db.query("SELECT * FROM diary_categories WHERE id = ? AND user_id = ?", [id, req.user.user_id]);
+    const [rows] = await db.query("SELECT * FROM categories WHERE id = ? AND (user_id = ? OR user_id IS NULL)", [id, req.user.user_id]);
     if (!rows.length) {
       return res.status(404).json({ message: "Category not found." });
     }
 
     await db.query(
-      "UPDATE diary_categories SET name = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?",
-      [String(name).trim(), req.user.user_id, id, req.user.user_id]
+      "UPDATE categories SET name = ?, catType = 'Diary', status = 'Active' WHERE id = ? AND (user_id = ? OR user_id IS NULL)",
+      [String(name).trim(), id, req.user.user_id]
     );
 
-    const [updated] = await db.query("SELECT * FROM diary_categories WHERE id = ?", [id]);
+    const [updated] = await db.query("SELECT * FROM categories WHERE id = ?", [id]);
     res.json(updated[0]);
   } catch (error) {
     res.status(500).json({ message: "Failed to update diary category", error: error.message });
@@ -121,12 +139,12 @@ const updateCategory = async (req, res) => {
 const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const [rows] = await db.query("SELECT * FROM diary_categories WHERE id = ? AND user_id = ?", [id, req.user.user_id]);
+    const [rows] = await db.query("SELECT * FROM categories WHERE id = ? AND (user_id = ? OR user_id IS NULL)", [id, req.user.user_id]);
     if (!rows.length) {
       return res.status(404).json({ message: "Category not found." });
     }
 
-    await db.query("DELETE FROM diary_categories WHERE id = ? AND user_id = ?", [id, req.user.user_id]);
+    await db.query("DELETE FROM categories WHERE id = ? AND (user_id = ? OR user_id IS NULL)", [id, req.user.user_id]);
     res.json({ message: "Category deleted successfully." });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete diary category", error: error.message });
@@ -196,8 +214,7 @@ const getDiaryEntryById = async (req, res) => {
     }
 
     const entry = normalizeDiaryEntry(rows[0]);
-    const [attachments] = await db.query("SELECT * FROM diary_attachments WHERE diary_id = ? ORDER BY created_at DESC", [id]);
-    res.json({ ...entry, attachments, tags: parseJsonField(entry.tags) });
+    res.json({ ...entry, tags: parseJsonField(entry.tags) });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch diary entry", error: error.message });
   }
@@ -209,6 +226,7 @@ const createDiaryEntry = async (req, res) => {
       title,
       content,
       category_id,
+      category_name,
       mood,
       tags,
       location,
@@ -218,6 +236,10 @@ const createDiaryEntry = async (req, res) => {
       is_favorite,
       is_private,
       is_locked,
+      image_path,
+      video_path,
+      file_path,
+      media_files,
     } = req.body;
 
     if (!title || !String(title).trim()) {
@@ -233,17 +255,22 @@ const createDiaryEntry = async (req, res) => {
     }
 
     const tagsValue = Array.isArray(tags) ? JSON.stringify(tags) : JSON.stringify(parseJsonField(tags));
+    const attachmentsValue = Array.isArray(media_files)
+      ? JSON.stringify(media_files)
+      : JSON.stringify(parseJsonField(media_files));
 
     const [result] = await db.query(
       `INSERT INTO diary_entries (
-        user_id, title, content, category_id, mood, tags, location, entry_date, entry_time,
-        status, is_favorite, is_private, is_locked, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        user_id, title, content, category_id, category_name, mood, tags, location, entry_date, entry_time,
+        status, is_favorite, is_private, is_locked, image_path, video_path, file_path, media_files,
+        created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
       [
         req.user.user_id,
         String(title).trim(),
         String(content),
         category_id || null,
+        category_name || null,
         mood || "Normal",
         tagsValue,
         location || null,
@@ -253,6 +280,10 @@ const createDiaryEntry = async (req, res) => {
         is_favorite ? 1 : 0,
         is_private ? 1 : 0,
         is_locked ? 1 : 0,
+        image_path || null,
+        video_path || null,
+        file_path || null,
+        attachmentsValue,
         req.user.user_id,
         req.user.user_id,
       ]
@@ -277,6 +308,7 @@ const updateDiaryEntry = async (req, res) => {
       title,
       content,
       category_id,
+      category_name,
       mood,
       tags,
       location,
@@ -286,18 +318,25 @@ const updateDiaryEntry = async (req, res) => {
       is_favorite,
       is_private,
       is_locked,
+      image_path,
+      video_path,
+      file_path,
+      media_files,
     } = req.body;
+
+    const nextMediaFiles = Array.isArray(media_files) ? media_files : parseJsonField(media_files);
 
     await db.query(
       `UPDATE diary_entries SET
-        title = ?, content = ?, category_id = ?, mood = ?, tags = ?, location = ?,
+        title = ?, content = ?, category_id = ?, category_name = ?, mood = ?, tags = ?, location = ?,
         entry_date = ?, entry_time = ?, status = ?, is_favorite = ?, is_private = ?, is_locked = ?,
-        updated_by = ?, updated_at = CURRENT_TIMESTAMP
+        image_path = ?, video_path = ?, file_path = ?, media_files = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ? AND user_id = ?`,
       [
         title || existing[0][0].title,
         content || existing[0][0].content,
         category_id ?? existing[0][0].category_id,
+        category_name ?? existing[0][0].category_name,
         mood || existing[0][0].mood,
         JSON.stringify(Array.isArray(tags) ? tags : parseJsonField(tags)),
         location ?? existing[0][0].location,
@@ -307,6 +346,10 @@ const updateDiaryEntry = async (req, res) => {
         is_favorite ? 1 : 0,
         is_private ? 1 : 0,
         is_locked ? 1 : 0,
+        image_path ?? existing[0][0].image_path,
+        video_path ?? existing[0][0].video_path,
+        file_path ?? existing[0][0].file_path,
+        JSON.stringify(nextMediaFiles),
         req.user.user_id,
         id,
         req.user.user_id,
@@ -324,7 +367,6 @@ const deleteDiaryEntry = async (req, res) => {
   try {
     const { id } = req.params;
     await db.query("DELETE FROM diary_entries WHERE id = ? AND user_id = ?", [id, req.user.user_id]);
-    await db.query("DELETE FROM diary_attachments WHERE diary_id = ?", [id]);
     res.json({ message: "Diary entry deleted successfully." });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete diary entry", error: error.message });
@@ -363,10 +405,19 @@ const addAttachment = async (req, res) => {
 
     const fileUrl = `/uploads/diary/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}`;
     const fileType = file.mimetype || "application/octet-stream";
+    const nextMediaFiles = parseJsonField(rows[0].media_files);
+    nextMediaFiles.push({
+      id: Date.now(),
+      file_name: file.originalname,
+      file_url: fileUrl,
+      file_type: fileType,
+      file_size: file.size,
+    });
 
+    const fieldName = fileType.startsWith("image/") ? "image_path" : fileType.startsWith("video/") ? "video_path" : "file_path";
     await db.query(
-      "INSERT INTO diary_attachments (diary_id, file_name, file_url, file_type, file_size, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
-      [id, file.originalname, fileUrl, fileType, file.size]
+      `UPDATE diary_entries SET ${fieldName} = ?, media_files = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
+      [fileUrl, JSON.stringify(nextMediaFiles), req.user.user_id, id, req.user.user_id]
     );
 
     res.status(201).json({ message: "Attachment uploaded successfully.", fileUrl, fileName: file.originalname, fileType });
@@ -378,20 +429,19 @@ const addAttachment = async (req, res) => {
 const deleteAttachment = async (req, res) => {
   try {
     const { id } = req.params;
-    const [rows] = await db.query("SELECT * FROM diary_attachments WHERE id = ?", [id]);
+    const [rows] = await db.query("SELECT * FROM diary_entries WHERE id = ? AND user_id = ?", [id, req.user.user_id]);
     if (!rows.length) {
-      return res.status(404).json({ message: "Attachment not found." });
+      return res.status(404).json({ message: "Diary entry not found." });
     }
 
-    if (rows[0].file_url) {
-      const relative = rows[0].file_url.replace(/^\//, "");
-      const diskPath = path.join(__dirname, "..", "..", relative);
-      if (fs.existsSync(diskPath)) {
-        fs.unlinkSync(diskPath);
-      }
-    }
+    const mediaFiles = parseJsonField(rows[0].media_files);
+    const remaining = mediaFiles.filter((file) => String(file.id) !== String(req.body?.attachment_id || req.query?.attachment_id));
 
-    await db.query("DELETE FROM diary_attachments WHERE id = ?", [id]);
+    await db.query(
+      "UPDATE diary_entries SET media_files = ?, image_path = ?, video_path = ?, file_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?",
+      [JSON.stringify(remaining), remaining.find((file) => file.file_type === "image")?.file_url || null, remaining.find((file) => file.file_type === "video")?.file_url || null, remaining.find((file) => file.file_type === "file")?.file_url || null, id, req.user.user_id]
+    );
+
     res.json({ message: "Attachment deleted successfully." });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete attachment", error: error.message });
