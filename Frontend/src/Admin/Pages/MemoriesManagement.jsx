@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../api";
 import { toast } from "react-hot-toast";
 import {
@@ -67,6 +67,10 @@ const MemoriesManagement = () => {
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [uploadFile, setUploadFile] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedVoiceName, setRecordedVoiceName] = useState("");
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   const fetchData = async () => {
     try {
@@ -248,9 +252,50 @@ const MemoriesManagement = () => {
     }
   };
 
+  const startVoiceRecording = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast.error("Microphone is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: "audio/webm" });
+        setUploadFile(file);
+        setRecordedVoiceName(file.name);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      toast.success("Voice recording started.");
+    } catch (error) {
+      console.error("Microphone error:", error);
+      toast.error("Microphone access is required to record a voice note.");
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      toast.success("Voice note captured.");
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-100 p-5">
+      <div className="min-h-screen ">
         <div className="flex min-h-[60vh] items-center justify-center rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="flex flex-col items-center gap-4">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#7b2cbf]/20 border-t-[#7b2cbf]" />
@@ -283,61 +328,55 @@ const MemoriesManagement = () => {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-        <div className="relative min-w-[220px] flex-1">
-          <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+      <div className="flex flex-col gap-3 rounded-[20px] border border-gray-200 bg-[#f3f4f6] p-3 shadow-sm md:flex-row md:items-center">
+        <div className="relative flex-1 min-w-[220px]">
+          <FiSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search memories..."
-            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 text-sm font-medium text-slate-700 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white"
+            className="w-full rounded-[18px] border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-base font-medium text-slate-700 shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-[#7b2cbf]"
           />
         </div>
 
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf]"
-        >
-          <option value="all">All Categories</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>{category.name}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-3 md:ml-auto">
+          <div className="relative">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="appearance-none rounded-[18px] border border-gray-200 bg-white px-4 py-3.5 pr-10 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-[#7b2cbf]"
+            >
+              <option value="all">All Categories</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
+          </div>
 
-        <select
-          value={selectedAlbum}
-          onChange={(e) => setSelectedAlbum(e.target.value)}
-          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf]"
-        >
-          <option value="all">All Albums</option>
-          {albums.map((album) => (
-            <option key={album.id} value={album.id}>{album.name}</option>
-          ))}
-        </select>
-
-        <button
-          onClick={() => setFavoriteOnly((prev) => !prev)}
-          className={`rounded-xl border px-3 py-2.5 text-sm font-semibold ${favoriteOnly ? "border-pink-300 bg-pink-50 text-pink-600" : "border-gray-200 bg-gray-50 text-slate-600"}`}
-        >
-          Favorites
-        </button>
-
-        <div className="ml-auto flex items-center gap-3">
-          <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
-            <button onClick={() => setViewMode("table")} className={`rounded-lg p-2 transition-all ${viewMode === "table" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-500"}`}>
+          <div className="flex overflow-hidden rounded-[18px] border border-gray-200 bg-white shadow-sm">
+            <button
+              onClick={() => setViewMode("table")}
+              className={`flex h-[46px] w-[46px] items-center justify-center transition-all ${viewMode === "table" ? "bg-[#f1e6ff] text-[#7b2cbf]" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+              aria-label="Table view"
+            >
               <FiList size={17} />
             </button>
-            <button onClick={() => setViewMode("grid")} className={`rounded-lg p-2 transition-all ${viewMode === "grid" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-500"}`}>
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`flex h-[46px] w-[46px] items-center justify-center border-l border-gray-200 transition-all ${viewMode === "grid" ? "bg-[#f1e6ff] text-[#7b2cbf]" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+              aria-label="Grid view"
+            >
               <FiGrid size={17} />
             </button>
           </div>
 
           <button
             onClick={openNewMemory}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/20 transition-all hover:from-[#10002b] hover:to-[#5a189a]"
+            className="inline-flex items-center justify-center gap-2 rounded-[18px] bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-purple-900/20 transition-all hover:from-[#10002b] hover:to-[#5a189a]"
           >
-            <FiPlus size={16} /> Add Memory
+            <FiPlus size={18} />
+            Add Memory
           </button>
         </div>
       </div>
@@ -470,27 +509,27 @@ const MemoriesManagement = () => {
 
       {isEditorOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 bg-[#111827] p-6 text-white shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 text-slate-800 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">{editingId ? "Edit Memory" : "Create Memory"}</h2>
-              <button onClick={() => setIsEditorOpen(false)} className="rounded-full bg-slate-800 p-2 text-white"><FiX /></button>
+              <h2 className="text-2xl font-bold text-slate-900">{editingId ? "Edit Memory" : "Create Memory"}</h2>
+              <button onClick={() => setIsEditorOpen(false)} className="rounded-full bg-slate-100 p-2 text-slate-600 hover:bg-slate-200"><FiX /></button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="md:col-span-2">
-                  <label className="mb-2 block text-sm text-slate-300">Title</label>
-                  <input name="title" value={form.title} onChange={handleInputChange} className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none" required />
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Title</label>
+                  <input name="title" value={form.title} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" required />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="mb-2 block text-sm text-slate-300">Description</label>
-                  <textarea name="description" value={form.description} onChange={handleInputChange} rows={4} className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none" />
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
+                  <textarea name="description" value={form.description} onChange={handleInputChange} rows={4} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-slate-300">Category</label>
-                  <select name="category_id" value={form.category_id} onChange={handleInputChange} className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Category</label>
+                  <select name="category_id" value={form.category_id} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500">
                     <option value="">Select category</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>{category.name}</option>
@@ -499,8 +538,8 @@ const MemoriesManagement = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-slate-300">Album</label>
-                  <select name="album_id" value={form.album_id} onChange={handleInputChange} className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Album</label>
+                  <select name="album_id" value={form.album_id} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500">
                     <option value="">Select album</option>
                     {albums.map((album) => (
                       <option key={album.id} value={album.id}>{album.name}</option>
@@ -509,51 +548,79 @@ const MemoriesManagement = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-slate-300">Memory Date</label>
-                  <input type="date" name="memory_date" value={form.memory_date} onChange={handleInputChange} className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none" />
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Memory Date</label>
+                  <input type="date" name="memory_date" value={form.memory_date} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-slate-300">Mood</label>
-                  <input name="mood" value={form.mood} onChange={handleInputChange} className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none" />
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Mood</label>
+                  <input name="mood" value={form.mood} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-slate-300">Location</label>
-                  <input name="location" value={form.location} onChange={handleInputChange} className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none" />
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Location</label>
+                  <input name="location" value={form.location} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-slate-300">Tags</label>
-                  <input name="tags" value={form.tags} onChange={handleInputChange} placeholder="family, travel, wedding" className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none" />
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Tags</label>
+                  <input name="tags" value={form.tags} onChange={handleInputChange} placeholder="family, travel, wedding" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-slate-300">Status</label>
-                  <select name="status" value={form.status} onChange={handleInputChange} className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
+                  <select name="status" value={form.status} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500">
                     <option value="published">Published</option>
                     <option value="draft">Draft</option>
                   </select>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="mb-2 block text-sm text-slate-300">Voice note</label>
-                  <textarea name="voice_note" value={form.voice_note} onChange={handleInputChange} rows={3} className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none" placeholder="Add a short memory note or voice summary" />
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Voice note</label>
+                  <div className="flex flex-col gap-2">
+                    <textarea name="voice_note" value={form.voice_note} onChange={handleInputChange} rows={3} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" placeholder="Add a short memory note or voice summary" />
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <button
+                        type="button"
+                        onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+                        className={`rounded-xl px-3 py-2 text-sm font-semibold ${isRecording ? "bg-red-500 text-white hover:bg-red-600" : "bg-violet-500 text-white hover:bg-violet-600"}`}
+                      >
+                        {isRecording ? "Stop Recording" : "Record Voice"}
+                      </button>
+                      <span className="text-xs text-slate-500">
+                        {recordedVoiceName ? recordedVoiceName : "No voice note recorded"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="mb-2 block text-sm text-slate-300">Upload media</label>
-                  <input type="file" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} className="w-full rounded-xl border border-dashed border-white/10 bg-slate-900 px-3 py-3 text-sm text-slate-300 file:mr-4 file:rounded file:border-0 file:bg-violet-500 file:px-3 file:py-2 file:text-white" />
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Upload media</label>
+                  <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3">
+                    <label className="cursor-pointer rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-600">
+                      Choose File
+                      <input
+                        type="file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setUploadFile(file);
+                          if (file) setRecordedVoiceName(file.name);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-sm text-slate-500">{uploadFile ? uploadFile.name : "No file chosen"}</span>
+                  </div>
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
-                <label className="inline-flex items-center gap-2 text-sm text-slate-300">
+                <label className="inline-flex items-center gap-2 text-sm text-slate-700">
                   <input type="checkbox" name="is_favorite" checked={form.is_favorite} onChange={handleInputChange} />
                   Mark as favorite
                 </label>
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setIsEditorOpen(false)} className="rounded-xl border border-white/10 bg-slate-900 px-4 py-2.5 text-sm text-white">Cancel</button>
+                  <button type="button" onClick={() => setIsEditorOpen(false)} className="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-200">Cancel</button>
                   <button type="submit" disabled={isSubmitting} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-70">
                     <FiSave /> {isSubmitting ? "Saving..." : editingId ? "Update" : "Create"}
                   </button>
@@ -566,52 +633,52 @@ const MemoriesManagement = () => {
 
       {selectedMemory && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#111827] p-5 text-white shadow-2xl">
+          <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-5 text-slate-800 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-xl font-semibold">{selectedMemory.title}</h3>
-              <button onClick={() => setSelectedMemory(null)} className="rounded-full bg-slate-800 p-2 text-white"><FiX /></button>
+              <h3 className="text-xl font-semibold text-slate-900">{selectedMemory.title}</h3>
+              <button onClick={() => setSelectedMemory(null)} className="rounded-full bg-slate-100 p-2 text-slate-600 hover:bg-slate-200"><FiX /></button>
             </div>
 
-            <div className="mb-4 overflow-hidden rounded-2xl bg-slate-900">
+            <div className="mb-4 overflow-hidden rounded-2xl bg-slate-100">
               {selectedMemory.media_url ? (
                 selectedMemory.media_type === "video" ? (
                   <video src={getMediaUrl(selectedMemory.media_url)} controls className="w-full" />
                 ) : selectedMemory.media_type === "audio" ? (
-                  <div className="flex h-36 items-center justify-center text-4xl text-white"><FiMusic /></div>
+                  <div className="flex h-36 items-center justify-center text-4xl text-slate-700"><FiMusic /></div>
                 ) : (
                   <img src={getMediaUrl(selectedMemory.media_url)} alt={selectedMemory.title} className="w-full" />
                 )
               ) : (
-                <div className="flex h-40 items-center justify-center text-4xl text-white"><FiBookOpen /></div>
+                <div className="flex h-40 items-center justify-center text-4xl text-slate-700"><FiBookOpen /></div>
               )}
             </div>
 
-            <div className="space-y-3 text-sm text-slate-200">
+            <div className="space-y-3 text-sm text-slate-700">
               <p>{selectedMemory.description || "No description added."}</p>
 
               <div className="flex flex-wrap gap-2">
                 {selectedMemory.location && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1"><FiMapPin size={12} /> {selectedMemory.location}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><FiMapPin size={12} /> {selectedMemory.location}</span>
                 )}
                 {selectedMemory.memory_date && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1"><FiCalendar size={12} /> {formatDate(selectedMemory.memory_date)}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><FiCalendar size={12} /> {formatDate(selectedMemory.memory_date)}</span>
                 )}
                 {selectedMemory.mood && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-1"><FiClock size={12} /> {selectedMemory.mood}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><FiClock size={12} /> {selectedMemory.mood}</span>
                 )}
               </div>
 
               {selectedMemory.tags?.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {selectedMemory.tags.map((tag, idx) => (
-                    <span key={`${tag}-${idx}`} className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-1 text-xs text-violet-200"><FiTag size={10} /> {tag}</span>
+                    <span key={`${tag}-${idx}`} className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-1 text-xs text-violet-700"><FiTag size={10} /> {tag}</span>
                   ))}
                 </div>
               )}
 
               {selectedMemory.voice_note && (
-                <div className="rounded-xl border border-white/10 bg-slate-900 p-3 text-slate-100">
-                  <p className="mb-1 text-xs uppercase tracking-[0.2em] text-slate-400">Voice note</p>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-700">
+                  <p className="mb-1 text-xs uppercase tracking-[0.2em] text-slate-500">Voice note</p>
                   <p>{selectedMemory.voice_note}</p>
                 </div>
               )}

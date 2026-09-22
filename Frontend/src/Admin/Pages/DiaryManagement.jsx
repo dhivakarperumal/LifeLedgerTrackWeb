@@ -362,16 +362,52 @@ const DiaryManagement = () => {
   const recentEntries = [...entries].sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date)).slice(0, 5);
 
   return (
-    <div className="min-h-screen space-y-5  p-4 pb-20 md:p-2">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        
-        <button
-          onClick={openNewEntry}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/20 transition hover:from-[#10002b] hover:to-[#5a189a]"
-        >
-          <FiPlus className="text-lg" />
-          Add Diary Entry
-        </button>
+    <div className="min-h-screen space-y-5 p-4 pb-20 md:p-2">
+      <div className="flex flex-col gap-3 rounded-[20px] border border-gray-200 bg-[#f3f4f6] p-3 shadow-sm md:flex-row md:items-center">
+        <div className="relative flex-1 min-w-[220px]">
+          <FiSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search expenses..."
+            className="w-full rounded-[18px] border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-base font-medium text-slate-700 shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-[#7b2cbf]"
+          />
+        </div>
+
+        <div className="flex items-center gap-3 md:ml-auto">
+          <div className="relative">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="appearance-none rounded-[18px] border border-gray-200 bg-white px-4 py-3.5 pr-10 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-[#7b2cbf]"
+            >
+              <option value="all">All Categories</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name} {category.catType ? `(${category.catType})` : ""}</option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
+          </div>
+
+          <div className="flex overflow-hidden rounded-[18px] border border-gray-200 bg-white shadow-sm">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`flex h-[46px] w-[46px] items-center justify-center transition-all ${viewMode === "grid" ? "bg-[#f1e6ff] text-[#7b2cbf]" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+              aria-label="Grid view"
+            >
+              <FiGrid size={17} />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex h-[46px] w-[46px] items-center justify-center border-l border-gray-200 transition-all ${viewMode === "list" ? "bg-[#f1e6ff] text-[#7b2cbf]" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+              aria-label="List view"
+            >
+              <FiList size={17} />
+            </button>
+          </div>
+
+         
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -406,40 +442,51 @@ const DiaryManagement = () => {
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {[
-              { label: "All", value: "all" },
-              { label: "Recent", value: "recent" },
-              { label: "Favorites", value: "favorites" },
-              { label: "Drafts", value: "drafts" },
-              { label: "This Month", value: "month" },
-              { label: "This Year", value: "year" },
-            ].map((filter) => (
-              <button
-                key={filter.value}
-                onClick={() => setSelectedFilter(filter.value)}
-                className={`rounded-full px-3 py-2 text-xs font-semibold transition ${selectedFilter === filter.value ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-              >
-                {filter.label}
-              </button>
-            ))}
+          <div className="relative min-w-[160px]">
+            <select
+              value={selectedFilter}
+              onChange={(e) => setSelectedFilter(e.target.value)}
+              className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white"
+            >
+              {[
+                { label: "All Entries", value: "all" },
+                { label: "Recent", value: "recent" },
+                { label: "Favorites", value: "favorites" },
+                { label: "Drafts", value: "drafts" },
+                { label: "This Month", value: "month" },
+                { label: "This Year", value: "year" },
+              ].map((filter) => (
+                <option key={filter.value} value={filter.value}>
+                  {filter.label}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
           </div>
+
+          
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-5">
-          <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-slate-600 outline-none focus:border-[#7b2cbf]">
-            <option value="all">All Categories</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>{category.name} {category.catType ? `(${category.catType})` : ""}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white">
+              <option value="all">All Categories</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name} {category.catType ? `(${category.catType})` : ""}</option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
+          </div>
 
-          <select value={selectedMood} onChange={(e) => setSelectedMood(e.target.value)} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-slate-600 outline-none focus:border-[#7b2cbf]">
-            <option value="all">All Moods</option>
-            {defaultMoodOptions.map((mood) => (
-              <option key={mood.value} value={mood.value}>{mood.emoji} {mood.value}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select value={selectedMood} onChange={(e) => setSelectedMood(e.target.value)} className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white">
+              <option value="all">All Moods</option>
+              {defaultMoodOptions.map((mood) => (
+                <option key={mood.value} value={mood.value}>{mood.emoji} {mood.value}</option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
+          </div>
 
           <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-slate-600 outline-none focus:border-[#7b2cbf]" />
 
@@ -450,7 +497,7 @@ const DiaryManagement = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.5fr_0.8fr]">
+      <div className="w-full">
         <div className="space-y-4">
           {loading ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center text-slate-500 shadow-sm">Loading diary entries...</div>
@@ -461,8 +508,57 @@ const DiaryManagement = () => {
               <p className="mt-2 text-slate-500">Start writing about your day, thoughts and special moments.</p>
               <button onClick={openNewEntry} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/20 hover:from-[#10002b] hover:to-[#5a189a]"> <FiPlus /> Add Diary Entry </button>
             </div>
+          ) : viewMode === "list" ? (
+            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c]">
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Title & Content</th>
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Category</th>
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Mood</th>
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {filteredEntries.map((entry) => (
+                      <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="text-slate-800 font-bold">{formatDate(entry.entry_date)}</div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="font-bold text-slate-900 max-w-[200px] truncate">{entry.title}</p>
+                          <p className="text-xs text-slate-500 max-w-[250px] truncate">{entry.content.replace(/<[^>]+>/g, "")}</p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="rounded-lg bg-violet-50 border border-violet-100 px-2.5 py-1 text-xs font-bold text-violet-700 whitespace-nowrap">
+                            {entry.category_name || "General"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="rounded-lg bg-amber-50 border border-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700 whitespace-nowrap">
+                            {moodMap[entry.mood] || "😊"} {entry.mood}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button onClick={() => favoriteEntry(entry.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${entry.is_favorite ? "bg-rose-50 text-rose-500" : "bg-slate-50 text-slate-400 hover:bg-slate-100"}`} title="Favorite">
+                              <FiHeart size={13} className={entry.is_favorite ? "fill-current" : ""} />
+                            </button>
+                            <button onClick={() => setSelectedEntry(entry)} className="w-8 h-8 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-all" title="View"><FiEye size={13} /></button>
+                            <button onClick={() => openEditEntry(entry)} className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all" title="Edit"><FiEdit2 size={13} /></button>
+                            <button onClick={() => deleteEntry(entry.id)} className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all" title="Delete"><FiTrash2 size={13} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           ) : (
-            <div className={viewMode === "grid" ? "grid gap-4 md:grid-cols-2" : "space-y-4"}>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredEntries.map((entry) => (
                 <div key={entry.id} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="flex items-start justify-between gap-3">
@@ -507,33 +603,6 @@ const DiaryManagement = () => {
           )}
         </div>
 
-        <aside className="space-y-4">
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-            <h3 className="text-lg font-bold text-slate-900">Recent Entries</h3>
-            <div className="mt-4 space-y-3">
-              {recentEntries.map((entry) => (
-                <button key={entry.id} onClick={() => setSelectedEntry(entry)} className="block w-full rounded-2xl bg-slate-50 p-3 text-left transition hover:bg-slate-100">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold text-slate-800">{entry.title}</p>
-                    <span className="text-xs text-slate-500">{formatDate(entry.entry_date)}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-slate-500">{entry.category_name || "General"} • {entry.mood}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-            <h3 className="text-lg font-bold text-slate-900">Categories</h3>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {categories.length ? categories.map((category) => (
-                <span key={category.id} className="inline-flex items-center gap-2 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700">
-                  {category.name} {category.catType ? `• ${category.catType}` : ""}
-                </span>
-              )) : <span className="text-xs text-slate-500">No categories yet</span>}
-            </div>
-          </div>
-        </aside>
       </div>
 
       {selectedEntry && (
@@ -581,7 +650,7 @@ const DiaryManagement = () => {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-slate-700">Diary Title *</label>
-                  <input value={formState.title} onChange={(e) => setFormState({ ...formState, title: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-violet-500" placeholder="Title of your diary entry" />
+                  <input value={formState.title} onChange={(e) => setFormState({ ...formState, title: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-violet-500" placeholder="Enter diary title" />
                 </div>
 
                 <div>
@@ -596,34 +665,40 @@ const DiaryManagement = () => {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Category</label>
-                  <select value={formState.category_id} onChange={(e) => setFormState({ ...formState, category_id: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-violet-500">
-                    <option value="">Select category</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>{category.name} {category.catType ? `(${category.catType})` : ""}</option>
-                    ))}
-                    {!categories.length && defaultCategories.map((name, index) => (
-                      <option key={`${name}-${index}`} value={index + 1}>{name}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select value={formState.category_id} onChange={(e) => setFormState({ ...formState, category_id: e.target.value })} className="w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-10 outline-none transition-all focus:border-violet-500">
+                      <option value="">Select category</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>{category.name} {category.catType ? `(${category.catType})` : ""}</option>
+                      ))}
+                      {!categories.length && defaultCategories.map((name, index) => (
+                        <option key={`${name}-${index}`} value={index + 1}>{name}</option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
+                  </div>
                 </div>
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Mood</label>
-                  <select value={formState.mood} onChange={(e) => setFormState({ ...formState, mood: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-violet-500">
-                    {defaultMoodOptions.map((mood) => (
-                      <option key={mood.value} value={mood.value}>{mood.emoji} {mood.value}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select value={formState.mood} onChange={(e) => setFormState({ ...formState, mood: e.target.value })} className="w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-10 outline-none transition-all focus:border-violet-500">
+                      {defaultMoodOptions.map((mood) => (
+                        <option key={mood.value} value={mood.value}>{mood.emoji} {mood.value}</option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
+                  </div>
                 </div>
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Tags</label>
-                  <input value={formState.tags} onChange={(e) => setFormState({ ...formState, tags: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-violet-500" placeholder="Family, Travel, Daily" />
+                  <input value={formState.tags} onChange={(e) => setFormState({ ...formState, tags: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-violet-500" placeholder="e.g. Family, Travel, Daily" />
                 </div>
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Location</label>
-                  <input value={formState.location} onChange={(e) => setFormState({ ...formState, location: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-violet-500" placeholder="Current city or place" />
+                  <input value={formState.location} onChange={(e) => setFormState({ ...formState, location: e.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-violet-500" placeholder="Add a location or place name" />
                 </div>
 
                 <div className="md:col-span-2 flex flex-wrap gap-3">
