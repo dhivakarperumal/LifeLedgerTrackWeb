@@ -46,7 +46,7 @@ const DiaryManagement = () => {
   const [selectedMood, setSelectedMood] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState("table");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -363,53 +363,8 @@ const DiaryManagement = () => {
 
   return (
     <div className="min-h-screen space-y-5 p-4 pb-20 md:p-2">
-      <div className="flex flex-col gap-3 rounded-[20px] border border-gray-200 bg-[#f3f4f6] p-3 shadow-sm md:flex-row md:items-center">
-        <div className="relative flex-1 min-w-[220px]">
-          <FiSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search expenses..."
-            className="w-full rounded-[18px] border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-base font-medium text-slate-700 shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-[#7b2cbf]"
-          />
-        </div>
 
-        <div className="flex items-center gap-3 md:ml-auto">
-          <div className="relative">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="appearance-none rounded-[18px] border border-gray-200 bg-white px-4 py-3.5 pr-10 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-[#7b2cbf]"
-            >
-              <option value="all">All Categories</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>{category.name} {category.catType ? `(${category.catType})` : ""}</option>
-              ))}
-            </select>
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
-          </div>
-
-          <div className="flex overflow-hidden rounded-[18px] border border-gray-200 bg-white shadow-sm">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`flex h-[46px] w-[46px] items-center justify-center transition-all ${viewMode === "grid" ? "bg-[#f1e6ff] text-[#7b2cbf]" : "bg-white text-slate-500 hover:bg-slate-50"}`}
-              aria-label="Grid view"
-            >
-              <FiGrid size={17} />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`flex h-[46px] w-[46px] items-center justify-center border-l border-gray-200 transition-all ${viewMode === "list" ? "bg-[#f1e6ff] text-[#7b2cbf]" : "bg-white text-slate-500 hover:bg-slate-50"}`}
-              aria-label="List view"
-            >
-              <FiList size={17} />
-            </button>
-          </div>
-
-         
-        </div>
-      </div>
-
+        
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {[
           { label: "Total Diary Entries", value: stats.totalEntries, icon: <FiFileText size={20} />, gradient: "from-[#240046] to-[#7b2cbf]" },
@@ -437,9 +392,28 @@ const DiaryManagement = () => {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 text-sm font-medium text-slate-700 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white"
+              className="w-1/2 rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 text-sm font-medium text-slate-700 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white"
               placeholder="Search title, mood, category, location, tags..."
             />
+          </div>
+
+           <div className="relative">
+            <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white">
+              <option value="all">All Categories</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name} {category.catType ? `(${category.catType})` : ""}</option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
+          </div>
+          <div className="relative">
+            <select value={selectedMood} onChange={(e) => setSelectedMood(e.target.value)} className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white">
+              <option value="all">All Moods</option>
+              {defaultMoodOptions.map((mood) => (
+                <option key={mood.value} value={mood.value}>{mood.emoji} {mood.value}</option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
           </div>
 
           <div className="relative min-w-[160px]">
@@ -464,36 +438,18 @@ const DiaryManagement = () => {
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
           </div>
 
-          
-        </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-5">
-          <div className="relative">
-            <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white">
-              <option value="all">All Categories</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>{category.name} {category.catType ? `(${category.catType})` : ""}</option>
-              ))}
-            </select>
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
-          </div>
-
-          <div className="relative">
-            <select value={selectedMood} onChange={(e) => setSelectedMood(e.target.value)} className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white">
-              <option value="all">All Moods</option>
-              {defaultMoodOptions.map((mood) => (
-                <option key={mood.value} value={mood.value}>{mood.emoji} {mood.value}</option>
-              ))}
-            </select>
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
-          </div>
-
-          <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-slate-600 outline-none focus:border-[#7b2cbf]" />
-
-          <div className="flex items-center justify-end gap-2 md:col-span-1">
+           <div className="flex items-center justify-end gap-2 md:col-span-1">
             <button onClick={() => setViewMode("grid")} className={`rounded-xl p-2 ${viewMode === "grid" ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-500"}`}><FiGrid /></button>
             <button onClick={() => setViewMode("list")} className={`rounded-xl p-2 ${viewMode === "list" ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-500"}`}><FiList /></button>
           </div>
+
+           <button
+            onClick={openNewEntry}
+            className="inline-flex items-center justify-center gap-2 rounded-[18px] bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-purple-900/20 transition hover:from-[#10002b] hover:to-[#5a189a]"
+          >
+            <FiPlus size={18} />
+            Add New Diary
+          </button>
         </div>
       </div>
 

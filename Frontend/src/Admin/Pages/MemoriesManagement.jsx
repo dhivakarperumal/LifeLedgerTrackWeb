@@ -519,12 +519,12 @@ const MemoriesManagement = () => {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="md:col-span-2">
                   <label className="mb-2 block text-sm font-medium text-slate-700">Title</label>
-                  <input name="title" value={form.title} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" required />
+                  <input name="title" value={form.title} onChange={handleInputChange} placeholder="Enter memory title..." className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" required />
                 </div>
 
                 <div className="md:col-span-2">
                   <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
-                  <textarea name="description" value={form.description} onChange={handleInputChange} rows={4} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" />
+                  <textarea name="description" value={form.description} onChange={handleInputChange} placeholder="Write about this memory..." rows={4} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" />
                 </div>
 
                 <div>
@@ -554,12 +554,12 @@ const MemoriesManagement = () => {
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">Mood</label>
-                  <input name="mood" value={form.mood} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" />
+                  <input name="mood" value={form.mood} onChange={handleInputChange} placeholder="e.g. Happy, Nostalgic..." className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" />
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">Location</label>
-                  <input name="location" value={form.location} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" />
+                  <input name="location" value={form.location} onChange={handleInputChange} placeholder="e.g. Paris, France" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500" />
                 </div>
 
                 <div>
