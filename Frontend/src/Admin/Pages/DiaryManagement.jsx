@@ -58,7 +58,7 @@ const DiaryManagement = () => {
   const [selectedMood, setSelectedMood] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
-  const [viewMode, setViewMode] = useState("table");
+  const [viewMode, setViewMode] = useState("list");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [editingId, setEditingId] = useState(null);
