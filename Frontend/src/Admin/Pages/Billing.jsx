@@ -119,11 +119,32 @@ const Billing = () => {
 
             {isIncomePage ? (
                 <>
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-6">
-                        <IncomeStatCard label="Total Income" value={totalIncome} caption="All recorded income" color="bg-[#4b0b78]" icon="$" />
-                        <IncomeStatCard label="This Month" value={monthlyIncome} caption="Income this month" color="bg-[#00bfa5]" icon="↗" />
-                        <IncomeStatCard label="Recurring Income" value={recurringIncome} caption="Recurring entries" color="bg-[#ff9200]" icon="↻" />
-                        <div className="relative overflow-hidden rounded-[1.6rem] bg-gradient-to-br from-[#7f39d5] via-[#7b35d6] to-[#6d2bc4] p-5 shadow-[0_10px_30px_rgba(111,52,180,0.28)] md:col-span-2 xl:col-span-2">
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5">
+                        <IncomeStatCard
+                            label="Total Income"
+                            value={totalIncome}
+                            caption="All recorded income"
+                            color="bg-[#4b0b78]"
+                            icon="$"
+                            iconStyle="text-[2.2rem]"
+                        />
+                        <IncomeStatCard
+                            label="This Month"
+                            value={monthlyIncome}
+                            caption="Income this month"
+                            color="bg-[#18b8a7]"
+                            icon="↗"
+                            iconStyle="text-[2rem]"
+                        />
+                        <IncomeStatCard
+                            label="Recurring Income"
+                            value={recurringIncome}
+                            caption="Recurring entries"
+                            color="bg-[#f59e0b]"
+                            icon="↻"
+                            iconStyle="text-[2rem]"
+                        />
+                        <div className="relative overflow-hidden rounded-[1.8rem] bg-gradient-to-br from-[#7f39d5] via-[#7b35d6] to-[#6d2bc4] p-5 shadow-[0_10px_30px_rgba(111,52,180,0.28)] xl:col-span-2">
                             <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-white/10" />
                             <div className="absolute -bottom-12 right-0 h-24 w-24 rounded-full bg-white/10" />
                             <div className="relative flex items-start justify-between gap-3">
@@ -135,7 +156,7 @@ const Billing = () => {
                                 </div>
                             </div>
                             <div className="relative mt-5">
-                                <h2 className="text-[2.3rem] font-black leading-none tracking-[-0.06em] text-white">
+                                <h2 className="text-[2.2rem] font-black leading-none tracking-[-0.06em] text-white">
                                     ₹{monthlyBudget.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                                 </h2>
                                 <p className="mt-2 text-base font-semibold text-white/85">Monthly Budget</p>
@@ -145,7 +166,15 @@ const Billing = () => {
                                 <span>- 0% vs last month</span>
                             </div>
                         </div>
-                        <IncomeStatCard label="Income Records" value={incomes.length} caption="Total transactions" color="bg-[#f43f83]" icon="#" isCount />
+                        <IncomeStatCard
+                            label="Income Records"
+                            value={incomes.length}
+                            caption="Total transactions"
+                            color="bg-[#f43f83]"
+                            icon="#"
+                            isCount
+                            iconStyle="text-[2rem]"
+                        />
                     </div>
                     <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
                         <button
@@ -368,17 +397,25 @@ const Billing = () => {
     );
 };
 
-const IncomeStatCard = ({ label, value, caption, color, icon, isCount = false }) => (
-    <div className="flex min-h-33 items-center gap-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.08)]">
-        <div className={`flex h-17.5 w-17.5 shrink-0 items-center justify-center rounded-[1.25rem] text-3xl font-black text-white shadow-lg ${color}`}>
-            {icon}
+const IncomeStatCard = ({ label, value, caption, color, icon, isCount = false, iconStyle = "text-[2.2rem]" }) => (
+    <div className="flex min-h-[190px] flex-col justify-between rounded-[1.6rem] border border-gray-200 bg-white p-5 shadow-[0_4px_18px_rgba(15,23,42,0.06)]">
+        <div className="flex items-start justify-between gap-3">
+            <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.2rem] text-3xl font-black text-white shadow-lg ${color} ${iconStyle}`}>
+                {icon}
+            </div>
+            {label !== "Total Income" && label !== "This Month" && label !== "Recurring Income" && label !== "Income Records" ? null : (
+                <div className="mt-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                    {label === "Total Income" ? "All" : label === "This Month" ? "This" : label === "Recurring Income" ? "Auto" : "#"}
+                </div>
+            )}
         </div>
-        <div className="min-w-0">
-            <p className="mb-1 text-sm font-bold text-slate-400">{label}</p>
-            <h2 className="text-2xl font-black leading-none text-slate-800">
+
+        <div className="mt-4 min-w-0">
+            <p className="text-[1.2rem] font-bold leading-snug text-slate-700">{label}</p>
+            <h2 className="mt-2 text-[2rem] font-black leading-none tracking-[-0.05em] text-slate-800">
                 {isCount ? value : `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}
             </h2>
-            <p className="mt-2 text-xs font-medium text-slate-400">{caption}</p>
+            <p className="mt-3 text-[0.72rem] font-medium text-slate-400">{caption}</p>
         </div>
     </div>
 );

@@ -84,19 +84,6 @@ const initializeDatabase = async () => {
       images JSON,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
-    `CREATE TABLE IF NOT EXISTS reviews (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      product_id INT,
-      user_id INT,
-      user_name VARCHAR(255),
-      user_email VARCHAR(255),
-      rating INT,
-      comment TEXT,
-      review_image TEXT,
-      status VARCHAR(50) DEFAULT 'Pending',
-      admin_reply TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`,
     `CREATE TABLE IF NOT EXISTS income (
       id INT AUTO_INCREMENT PRIMARY KEY,
       title VARCHAR(255) NOT NULL,
@@ -121,34 +108,6 @@ const initializeDatabase = async () => {
       transfer_date DATE NOT NULL,
       payment_method VARCHAR(100),
       notes TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE TABLE IF NOT EXISTS order_items (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      order_id INT,
-      user_id VARCHAR(50),
-      email VARCHAR(255),
-      product_id INT,
-      quantity INT,
-      price DECIMAL(10,2),
-      variant_color VARCHAR(100),
-      variant_size VARCHAR(100),
-      image TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE TABLE IF NOT EXISTS order_addresses (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      order_id INT,
-      user_id VARCHAR(50),
-      customer_name VARCHAR(255),
-      customer_email VARCHAR(255),
-      customer_phone VARCHAR(50),
-      street_address TEXT,
-      city VARCHAR(100),
-      district VARCHAR(100),
-      state VARCHAR(100),
-      country VARCHAR(100),
-      zip_code VARCHAR(50),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS expenses (
@@ -237,23 +196,6 @@ const initializeDatabase = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`,
-    `CREATE TABLE IF NOT EXISTS calendar_reminders (
-      id VARCHAR(64) PRIMARY KEY,
-      title VARCHAR(255) NOT NULL,
-      category VARCHAR(100) NOT NULL,
-      reminder_date DATE NOT NULL,
-      reminder_time TIME NULL,
-      priority VARCHAR(20) DEFAULT 'Medium',
-      notes TEXT NULL,
-      related_event VARCHAR(64) NULL,
-      notification_enabled BOOLEAN DEFAULT TRUE,
-      repeat_option VARCHAR(20) DEFAULT 'None',
-      status VARCHAR(30) DEFAULT 'Pending',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      completed_at TIMESTAMP NULL,
-      snoozed_at TIMESTAMP NULL
-    )`,
     `CREATE TABLE IF NOT EXISTS diary_entries (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id VARCHAR(50) NOT NULL,
@@ -287,6 +229,17 @@ const initializeDatabase = async () => {
 
   for (const statement of schemaStatements) {
     await pool.query(statement);
+  }
+
+  const staleTables = [
+    "calendar_reminders",
+    "reviews",
+    "order_items",
+    "order_addresses"
+  ];
+
+  for (const tableName of staleTables) {
+    await pool.query(`DROP TABLE IF EXISTS \`${tableName}\``);
   }
 
   await ensureColumn("memories", "media_gallery", "JSON NULL");
@@ -402,12 +355,6 @@ const initializeDatabase = async () => {
       ['updated_by', 'VARCHAR(50) NULL'],
       ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
     ] },
-    { table: 'reviews', columns: [
-      ['user_id', 'INT NULL'],
-      ['created_by', 'VARCHAR(50) NULL'],
-      ['updated_by', 'VARCHAR(50) NULL'],
-      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
-    ] },
     { table: 'income', columns: [
       ['user_id', 'VARCHAR(50) NULL'],
       ['created_by', 'VARCHAR(50) NULL'],
@@ -416,17 +363,6 @@ const initializeDatabase = async () => {
     ] },
     { table: 'transfers', columns: [
       ['user_id', 'VARCHAR(50) NULL'],
-      ['created_by', 'VARCHAR(50) NULL'],
-      ['updated_by', 'VARCHAR(50) NULL'],
-      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
-    ] },
-    { table: 'order_items', columns: [
-      ['user_id', 'VARCHAR(50) NULL'],
-      ['created_by', 'VARCHAR(50) NULL'],
-      ['updated_by', 'VARCHAR(50) NULL'],
-      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
-    ] },
-    { table: 'order_addresses', columns: [
       ['created_by', 'VARCHAR(50) NULL'],
       ['updated_by', 'VARCHAR(50) NULL'],
       ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
