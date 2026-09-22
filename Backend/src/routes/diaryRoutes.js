@@ -9,6 +9,7 @@ const router = express.Router();
 const uploadDir = path.join(__dirname, "..", "..", "uploads", "diary");
 fs.mkdirSync(path.join(uploadDir, "images"), { recursive: true });
 fs.mkdirSync(path.join(uploadDir, "videos"), { recursive: true });
+fs.mkdirSync(path.join(uploadDir, "audio"), { recursive: true });
 fs.mkdirSync(path.join(uploadDir, "files"), { recursive: true });
 
 const fileFilter = (req, file, cb) => {
@@ -37,7 +38,7 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.mimetype.startsWith("image/")) return cb(null, path.join(uploadDir, "images"));
     if (file.mimetype.startsWith("video/")) return cb(null, path.join(uploadDir, "videos"));
-    if (file.mimetype.startsWith("audio/")) return cb(null, path.join(uploadDir, "files"));
+    if (file.mimetype.startsWith("audio/")) return cb(null, path.join(uploadDir, "audio"));
     cb(null, path.join(uploadDir, "files"));
   },
   filename: (req, file, cb) => {

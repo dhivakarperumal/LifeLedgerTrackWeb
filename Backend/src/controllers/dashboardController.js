@@ -146,6 +146,12 @@ exports.getDashboardData = async (req, res) => {
             ? await db.query("SELECT COUNT(*) AS totalDiary FROM diary_entries")
             : [ [{ totalDiary: 0 }] ];
 
+        const [[todayExpenseResult]] = hasExpenses
+            ? await db.query(
+                "SELECT COALESCE(SUM(expense_amount), 0) AS todayExpense FROM expenses WHERE DATE(expense_date) = CURDATE()"
+              )
+            : [ [{ todayExpense: 0 }] ];
+
         const totalIncome = safeNumber(incomeResult.totalIncome || 0);
         const totalExpenses = safeNumber(expenseResult.totalExpenses || 0);
         const totalTransfers = safeNumber(transferResult.totalTransfers || 0);
@@ -153,6 +159,7 @@ exports.getDashboardData = async (req, res) => {
         const totalCategories = safeNumber(categoryResult.totalCategories || 0);
         const totalMemories = safeNumber(memoriesResult.totalMemories || 0);
         const totalDiary = safeNumber(diaryResult.totalDiary || 0);
+        const todayExpense = safeNumber(todayExpenseResult.todayExpense || 0);
 
         const totalRevenue = hasOrders
             ? safeNumber(0)
@@ -181,7 +188,7 @@ exports.getDashboardData = async (req, res) => {
                 { label: "Total Memories", value: totalMemories.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "memories" },
                 { label: "Total Diary", value: totalDiary.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "diary" },
                 { label: "Categories", value: totalCategories.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "tag" },
-                { label: "Transactions", value: `${safeNumber(incomeResult.incomeCount || 0) + safeNumber(expenseResult.expenseCount || 0)}`.toString(), trend: "+ 0%", trendUp: true, icon: "truck" },
+                { label: "Today Expense", value: formatCurrency(todayExpense), trend: "+ 0%", trendUp: false, icon: "today_expense" },
                 { label: "Transfers", value: formatCurrency(totalTransfers), trend: "+ 0%", trendUp: true, icon: "pending" },
                 { label: "Monthly Budget", value: formatCurrency(monthlyIncome - monthlyExpenses), trend: "- 0%", trendUp: false, icon: "offer" }
             ],

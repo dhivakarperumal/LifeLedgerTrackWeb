@@ -2,20 +2,44 @@ const db = require("../config/db");
 const fs = require("fs");
 const path = require("path");
 
-const normalizeDiaryEntry = (row = {}) => {
+const buildPublicUrl = (req, value) => {
+  if (!value) return value;
+  if (/^https?:\/\//i.test(value)) return value;
+  const forwardedHost = req.headers["x-forwarded-host"] || req.get("host");
+  const forwardedProto = req.headers["x-forwarded-proto"] || req.protocol;
+  const base = forwardedHost ? `${forwardedProto}://${forwardedHost}` : "http://localhost:5000";
+
+  if (value.startsWith("/uploads/")) {
+    return `${base}${value}`;
+  }
+
+  return value;
+};
+
+const normalizeDiaryEntry = (req, row = {}) => {
   const attachments = Array.isArray(row.media_files)
     ? row.media_files
     : parseJsonField(row.media_files) || [];
 
+  const normalizeAttachment = (item) => {
+    if (!item) return item;
+    const next = { ...item };
+    if (next.file_url) next.file_url = buildPublicUrl(req, next.file_url);
+    return next;
+  };
+
   const derivedAttachments = [
-    ...(row.image_path ? [{ id: `image-${row.id || Date.now()}`, file_name: path.basename(row.image_path), file_url: row.image_path, file_type: "image" }] : []),
-    ...(row.video_path ? [{ id: `video-${row.id || Date.now()}`, file_name: path.basename(row.video_path), file_url: row.video_path, file_type: "video" }] : []),
-    ...(row.file_path ? [{ id: `file-${row.id || Date.now()}`, file_name: path.basename(row.file_path), file_url: row.file_path, file_type: "file" }] : []),
-    ...attachments,
+    ...(row.image_path ? [{ id: `image-${row.id || Date.now()}`, file_name: path.basename(row.image_path), file_url: buildPublicUrl(req, row.image_path), file_type: "image" }] : []),
+    ...(row.video_path ? [{ id: `video-${row.id || Date.now()}`, file_name: path.basename(row.video_path), file_url: buildPublicUrl(req, row.video_path), file_type: "video" }] : []),
+    ...(row.file_path ? [{ id: `file-${row.id || Date.now()}`, file_name: path.basename(row.file_path), file_url: buildPublicUrl(req, row.file_path), file_type: "file" }] : []),
+    ...attachments.map(normalizeAttachment),
   ];
 
   return {
     ...row,
+    image_path: row.image_path ? buildPublicUrl(req, row.image_path) : row.image_path,
+    video_path: row.video_path ? buildPublicUrl(req, row.video_path) : row.video_path,
+    file_path: row.file_path ? buildPublicUrl(req, row.file_path) : row.file_path,
     tags: parseJsonField(row.tags),
     attachment_count: Number(row.attachment_count || derivedAttachments.length || 0),
     attachments: derivedAttachments,
@@ -191,7 +215,7 @@ const getDiaryEntries = async (req, res) => {
     query += " ORDER BY d.entry_date DESC, d.entry_time DESC, d.created_at DESC";
 
     const [rows] = await db.query(query, values);
-    const entries = rows.map(normalizeDiaryEntry);
+    const entries = rows.map((row) => normalizeDiaryEntry(req, row));
     res.json(entries);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch diary entries", error: error.message });
@@ -213,7 +237,7 @@ const getDiaryEntryById = async (req, res) => {
       return res.status(404).json({ message: "Diary entry not found." });
     }
 
-    const entry = normalizeDiaryEntry(rows[0]);
+    const entry = normalizeDiaryEntry(req, rows[0]);
     res.json({ ...entry, tags: parseJsonField(entry.tags) });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch diary entry", error: error.message });
@@ -290,7 +314,7 @@ const createDiaryEntry = async (req, res) => {
     );
 
     const [rows] = await db.query(`SELECT ${diarySelectBase} FROM diary_entries d LEFT JOIN categories dc ON dc.id = d.category_id WHERE d.id = ?`, [result.insertId]);
-    res.status(201).json(normalizeDiaryEntry(rows[0]));
+    res.status(201).json(normalizeDiaryEntry(req, rows[0]));
   } catch (error) {
     res.status(500).json({ message: "Failed to create diary entry", error: error.message });
   }
@@ -357,7 +381,7 @@ const updateDiaryEntry = async (req, res) => {
     );
 
     const [rows] = await db.query(`SELECT ${diarySelectBase} FROM diary_entries d LEFT JOIN categories dc ON dc.id = d.category_id WHERE d.id = ?`, [id]);
-    res.json(normalizeDiaryEntry(rows[0]));
+    res.json(normalizeDiaryEntry(req, rows[0]));
   } catch (error) {
     res.status(500).json({ message: "Failed to update diary entry", error: error.message });
   }
@@ -405,11 +429,12 @@ const addAttachment = async (req, res) => {
 
     const fileUrl = `/uploads/diary/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}`;
     const fileType = file.mimetype || "application/octet-stream";
+    const publicFileUrl = buildPublicUrl(req, fileUrl);
     const nextMediaFiles = parseJsonField(rows[0].media_files);
     nextMediaFiles.push({
       id: Date.now(),
       file_name: file.originalname,
-      file_url: fileUrl,
+      file_url: publicFileUrl,
       file_type: fileType,
       file_size: file.size,
     });
@@ -417,10 +442,10 @@ const addAttachment = async (req, res) => {
     const fieldName = fileType.startsWith("image/") ? "image_path" : fileType.startsWith("video/") ? "video_path" : "file_path";
     await db.query(
       `UPDATE diary_entries SET ${fieldName} = ?, media_files = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
-      [fileUrl, JSON.stringify(nextMediaFiles), req.user.user_id, id, req.user.user_id]
+      [publicFileUrl, JSON.stringify(nextMediaFiles), req.user.user_id, id, req.user.user_id]
     );
 
-    res.status(201).json({ message: "Attachment uploaded successfully.", fileUrl, fileName: file.originalname, fileType });
+    res.status(201).json({ message: "Attachment uploaded successfully.", fileUrl: publicFileUrl, fileName: file.originalname, fileType });
   } catch (error) {
     res.status(500).json({ message: "Failed to upload attachment", error: error.message });
   }

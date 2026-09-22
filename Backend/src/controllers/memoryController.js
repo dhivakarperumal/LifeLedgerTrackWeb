@@ -46,9 +46,6 @@ const syncMemoryCategoryFromShared = async (userId, categoryId, fallbackName = n
   const resolvedId = categoryId ? Number(categoryId) : null;
 
   if (resolvedId) {
-    const [memoryRows] = await db.query("SELECT * FROM memory_categories WHERE id = ? AND user_id = ?", [resolvedId, userId]);
-    if (memoryRows.length) return resolvedId;
-
     const [sharedRows] = await db.query(
       "SELECT * FROM categories WHERE id = ? AND (user_id = ? OR user_id IS NULL)",
       [resolvedId, userId]
@@ -56,65 +53,52 @@ const syncMemoryCategoryFromShared = async (userId, categoryId, fallbackName = n
 
     if (sharedRows.length) {
       const shared = sharedRows[0];
-      await db.query(
-        `INSERT INTO memory_categories (id, user_id, name, description, color, created_by, updated_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), color = VALUES(color), updated_by = VALUES(updated_by)`,
-        [
-          shared.id,
-          shared.user_id || userId,
-          shared.name,
-          shared.description || "",
-          shared.color || "#8B5CF6",
-          userId,
-          userId,
-        ]
-      );
-      return shared.id;
+      return {
+        id: shared.id,
+        name: shared.name,
+        color: shared.color || "#8B5CF6"
+      };
     }
   }
 
   const candidateName = fallbackName ? String(fallbackName).trim() : null;
   if (candidateName) {
-    const [existingRows] = await db.query("SELECT * FROM memory_categories WHERE user_id = ? AND name = ?", [userId, candidateName]);
-    if (existingRows.length) return existingRows[0].id;
-
     const [sharedRows] = await db.query(
       "SELECT * FROM categories WHERE (user_id = ? OR user_id IS NULL) AND name = ? ORDER BY id DESC LIMIT 1",
       [userId, candidateName]
     );
 
     if (sharedRows.length) {
-      return syncMemoryCategoryFromShared(userId, sharedRows[0].id, candidateName);
+      return {
+        id: sharedRows[0].id,
+        name: sharedRows[0].name,
+        color: sharedRows[0].color || "#8B5CF6"
+      };
     }
 
     const [result] = await db.query(
-      `INSERT INTO memory_categories (user_id, name, description, color, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [userId, candidateName, "", "#8B5CF6", userId, userId]
+      `INSERT INTO categories (user_id, name, description, status, catType, created_at)
+       VALUES (?, ?, ?, 'Active', 'Memory', CURRENT_TIMESTAMP)`,
+      [userId, candidateName, ""]
     );
-    return result.insertId;
+
+    return {
+      id: result.insertId,
+      name: candidateName,
+      color: "#8B5CF6"
+    };
   }
 
-  return null;
+  return { id: null, name: null, color: "#8B5CF6" };
 };
 
 const getMemoryCategories = async (req, res) => {
   try {
-    const [sharedRows] = await db.query(
+    const [rows] = await db.query(
       `SELECT * FROM categories
        WHERE (user_id = ? OR user_id IS NULL)
          AND (LOWER(catType) LIKE '%memory%' OR LOWER(name) LIKE '%memory%')
        ORDER BY name ASC`,
-      [req.user.user_id]
-    );
-
-    for (const category of sharedRows) {
-      await syncMemoryCategoryFromShared(req.user.user_id, category.id, category.name);
-    }
-
-    const [rows] = await db.query(
-      `SELECT * FROM memory_categories WHERE user_id = ? OR user_id IS NULL ORDER BY name ASC`,
       [req.user.user_id]
     );
     res.json(rows);
@@ -131,12 +115,12 @@ const createMemoryCategory = async (req, res) => {
     }
 
     const [result] = await db.query(
-      `INSERT INTO memory_categories (user_id, name, description, color, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.user.user_id, String(name).trim(), description || "", color || "#8B5CF6", req.user.user_id, req.user.user_id]
+      `INSERT INTO categories (user_id, name, description, status, catType, color, created_at)
+       VALUES (?, ?, ?, 'Active', 'Memory', ?, CURRENT_TIMESTAMP)`,
+      [req.user.user_id, String(name).trim(), description || "", color || "#8B5CF6"]
     );
 
-    const [rows] = await db.query("SELECT * FROM memory_categories WHERE id = ?", [result.insertId]);
+    const [rows] = await db.query("SELECT * FROM categories WHERE id = ?", [result.insertId]);
     res.status(201).json(rows[0]);
   } catch (error) {
     res.status(500).json({ message: "Failed to create memory category", error: error.message });
@@ -148,19 +132,19 @@ const updateMemoryCategory = async (req, res) => {
     const { id } = req.params;
     const { name, description, color } = req.body;
 
-    const [rows] = await db.query("SELECT * FROM memory_categories WHERE id = ? AND user_id = ?", [id, req.user.user_id]);
+    const [rows] = await db.query("SELECT * FROM categories WHERE id = ? AND (user_id = ? OR user_id IS NULL)", [id, req.user.user_id]);
     if (!rows.length) {
       return res.status(404).json({ message: "Memory category not found." });
     }
 
     await db.query(
-      `UPDATE memory_categories
-       SET name = ?, description = ?, color = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ? AND user_id = ?`,
-      [String(name || rows[0].name).trim(), description ?? rows[0].description, color ?? rows[0].color, req.user.user_id, id, req.user.user_id]
+      `UPDATE categories
+       SET name = ?, description = ?, color = ?
+       WHERE id = ? AND (user_id = ? OR user_id IS NULL)`,
+      [String(name || rows[0].name).trim(), description ?? rows[0].description, color ?? rows[0].color, id, req.user.user_id]
     );
 
-    const [updated] = await db.query("SELECT * FROM memory_categories WHERE id = ?", [id]);
+    const [updated] = await db.query("SELECT * FROM categories WHERE id = ?", [id]);
     res.json(updated[0]);
   } catch (error) {
     res.status(500).json({ message: "Failed to update memory category", error: error.message });
@@ -170,7 +154,7 @@ const updateMemoryCategory = async (req, res) => {
 const deleteMemoryCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    await db.query("DELETE FROM memory_categories WHERE id = ? AND user_id = ?", [id, req.user.user_id]);
+    await db.query("DELETE FROM categories WHERE id = ? AND (user_id = ? OR user_id IS NULL)", [id, req.user.user_id]);
     res.json({ message: "Memory category deleted successfully." });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete memory category", error: error.message });
@@ -181,9 +165,8 @@ const getMemories = async (req, res) => {
   try {
     const { search = "", category = "all", favorite = "", status = "all" } = req.query;
     let query = `
-      SELECT m.*, c.name AS category_name, c.color AS category_color
+      SELECT m.*
       FROM memories m
-      LEFT JOIN memory_categories c ON c.id = m.category_id
       WHERE m.user_id = ?
     `;
     const values = [req.user.user_id];
@@ -221,9 +204,8 @@ const getMemoryById = async (req, res) => {
   try {
     const { id } = req.params;
     const [rows] = await db.query(
-      `SELECT m.*, c.name AS category_name
+      `SELECT m.*
        FROM memories m
-       LEFT JOIN memory_categories c ON c.id = m.category_id
        WHERE m.id = ? AND m.user_id = ?`,
       [id, req.user.user_id]
     );
@@ -247,7 +229,7 @@ const createMemory = async (req, res) => {
       return res.status(400).json({ message: "Memory title is required." });
     }
 
-    const resolvedCategoryId = await syncMemoryCategoryFromShared(req.user.user_id, category_id, req.body.category_name || req.body.category || null);
+    const resolvedCategory = await syncMemoryCategoryFromShared(req.user.user_id, category_id, req.body.category_name || req.body.category || null);
     const uploadedFiles = Array.isArray(req.files) ? req.files : [];
     const gallery = uploadedFiles.map((file) => `/uploads/memories/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}`);
     const primaryFile = uploadedFiles[0];
@@ -262,15 +244,17 @@ const createMemory = async (req, res) => {
 
     const [result] = await db.query(
       `INSERT INTO memories (
-        user_id, title, description, category_id, memory_date, location, mood,
+        user_id, title, description, category_id, category_name, category_color, memory_date, location, mood,
         tags, status, is_favorite, media_url, media_gallery, media_type, voice_note, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         req.user.user_id,
         String(title).trim(),
         description || "",
-        resolvedCategoryId || null,
+        resolvedCategory.id || null,
+        resolvedCategory.name || null,
+        resolvedCategory.color || "#8B5CF6",
         memory_date || new Date().toISOString().slice(0, 10),
         location || "",
         mood || "Happy",
@@ -302,7 +286,7 @@ const updateMemory = async (req, res) => {
     }
 
     const { title, description, category_id, memory_date, location, tags, mood, status, is_favorite, voice_note } = req.body;
-    const resolvedCategoryId = await syncMemoryCategoryFromShared(req.user.user_id, category_id ?? existing[0][0].category_id, req.body.category_name || req.body.category || null);
+    const resolvedCategory = await syncMemoryCategoryFromShared(req.user.user_id, category_id ?? existing[0][0].category_id, req.body.category_name || req.body.category || null);
     const uploadedFiles = Array.isArray(req.files) ? req.files : [];
     const gallery = uploadedFiles.length
       ? uploadedFiles.map((file) => `/uploads/memories/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}`)
@@ -323,13 +307,15 @@ const updateMemory = async (req, res) => {
 
     await db.query(
       `UPDATE memories
-       SET title = ?, description = ?, category_id = ?, memory_date = ?, location = ?, mood = ?, tags = ?,
+       SET title = ?, description = ?, category_id = ?, category_name = ?, category_color = ?, memory_date = ?, location = ?, mood = ?, tags = ?,
            status = ?, is_favorite = ?, media_url = ?, media_gallery = ?, media_type = ?, voice_note = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ? AND user_id = ?`,
       [
         title || existing[0][0].title,
         description ?? existing[0][0].description,
-        resolvedCategoryId ?? existing[0][0].category_id,
+        resolvedCategory.id ?? existing[0][0].category_id,
+        resolvedCategory.name ?? existing[0][0].category_name,
+        resolvedCategory.color ?? existing[0][0].category_color ?? "#8B5CF6",
         memory_date || existing[0][0].memory_date,
         location ?? existing[0][0].location,
         mood || existing[0][0].mood,

@@ -112,6 +112,7 @@ const initializeDatabase = async () => {
     )`,
     `CREATE TABLE IF NOT EXISTS expenses (
       id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NULL,
       title VARCHAR(255) NOT NULL,
       expense_amount DECIMAL(12,2) NOT NULL,
       transfer_amount DECIMAL(12,2) DEFAULT NULL,
@@ -124,24 +125,14 @@ const initializeDatabase = async () => {
       attachment TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
-    `CREATE TABLE IF NOT EXISTS memory_categories (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id VARCHAR(50) NOT NULL,
-      name VARCHAR(120) NOT NULL,
-      description TEXT NULL,
-      color VARCHAR(30) DEFAULT '#8B5CF6',
-      created_by VARCHAR(50) NULL,
-      updated_by VARCHAR(50) NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      UNIQUE KEY uq_memory_category_user_name (user_id, name)
-    )`,
     `CREATE TABLE IF NOT EXISTS memories (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id VARCHAR(50) NOT NULL,
       title VARCHAR(255) NOT NULL,
       description TEXT NULL,
       category_id INT NULL,
+      category_name VARCHAR(120) NULL,
+      category_color VARCHAR(30) DEFAULT '#8B5CF6',
       memory_date DATE NOT NULL,
       location VARCHAR(255) NULL,
       mood VARCHAR(80) DEFAULT 'Happy',
@@ -159,7 +150,7 @@ const initializeDatabase = async () => {
       KEY idx_memory_user_date (user_id, memory_date),
       KEY idx_memory_category (category_id),
       CONSTRAINT fk_memory_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-      CONSTRAINT fk_memory_category FOREIGN KEY (category_id) REFERENCES memory_categories(id) ON DELETE SET NULL
+      CONSTRAINT fk_memory_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
     )`,
     `CREATE TABLE IF NOT EXISTS calendar_events (
       id VARCHAR(64) PRIMARY KEY,
@@ -221,7 +212,10 @@ const initializeDatabase = async () => {
     "reviews",
     "order_items",
     "order_addresses",
-    "memory_albums"
+    "memory_albums",
+    "memory_categories",
+    "diary_categories",
+    "diary_attachments"
   ];
 
   try {
@@ -236,6 +230,9 @@ const initializeDatabase = async () => {
   await ensureColumn("memories", "media_gallery", "JSON NULL");
   await ensureColumn("memories", "media_type", "VARCHAR(50) DEFAULT 'image'");
   await ensureColumn("memories", "voice_note", "TEXT NULL");
+  await ensureColumn("memories", "category_name", "VARCHAR(120) NULL");
+  await ensureColumn("memories", "category_color", "VARCHAR(30) DEFAULT '#8B5CF6'");
+  await ensureColumn("expenses", "user_id", "VARCHAR(50) NULL");
 
   const [incomeBalanceColumn] = await pool.query(
     `SELECT COUNT(*) AS columnCount
@@ -359,12 +356,6 @@ const initializeDatabase = async () => {
       ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
     ] },
     { table: 'expenses', columns: [
-      ['user_id', 'VARCHAR(50) NULL'],
-      ['created_by', 'VARCHAR(50) NULL'],
-      ['updated_by', 'VARCHAR(50) NULL'],
-      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
-    ] },
-    { table: 'memory_categories', columns: [
       ['user_id', 'VARCHAR(50) NULL'],
       ['created_by', 'VARCHAR(50) NULL'],
       ['updated_by', 'VARCHAR(50) NULL'],

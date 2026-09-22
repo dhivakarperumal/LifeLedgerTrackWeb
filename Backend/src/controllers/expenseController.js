@@ -2,8 +2,10 @@ const db = require("../config/db");
 
 exports.getAllExpenses = async (req, res) => {
     try {
+        const userId = req.user?.user_id;
         const [rows] = await db.query(
-            "SELECT * FROM expenses ORDER BY expense_date DESC, created_at DESC"
+            "SELECT * FROM expenses WHERE user_id = ? ORDER BY expense_date DESC, created_at DESC",
+            [userId]
         );
         res.json(rows);
     } catch (error) {
@@ -88,9 +90,10 @@ exports.createExpense = async (req, res) => {
 
         const [result] = await db.query(
             `INSERT INTO expenses
-                (title, expense_amount, transfer_amount, transfer_id, remaining_amount, category, payment_method, expense_date, notes, recurring, attachment)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                (user_id, title, expense_amount, transfer_amount, transfer_id, remaining_amount, category, payment_method, expense_date, notes, recurring, attachment)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
+                req.user?.user_id || null,
                 title.trim(),
                 numericExpense,
                 numericTransfer,
@@ -132,7 +135,7 @@ exports.updateExpense = async (req, res) => {
             recurring,
         } = req.body;
 
-        const [existingRows] = await db.query("SELECT * FROM expenses WHERE id = ?", [id]);
+        const [existingRows] = await db.query("SELECT * FROM expenses WHERE id = ? AND user_id = ?", [id, req.user?.user_id]);
         const existingExpense = existingRows[0];
         
         if (!existingExpense) {
@@ -178,9 +181,10 @@ exports.updateExpense = async (req, res) => {
 
         await db.query(
             `UPDATE expenses
-             SET title = ?, expense_amount = ?, transfer_amount = ?, transfer_id = ?, remaining_amount = ?, category = ?, payment_method = ?, expense_date = ?, notes = ?, recurring = ?, attachment = ?
-             WHERE id = ?`,
+             SET user_id = ?, title = ?, expense_amount = ?, transfer_amount = ?, transfer_id = ?, remaining_amount = ?, category = ?, payment_method = ?, expense_date = ?, notes = ?, recurring = ?, attachment = ?
+             WHERE id = ? AND user_id = ?`,
             [
+                req.user?.user_id || existingExpense.user_id,
                 (title || existingExpense.title).trim(),
                 numericExpense,
                 numericTransfer,
@@ -193,13 +197,14 @@ exports.updateExpense = async (req, res) => {
                 recurring === "Yes" ? "Yes" : (recurring === "No" ? "No" : existingExpense.recurring),
                 attachmentPath,
                 id,
+                req.user?.user_id,
             ]
         );
 
         if (currentTransferId) await applyTransferBalanceDelta(currentTransferId);
         if (validTransferId && validTransferId !== currentTransferId) await applyTransferBalanceDelta(validTransferId);
 
-        const [rows] = await db.query("SELECT * FROM expenses WHERE id = ?", [id]);
+        const [rows] = await db.query("SELECT * FROM expenses WHERE id = ? AND user_id = ?", [id, req.user?.user_id]);
         res.json({ message: "Expense updated successfully", expense: rows[0] });
     } catch (error) {
         console.error("Update Expense Error:", error);
@@ -210,14 +215,14 @@ exports.updateExpense = async (req, res) => {
 exports.deleteExpense = async (req, res) => {
     try {
         const { id } = req.params;
-        const [expenseRows] = await db.query("SELECT * FROM expenses WHERE id = ?", [id]);
+        const [expenseRows] = await db.query("SELECT * FROM expenses WHERE id = ? AND user_id = ?", [id, req.user?.user_id]);
         const expense = expenseRows[0];
         
         if (!expense) {
             return res.status(404).json({ message: "Expense not found" });
         }
 
-        await db.query("DELETE FROM expenses WHERE id = ?", [id]);
+        await db.query("DELETE FROM expenses WHERE id = ? AND user_id = ?", [id, req.user?.user_id]);
 
         if (expense.transfer_id) {
             await applyTransferBalanceDelta(Number(expense.transfer_id));
@@ -232,9 +237,10 @@ exports.deleteExpense = async (req, res) => {
 
 exports.getExpenseStats = async (req, res) => {
     try {
-        const [[totalRow]] = await db.query("SELECT COUNT(*) AS total, COALESCE(SUM(expense_amount), 0) AS totalAmount FROM expenses");
-        const [[transferRow]] = await db.query("SELECT COALESCE(SUM(transfer_amount), 0) AS totalTransfer FROM expenses WHERE transfer_amount IS NOT NULL");
-        const [[recurringRow]] = await db.query("SELECT COUNT(*) AS recurring FROM expenses WHERE recurring = 'Yes'");
+        const userId = req.user?.user_id;
+        const [[totalRow]] = await db.query("SELECT COUNT(*) AS total, COALESCE(SUM(expense_amount), 0) AS totalAmount FROM expenses WHERE user_id = ?", [userId]);
+        const [[transferRow]] = await db.query("SELECT COALESCE(SUM(transfer_amount), 0) AS totalTransfer FROM expenses WHERE transfer_amount IS NOT NULL AND user_id = ?", [userId]);
+        const [[recurringRow]] = await db.query("SELECT COUNT(*) AS recurring FROM expenses WHERE recurring = 'Yes' AND user_id = ?", [userId]);
 
         res.json({
             total: totalRow.total,

@@ -2,6 +2,7 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
+const { requireAuth } = require("../middleware/auth");
 const expenseController = require("../controllers/expenseController");
 
 const router = express.Router();
@@ -20,6 +21,8 @@ const upload = multer({
         callback(allowed ? null : new Error("Only images and PDF receipts are allowed."), allowed);
     },
 });
+
+router.use(requireAuth);
 
 router.get("/", expenseController.getAllExpenses);
 router.get("/stats", expenseController.getExpenseStats);
