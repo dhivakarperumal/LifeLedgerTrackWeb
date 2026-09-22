@@ -77,11 +77,18 @@ const MemoriesManagement = () => {
       setLoading(true);
       const [memoriesRes, categoriesRes, albumsRes] = await Promise.all([
         api.get("/memories"),
-        api.get("/memories/categories"),
+        api.get("/categories"),
         api.get("/memories/albums"),
       ]);
+
+      const sharedCategories = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
+      const memoryOnlyCategories = sharedCategories.filter((category) => {
+        const typeValue = String(category?.catType || category?.type || category?.category_type || "").trim().toLowerCase();
+        return !typeValue || typeValue === "memory" || typeValue === "memories";
+      });
+
       setMemories(Array.isArray(memoriesRes.data) ? memoriesRes.data : []);
-      setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
+      setCategories(memoryOnlyCategories);
       setAlbums(Array.isArray(albumsRes.data) ? albumsRes.data : []);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load memories.");
@@ -93,6 +100,13 @@ const MemoriesManagement = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const memoryCategories = useMemo(() => {
+    return categories.filter((category) => {
+      const typeValue = String(category?.type || category?.catType || category?.category_type || "").toLowerCase();
+      return !typeValue || ["memory", "memories"].includes(typeValue);
+    });
+  }, [categories]);
 
   const stats = useMemo(() => ({
     total: memories.length,
@@ -128,7 +142,7 @@ const MemoriesManagement = () => {
     setUploadFile(null);
     setForm({
       ...initialForm,
-      category_id: categories[0]?.id || "",
+      category_id: memoryCategories[0]?.id || "",
       album_id: albums[0]?.id || "",
     });
     setIsEditorOpen(true);
@@ -347,7 +361,7 @@ const MemoriesManagement = () => {
               className="appearance-none rounded-[18px] border border-gray-200 bg-white px-4 py-3.5 pr-10 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-[#7b2cbf]"
             >
               <option value="all">All Categories</option>
-              {categories.map((category) => (
+              {memoryCategories.map((category) => (
                 <option key={category.id} value={category.id}>{category.name}</option>
               ))}
             </select>
@@ -531,7 +545,7 @@ const MemoriesManagement = () => {
                   <label className="mb-2 block text-sm font-medium text-slate-700">Category</label>
                   <select name="category_id" value={form.category_id} onChange={handleInputChange} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-violet-500">
                     <option value="">Select category</option>
-                    {categories.map((category) => (
+                    {memoryCategories.map((category) => (
                       <option key={category.id} value={category.id}>{category.name}</option>
                     ))}
                   </select>
