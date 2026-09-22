@@ -284,19 +284,21 @@ const Dashboard = () => {
                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Quick Actions</h3>
                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Shortcuts</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-8 gap-3">
                     {[
-                        { label: "Add Product",    icon: <FiBox size={20} />,          color: "from-[#6C3DE8] to-[#A855F7]", path: "/admin/products/add" },
-                        { label: "New Order",      icon: <FiShoppingBag size={20} />,  color: "from-[#2563EB] to-[#0EA5E9]", path: "/admin/orders/create" },
-                        { label: "All Orders",     icon: <FaTruck size={20} />,         color: "from-[#059669] to-[#10B981]", path: "/admin/orders/all" },
-                        { label: "Customers",      icon: <FiUsers size={20} />,        color: "from-[#F59E0B] to-[#FBBF24]", path: "/admin/users/all" },
-                        { label: "Stock Details",  icon: <FiAlertTriangle size={20} />,color: "from-[#EF4444] to-[#F97316]", path: "/admin/products/stock" },
-                        { label: "Reports",        icon: <FiTrendingUp size={20} />,   color: "from-[#DB2777] to-[#EC4899]", path: "/admin/reports" },
+                        { label: "All Expenses",   icon: <FiBox size={20} />,          color: "from-[#6C3DE8] to-[#A855F7]", path: "/admin/expensive/all" },
+                        { label: "Categories",     icon: <FiTag size={20} />,          color: "from-[#2563EB] to-[#0EA5E9]", path: "/admin/expensive/category" },
+                        { label: "Income",         icon: <FaRupeeSign size={20} />,    color: "from-[#059669] to-[#10B981]", path: "/admin/more/income" },
+                        { label: "Transfer",       icon: <FaTruck size={20} />,       color: "from-[#F59E0B] to-[#FBBF24]", path: "/admin/more/transfer" },
+                        { label: "Customers",      icon: <FiUsers size={20} />,       color: "from-[#EF4444] to-[#F97316]", path: "/admin/users/all" },
+                        { label: "Reports",        icon: <FiTrendingUp size={20} />,  color: "from-[#DB2777] to-[#EC4899]", path: "/admin/reports" },
+                        { label: "Memories",       icon: <FiEye size={20} />,         color: "from-[#0891B2] to-[#06B6D4]", path: "/admin/users/memories" },
+                        { label: "My Diary",       icon: <FiClock size={20} />,       color: "from-[#7C3AED] to-[#6D28D9]", path: "/admin/users/diary" },
                     ].map((action, i) => (
                         <button
                             key={i}
                             onClick={() => navigate(action.path)}
-                            className="flex flex-col items-center gap-2.5 p-4 rounded-2xl border border-gray-100 hover:border-transparent hover:shadow-lg transition-all duration-200 group hover:-translate-y-0.5"
+                            className="flex flex-col items-center justify-center gap-2.5 p-4 rounded-2xl border border-gray-100 hover:border-transparent hover:shadow-lg transition-all duration-200 group hover:-translate-y-0.5 bg-white min-h-[120px]"
                         >
                             <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${action.color} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-200`}>
                                 {action.icon}

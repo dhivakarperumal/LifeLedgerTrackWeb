@@ -19,12 +19,22 @@ const Billing = () => {
     const location = useLocation();
     const isIncomePage = location.pathname.replace(/\/$/, "") === "/admin/more/income";
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
     const [form, setForm] = useState(initialForm);
+    const [budgetDraft, setBudgetDraft] = useState("0");
+    const [monthlyBudget, setMonthlyBudget] = useState(() => {
+        const savedBudget = Number(localStorage.getItem("lifeLedgerMonthlyBudget") || 0);
+        return Number.isFinite(savedBudget) ? savedBudget : 0;
+    });
     const [incomes, setIncomes] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [incomeFilter, setIncomeFilter] = useState("All Income");
     const [viewMode, setViewMode] = useState("table");
+
+    useEffect(() => {
+        localStorage.setItem("lifeLedgerMonthlyBudget", String(monthlyBudget));
+    }, [monthlyBudget]);
 
     useEffect(() => {
         if (!isIncomePage) return;
@@ -109,13 +119,45 @@ const Billing = () => {
 
             {isIncomePage ? (
                 <>
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5">
                         <IncomeStatCard label="Total Income" value={totalIncome} caption="All recorded income" color="bg-[#4b0b78]" icon="$" />
                         <IncomeStatCard label="This Month" value={monthlyIncome} caption="Income this month" color="bg-[#00bfa5]" icon="↗" />
                         <IncomeStatCard label="Recurring Income" value={recurringIncome} caption="Recurring entries" color="bg-[#ff9200]" icon="↻" />
+                        <div className="relative overflow-hidden rounded-[1.6rem] bg-gradient-to-br from-[#7f39d5] via-[#7b35d6] to-[#6d2bc4] p-5 shadow-[0_10px_30px_rgba(111,52,180,0.28)] md:col-span-2 xl:col-span-2">
+                            <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-white/10" />
+                            <div className="absolute -bottom-12 right-0 h-24 w-24 rounded-full bg-white/10" />
+                            <div className="relative flex items-start justify-between gap-3">
+                                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/25 bg-white/10 text-3xl font-black text-white shadow-md backdrop-blur-sm">
+                                    ₹
+                                </div>
+                                <div className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/90">
+                                    ▼ -0%
+                                </div>
+                            </div>
+                            <div className="relative mt-5">
+                                <h2 className="text-[2.3rem] font-black leading-none tracking-[-0.06em] text-white">
+                                    ₹{monthlyBudget.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                                </h2>
+                                <p className="mt-2 text-base font-semibold text-white/85">Monthly Budget</p>
+                            </div>
+                            <div className="relative mt-4 flex items-center gap-1 text-[11px] font-semibold text-white/80">
+                                <span>▼</span>
+                                <span>- 0% vs last month</span>
+                            </div>
+                        </div>
                         <IncomeStatCard label="Income Records" value={incomes.length} caption="Total transactions" color="bg-[#f43f83]" icon="#" isCount />
                     </div>
                     <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setBudgetDraft(String(monthlyBudget));
+                                setIsBudgetModalOpen(true);
+                            }}
+                            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:from-[#1e40af] hover:to-[#1d4ed8] active:scale-95"
+                        >
+                            <FiPlus size={15} /> Set Monthly Budget
+                        </button>
                         <div className="relative min-w-[220px] flex-1">
                             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                             <input
@@ -189,6 +231,67 @@ const Billing = () => {
                 </>
             ) : (
                 <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm"><p className="text-sm font-semibold text-slate-400">No billing records found.</p></div>
+            )}
+
+            {isBudgetModalOpen && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">Monthly Budget</p>
+                                <h2 className="mt-1 text-2xl font-black text-slate-800">Set Budget</h2>
+                            </div>
+                            <button type="button" onClick={() => setIsBudgetModalOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close monthly budget form">
+                                <FiX size={22} />
+                            </button>
+                        </div>
+
+                        <form
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                const value = Number(budgetDraft || 0);
+                                if (!Number.isFinite(value) || value < 0) {
+                                    toast.error("Please enter a valid monthly budget amount.");
+                                    return;
+                                }
+                                setMonthlyBudget(value);
+                                setIsBudgetModalOpen(false);
+                                toast.success("Monthly budget updated successfully!");
+                            }}
+                            className="space-y-5 px-6 py-6"
+                        >
+                            <label>
+                                <span className="mb-2 block text-sm font-bold text-slate-700">Monthly Budget Amount</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={budgetDraft}
+                                    onChange={(event) => setBudgetDraft(event.target.value)}
+                                    placeholder="Enter amount"
+                                    className="w-full rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-blue-500"
+                                    required
+                                />
+                            </label>
+
+                            <div className="flex items-center justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsBudgetModalOpen(false)}
+                                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 transition-all hover:bg-slate-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:from-[#1e40af] hover:to-[#1d4ed8]"
+                                >
+                                    Save Budget
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             )}
 
             {isModalOpen && (

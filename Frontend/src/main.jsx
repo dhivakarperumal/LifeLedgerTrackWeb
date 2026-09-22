@@ -33,6 +33,7 @@ const Users = React.lazy(() => import("./Admin/Pages/Users.jsx"));
 const ErrorPage = React.lazy(() => import("./Admin/Pages/ErrorPage.jsx"));
 const Transfer = React.lazy(() => import("./Admin/Pages/Transfer.jsx"));
 const Income = React.lazy(() => import("./Admin/Pages/Billing.jsx"));
+const Reports = React.lazy(() => import("./Admin/Pages/Reports.jsx"));
 
 const router = createBrowserRouter([
   {
@@ -77,6 +78,7 @@ const router = createBrowserRouter([
       { path: "more/income", element: <Income /> },
       { path: "more/transfer", element: <Transfer /> },
       { path: "more/add", element: <Transfer /> },
+      { path: "reports", element: <Reports /> },
      
      
     ],
