@@ -313,6 +313,16 @@ const CalendarReminder = () => {
             >
               <ChevronRight className="h-4 w-4" />
             </button>
+            <button
+              onClick={() => {
+                const today = new Date();
+                setCalendarMonth(startOfMonth(today));
+                setSelectedDate(today);
+              }}
+              className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-100"
+            >
+              Today
+            </button>
           </div>
 
           <div className="flex items-center gap-2 rounded-xl bg-slate-100 p-1">
