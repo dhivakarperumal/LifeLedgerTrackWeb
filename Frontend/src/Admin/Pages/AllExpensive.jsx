@@ -286,19 +286,34 @@ const AllExpensive = () => {
                                                 ) : <span className="text-gray-300 text-xs">—</span>}
                                             </td>
                                             <td className="px-4 py-4 text-slate-600 text-xs font-medium">{ex.payment_method || "—"}</td>
-                                            <td className="px-4 py-4 text-slate-600 text-xs whitespace-nowrap">{ex.expense_date || "—"}</td>
+                                            <td className="px-4 py-4 text-slate-600 text-xs whitespace-nowrap">
+                                                {ex.expense_date ? String(ex.expense_date).split("T")[0] : "—"}
+                                            </td>
                                             <td className="px-4 py-4">
                                                 <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${ex.recurring === "Yes" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-gray-50 text-gray-500 border-gray-100"}`}>
                                                     {ex.recurring === "Yes" ? "Yes" : "No"}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-4">
-                                                <button
-                                                    onClick={() => handleDelete(ex.id)}
-                                                    className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
-                                                >
-                                                    <FiTrash2 size={13} />
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    {ex.attachment && (
+                                                        <a
+                                                            href={`${import.meta.env.VITE_API_URL.replace("/api", "")}${ex.attachment}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all"
+                                                            title="View Receipt"
+                                                        >
+                                                            <FiPaperclip size={13} />
+                                                        </a>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleDelete(ex.id)}
+                                                        className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                                                    >
+                                                        <FiTrash2 size={13} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -357,11 +372,23 @@ const AllExpensive = () => {
                                 </div>
 
                                 <div className="flex items-center justify-between text-[10px] text-gray-400 font-medium mt-auto pt-2 border-t border-gray-50">
-                                    <span>{ex.expense_date}</span>
+                                    <span>{ex.expense_date ? String(ex.expense_date).split("T")[0] : "—"}</span>
                                     <span>{ex.payment_method}</span>
-                                    {ex.recurring === "Yes" && (
-                                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">Recurring</span>
-                                    )}
+                                    <div className="flex items-center gap-1.5">
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${ex.recurring === "Yes" ? "bg-emerald-50 text-emerald-600" : "bg-gray-50 text-gray-400"}`}>
+                                            {ex.recurring === "Yes" ? "Recurring" : "One-time"}
+                                        </span>
+                                        {ex.attachment && (
+                                            <a
+                                                href={`${import.meta.env.VITE_API_URL.replace("/api", "")}${ex.attachment}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="px-2 py-0.5 rounded bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white transition-all text-[9px] font-bold flex items-center gap-1"
+                                            >
+                                                <FiPaperclip size={10} /> Receipt
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -468,10 +495,13 @@ const AllExpensive = () => {
                                             onChange={(e) => {
                                                 const selId = e.target.value;
                                                 const selTransfer = transfers.find(t => String(t.id) === String(selId));
+                                                const remAmt = selTransfer
+                                                    ? Number(selTransfer.remaining_amount ?? selTransfer.amount ?? 0)
+                                                    : "";
                                                 setForm((f) => ({
                                                     ...f,
                                                     transfer_id: selId,
-                                                    transfer_amount: selTransfer ? (selTransfer.remaining_amount ?? selTransfer.amount ?? "") : ""
+                                                    transfer_amount: selId ? remAmt : ""
                                                 }));
                                             }}
                                             className={selectCls}
@@ -481,14 +511,14 @@ const AllExpensive = () => {
                                                 <option disabled>No transfer records found</option>
                                             )}
                                             {transfers.map((t) => {
-                                                // trim ISO datetime to just YYYY-MM-DD
                                                 const dateStr = t.transfer_date
                                                     ? String(t.transfer_date).split("T")[0]
                                                     : "";
+                                                const remAmt = Number(t.remaining_amount ?? t.amount ?? 0);
+                                                const remStr = remAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 });
                                                 return (
-                                                    <option key={t.id} value={t.id}>
-                                                        {t.title} — ₹{Number(t.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                                        {dateStr ? `  (${dateStr})` : ""}
+                                                    <option key={t.id} value={t.id} disabled={remAmt <= 0}>
+                                                        {t.title} — ₹{remStr} remaining{dateStr ? `  (${dateStr})` : ""}
                                                     </option>
                                                 );
                                             })}
@@ -504,9 +534,9 @@ const AllExpensive = () => {
                                         <FiInfo size={12} /> Live Calculation
                                     </p>
 
-                                    {/* Row: Transfer */}
+                                    {/* Row: Available Remaining in Transfer */}
                                     <div className="flex items-center justify-between py-2 border-b border-slate-200">
-                                        <span className="text-sm text-gray-500 font-medium">Transfer Amount</span>
+                                        <span className="text-sm text-gray-500 font-medium">Available Remaining</span>
                                         <span className="text-sm font-black text-amber-600">₹{fmt(trfAmt)}</span>
                                     </div>
 

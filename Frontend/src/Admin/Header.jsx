@@ -67,6 +67,8 @@ const pageTitles = {
   "/admin/orders": "Orders",
   "/admin/users/all": "Customers",
   "/admin/users/new": "New Users",
+  "/admin/users/diary": "My Diary",
+  "/admin/users/memories": "Memories",
   
   "/admin/banners": "Banners",
   "/admin/videos": "Reals Videos",

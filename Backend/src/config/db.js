@@ -269,6 +269,57 @@ const initializeDatabase = async () => {
       attachment TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS memory_categories (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      description TEXT NULL,
+      color VARCHAR(30) DEFAULT '#8B5CF6',
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_memory_category_user_name (user_id, name)
+    )`,
+    `CREATE TABLE IF NOT EXISTS memory_albums (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      description TEXT NULL,
+      cover_image VARCHAR(500) NULL,
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_memory_album_user_name (user_id, name)
+    )`,
+    `CREATE TABLE IF NOT EXISTS memories (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      description TEXT NULL,
+      category_id INT NULL,
+      album_id INT NULL,
+      memory_date DATE NOT NULL,
+      location VARCHAR(255) NULL,
+      mood VARCHAR(80) DEFAULT 'Happy',
+      tags JSON NULL,
+      status ENUM('published', 'draft') DEFAULT 'published',
+      is_favorite BOOLEAN DEFAULT FALSE,
+      media_url VARCHAR(500) NULL,
+      media_type VARCHAR(50) DEFAULT 'image',
+      voice_note TEXT NULL,
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_memory_user_date (user_id, memory_date),
+      KEY idx_memory_category (category_id),
+      KEY idx_memory_album (album_id),
+      CONSTRAINT fk_memory_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+      CONSTRAINT fk_memory_category FOREIGN KEY (category_id) REFERENCES memory_categories(id) ON DELETE SET NULL,
+      CONSTRAINT fk_memory_album FOREIGN KEY (album_id) REFERENCES memory_albums(id) ON DELETE SET NULL
+    )`,
     `CREATE TABLE IF NOT EXISTS diary_categories (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id VARCHAR(50) NOT NULL,
@@ -395,6 +446,21 @@ const initializeDatabase = async () => {
     );
   }
 
+  try {
+    const [diaryEntryTable] = await pool.query("SHOW CREATE TABLE diary_entries");
+    const createSql = diaryEntryTable[0]?.['Create Table'] || "";
+    if (createSql && createSql.includes("REFERENCES `diary_categories`")) {
+      await pool.query("ALTER TABLE diary_entries DROP FOREIGN KEY fk_diary_entry_category");
+      await pool.query("ALTER TABLE diary_entries DROP INDEX idx_diary_category");
+      await pool.query("ALTER TABLE diary_entries DROP COLUMN category_id");
+      await pool.query("ALTER TABLE diary_entries ADD COLUMN category_id INT NULL");
+      await pool.query("ALTER TABLE diary_entries ADD CONSTRAINT fk_diary_entry_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL");
+      await pool.query("ALTER TABLE diary_entries ADD INDEX idx_diary_category (category_id)");
+    }
+  } catch (error) {
+    // Ignore if diary table does not exist yet; the initial CREATE TABLE handles it.
+  }
+
   const auditTables = [
     { table: 'users', columns: [
       ['user_id', 'VARCHAR(50) NULL'],
@@ -482,6 +548,24 @@ const initializeDatabase = async () => {
       ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
     ] },
     { table: 'expenses', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'memory_categories', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'memory_albums', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'memories', columns: [
       ['user_id', 'VARCHAR(50) NULL'],
       ['created_by', 'VARCHAR(50) NULL'],
       ['updated_by', 'VARCHAR(50) NULL'],

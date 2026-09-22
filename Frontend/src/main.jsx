@@ -23,6 +23,7 @@ const AllProducts = React.lazy(() => import("./Components/Pages/AllProducts.jsx"
 const AllExpensive = React.lazy(() => import("./Admin/Pages/AllExpensive.jsx"));
 const Category = React.lazy(() => import("./Admin/Pages/Category.jsx"));
 const DiaryManagement = React.lazy(() => import("./Admin/Pages/DiaryManagement.jsx"));
+const MemoriesManagement = React.lazy(() => import("./Admin/Pages/MemoriesManagement.jsx"));
 
 const Users = React.lazy(() => import("./Admin/Pages/Users.jsx"));
 
@@ -68,6 +69,7 @@ const router = createBrowserRouter([
       { path: "users/all", element: <Users initialTab="All" /> },
       { path: "users/new", element: <Users initialTab="New" /> },
       { path: "users/diary", element: <DiaryManagement /> },
+      { path: "users/memories", element: <MemoriesManagement /> },
       // Marketing & Support
 
       // Finance

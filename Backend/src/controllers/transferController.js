@@ -25,8 +25,36 @@ const applyIncomeBalanceDelta = async (incomeId) => {
 
 exports.getAllTransfers = async (req, res) => {
     try {
-        const [rows] = await db.query("SELECT * FROM transfers ORDER BY transfer_date DESC, created_at DESC");
-        res.json(rows);
+        const [rows] = await db.query(`
+            SELECT
+                t.*,
+                COALESCE(SUM(e.expense_amount), 0) AS total_expense,
+                (t.amount - COALESCE(SUM(e.expense_amount), 0)) AS computed_remaining
+            FROM transfers t
+            LEFT JOIN expenses e ON e.transfer_id = t.id
+            GROUP BY t.id
+            ORDER BY t.transfer_date DESC, t.created_at DESC
+        `);
+
+        /* Also keep remaining_amount in sync with computed value */
+        const updates = rows
+            .filter(r => Number(r.computed_remaining) !== Number(r.remaining_amount))
+            .map(r =>
+                db.query("UPDATE transfers SET remaining_amount = ? WHERE id = ?", [
+                    Math.max(Number(r.computed_remaining), 0).toFixed(2),
+                    r.id,
+                ])
+            );
+        if (updates.length) await Promise.all(updates);
+
+        /* Return normalised rows */
+        const normalised = rows.map(r => ({
+            ...r,
+            remaining_amount: Math.max(Number(r.computed_remaining), 0),
+            total_expense: Number(r.total_expense || 0),
+        }));
+
+        res.json(normalised);
     } catch (error) {
         console.error("Fetch Transfers Error:", error);
         res.status(500).json({ message: "Failed to fetch transfers", error: error.message });

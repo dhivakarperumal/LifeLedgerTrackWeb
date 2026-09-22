@@ -36,6 +36,10 @@ exports.register = async (req, res) => {
   }
 };
 
+const signToken = (payload) => jwt.sign(payload, process.env.JWT_SECRET || "secretkey", {
+  expiresIn: "1d",
+});
+
 exports.login = async (req, res) => {
   try {
     const { identifier, password } = req.body; // 'identifier' field can be email or username
@@ -66,9 +70,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Wrong password" });
     }
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || "secretkey", {
-      expiresIn: "1d",
-    });
+    const token = signToken({ id: user.id });
 
     res.json({
       token,
@@ -245,11 +247,7 @@ exports.googleLogin = async (req, res) => {
     }
 
     // generate JWT using same secret as regular login
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET || "secretkey",
-      { expiresIn: "1d" }
-    );
+    const token = signToken({ id: user.id, role: user.role });
 
     res.json({
       user: {

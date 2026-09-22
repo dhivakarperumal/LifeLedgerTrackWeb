@@ -1,6 +1,25 @@
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 
+const getJwtSecrets = () => {
+  const secrets = [process.env.JWT_SECRET, "secretkey"];
+  return [...new Set(secrets.filter(Boolean))];
+};
+
+const verifyToken = (token) => {
+  const secrets = getJwtSecrets();
+
+  for (const secret of secrets) {
+    try {
+      return jwt.verify(token, secret);
+    } catch (error) {
+      // Try the next configured secret until one matches.
+    }
+  }
+
+  throw new Error("Invalid token signature");
+};
+
 const requireAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization || req.headers.Authorization;
@@ -10,7 +29,7 @@ const requireAuth = async (req, res, next) => {
       return res.status(401).json({ message: "Authentication required." });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secretkey");
+    const decoded = verifyToken(token);
     const [rows] = await db.query("SELECT * FROM users WHERE id = ?", [decoded.id]);
 
     if (!rows.length) {
