@@ -2,10 +2,25 @@ const db = require("../config/db");
 const fs = require("fs");
 const path = require("path");
 
+const normalizeMediaGallery = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return String(value)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+};
+
 const normalizeMemory = (row) => ({
   ...row,
   tags: row.tags ? (Array.isArray(row.tags) ? row.tags : String(row.tags).split(",").map((tag) => tag.trim()).filter(Boolean)) : [],
   media_url: row.media_url || "",
+  media_gallery: normalizeMediaGallery(row.media_gallery || row.gallery || []),
   media_type: row.media_type || "image",
   is_favorite: Boolean(row.is_favorite),
   favorite: Boolean(row.is_favorite),
@@ -27,8 +42,77 @@ const parseTags = (value) => {
   return [];
 };
 
+const syncMemoryCategoryFromShared = async (userId, categoryId, fallbackName = null) => {
+  const resolvedId = categoryId ? Number(categoryId) : null;
+
+  if (resolvedId) {
+    const [memoryRows] = await db.query("SELECT * FROM memory_categories WHERE id = ? AND user_id = ?", [resolvedId, userId]);
+    if (memoryRows.length) return resolvedId;
+
+    const [sharedRows] = await db.query(
+      "SELECT * FROM categories WHERE id = ? AND (user_id = ? OR user_id IS NULL)",
+      [resolvedId, userId]
+    );
+
+    if (sharedRows.length) {
+      const shared = sharedRows[0];
+      await db.query(
+        `INSERT INTO memory_categories (id, user_id, name, description, color, created_by, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), color = VALUES(color), updated_by = VALUES(updated_by)`,
+        [
+          shared.id,
+          shared.user_id || userId,
+          shared.name,
+          shared.description || "",
+          shared.color || "#8B5CF6",
+          userId,
+          userId,
+        ]
+      );
+      return shared.id;
+    }
+  }
+
+  const candidateName = fallbackName ? String(fallbackName).trim() : null;
+  if (candidateName) {
+    const [existingRows] = await db.query("SELECT * FROM memory_categories WHERE user_id = ? AND name = ?", [userId, candidateName]);
+    if (existingRows.length) return existingRows[0].id;
+
+    const [sharedRows] = await db.query(
+      "SELECT * FROM categories WHERE (user_id = ? OR user_id IS NULL) AND name = ? ORDER BY id DESC LIMIT 1",
+      [userId, candidateName]
+    );
+
+    if (sharedRows.length) {
+      return syncMemoryCategoryFromShared(userId, sharedRows[0].id, candidateName);
+    }
+
+    const [result] = await db.query(
+      `INSERT INTO memory_categories (user_id, name, description, color, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [userId, candidateName, "", "#8B5CF6", userId, userId]
+    );
+    return result.insertId;
+  }
+
+  return null;
+};
+
 const getMemoryCategories = async (req, res) => {
   try {
+    const [sharedRows] = await db.query(
+      `SELECT * FROM categories
+       WHERE (user_id = ? OR user_id IS NULL)
+         AND (LOWER(catType) LIKE '%memory%' OR LOWER(name) LIKE '%memory%')
+       ORDER BY name ASC`,
+      [req.user.user_id]
+    );
+
+    for (const category of sharedRows) {
+      await syncMemoryCategoryFromShared(req.user.user_id, category.id, category.name);
+    }
+
     const [rows] = await db.query(
       `SELECT * FROM memory_categories WHERE user_id = ? OR user_id IS NULL ORDER BY name ASC`,
       [req.user.user_id]
@@ -236,27 +320,30 @@ const createMemory = async (req, res) => {
       return res.status(400).json({ message: "Memory title is required." });
     }
 
-    const file = req.file;
-    const mediaType = file ? (
-      file.mimetype.startsWith("image/") ? "image" :
-      file.mimetype.startsWith("video/") ? "video" :
-      file.mimetype.startsWith("audio/") ? "audio" : "file"
+    const resolvedCategoryId = await syncMemoryCategoryFromShared(req.user.user_id, category_id, req.body.category_name || req.body.category || null);
+    const uploadedFiles = Array.isArray(req.files) ? req.files : [];
+    const gallery = uploadedFiles.map((file) => `/uploads/memories/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}`);
+    const primaryFile = uploadedFiles[0];
+    const mediaType = primaryFile ? (
+      primaryFile.mimetype.startsWith("image/") ? "image" :
+      primaryFile.mimetype.startsWith("video/") ? "video" :
+      primaryFile.mimetype.startsWith("audio/") ? "audio" : "file"
     ) : "image";
 
-    const mediaUrl = file ? `/uploads/memories/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}` : (req.body.media_url || "");
+    const mediaUrl = primaryFile ? gallery[0] : (req.body.media_url || "");
     const tagValue = Array.isArray(tags) ? JSON.stringify(tags) : JSON.stringify(parseTags(tags));
 
     const [result] = await db.query(
       `INSERT INTO memories (
         user_id, title, description, category_id, album_id, memory_date, location, mood,
-        tags, status, is_favorite, media_url, media_type, voice_note, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        tags, status, is_favorite, media_url, media_gallery, media_type, voice_note, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         req.user.user_id,
         String(title).trim(),
         description || "",
-        category_id || null,
+        resolvedCategoryId || null,
         album_id || null,
         memory_date || new Date().toISOString().slice(0, 10),
         location || "",
@@ -265,6 +352,7 @@ const createMemory = async (req, res) => {
         status || "published",
         is_favorite ? 1 : 0,
         mediaUrl,
+        JSON.stringify(gallery),
         mediaType,
         voice_note || "",
         req.user.user_id,
@@ -288,15 +376,21 @@ const updateMemory = async (req, res) => {
     }
 
     const { title, description, category_id, album_id, memory_date, location, tags, mood, status, is_favorite, voice_note } = req.body;
-    const file = req.file;
-    const mediaType = file ? (
-      file.mimetype.startsWith("image/") ? "image" :
-      file.mimetype.startsWith("video/") ? "video" :
-      file.mimetype.startsWith("audio/") ? "audio" : "file"
+    const resolvedCategoryId = await syncMemoryCategoryFromShared(req.user.user_id, category_id ?? existing[0][0].category_id, req.body.category_name || req.body.category || null);
+    const uploadedFiles = Array.isArray(req.files) ? req.files : [];
+    const gallery = uploadedFiles.length
+      ? uploadedFiles.map((file) => `/uploads/memories/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}`)
+      : normalizeMediaGallery(existing[0][0].media_gallery || existing[0][0].gallery || []);
+
+    const primaryFile = uploadedFiles[0] || null;
+    const mediaType = primaryFile ? (
+      primaryFile.mimetype.startsWith("image/") ? "image" :
+      primaryFile.mimetype.startsWith("video/") ? "video" :
+      primaryFile.mimetype.startsWith("audio/") ? "audio" : "file"
     ) : existing[0][0].media_type || "image";
 
-    const mediaUrl = file
-      ? `/uploads/memories/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}`
+    const mediaUrl = primaryFile
+      ? gallery[0]
       : (req.body.media_url || existing[0][0].media_url || "");
 
     const tagValue = Array.isArray(tags) ? JSON.stringify(tags) : JSON.stringify(parseTags(tags ?? existing[0][0].tags));
@@ -304,12 +398,12 @@ const updateMemory = async (req, res) => {
     await db.query(
       `UPDATE memories
        SET title = ?, description = ?, category_id = ?, album_id = ?, memory_date = ?, location = ?, mood = ?, tags = ?,
-           status = ?, is_favorite = ?, media_url = ?, media_type = ?, voice_note = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+           status = ?, is_favorite = ?, media_url = ?, media_gallery = ?, media_type = ?, voice_note = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ? AND user_id = ?`,
       [
         title || existing[0][0].title,
         description ?? existing[0][0].description,
-        category_id ?? existing[0][0].category_id,
+        resolvedCategoryId ?? existing[0][0].category_id,
         album_id ?? existing[0][0].album_id,
         memory_date || existing[0][0].memory_date,
         location ?? existing[0][0].location,
@@ -318,6 +412,7 @@ const updateMemory = async (req, res) => {
         status || existing[0][0].status,
         is_favorite ? 1 : (existing[0][0].is_favorite ? 1 : 0),
         mediaUrl,
+        JSON.stringify(gallery),
         mediaType,
         voice_note ?? existing[0][0].voice_note,
         req.user.user_id,

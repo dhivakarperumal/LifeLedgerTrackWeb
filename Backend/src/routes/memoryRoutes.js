@@ -59,8 +59,8 @@ router.delete("/albums/:id", memoryController.deleteMemoryAlbum);
 
 router.get("/", memoryController.getMemories);
 router.get("/:id", memoryController.getMemoryById);
-router.post("/", upload.single("media"), memoryController.createMemory);
-router.put("/:id", upload.single("media"), memoryController.updateMemory);
+router.post("/", upload.array("media", 10), memoryController.createMemory);
+router.put("/:id", upload.array("media", 10), memoryController.updateMemory);
 router.patch("/:id/favorite", memoryController.toggleFavorite);
 router.delete("/:id", memoryController.deleteMemory);
 

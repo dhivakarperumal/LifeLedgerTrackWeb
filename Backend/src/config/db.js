@@ -307,6 +307,7 @@ const initializeDatabase = async () => {
       status ENUM('published', 'draft') DEFAULT 'published',
       is_favorite BOOLEAN DEFAULT FALSE,
       media_url VARCHAR(500) NULL,
+      media_gallery JSON NULL,
       media_type VARCHAR(50) DEFAULT 'image',
       voice_note TEXT NULL,
       created_by VARCHAR(50) NULL,

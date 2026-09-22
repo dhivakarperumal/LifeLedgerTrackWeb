@@ -63,7 +63,7 @@ const MemoriesManagement = () => {
   const [editingId, setEditingId] = useState(null);
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [form, setForm] = useState(initialForm);
-  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadFiles, setUploadFiles] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVoiceName, setRecordedVoiceName] = useState("");
   const mediaRecorderRef = useRef(null);
@@ -133,7 +133,7 @@ const MemoriesManagement = () => {
   const openNewMemory = () => {
     setEditingId(null);
     setSelectedMemory(null);
-    setUploadFile(null);
+    setUploadFiles([]);
     setForm({
       ...initialForm,
       category_id: memoryCategories[0]?.id || "",
@@ -191,9 +191,9 @@ const MemoriesManagement = () => {
         formData.append(key, value);
       });
 
-      if (uploadFile) {
-        formData.append("media", uploadFile);
-      }
+      uploadFiles.forEach((file) => {
+        formData.append("media", file);
+      });
 
       if (editingId) {
         await api.put(`/memories/${editingId}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
@@ -205,7 +205,7 @@ const MemoriesManagement = () => {
 
       setIsEditorOpen(false);
       setForm(initialForm);
-      setUploadFile(null);
+      setUploadFiles([]);
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong.");
@@ -582,18 +582,19 @@ const MemoriesManagement = () => {
                   <label className="mb-2 block text-sm font-medium text-slate-700">Upload media</label>
                   <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3">
                     <label className="cursor-pointer rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-600">
-                      Choose File
+                      Choose Files
                       <input
                         type="file"
+                        multiple
                         onChange={(e) => {
-                          const file = e.target.files?.[0] || null;
-                          setUploadFile(file);
-                          if (file) setRecordedVoiceName(file.name);
+                          const files = Array.from(e.target.files || []);
+                          setUploadFiles(files);
+                          if (files.length) setRecordedVoiceName(files[0].name);
                         }}
                         className="hidden"
                       />
                     </label>
-                    <span className="text-sm text-slate-500">{uploadFile ? uploadFile.name : "No file chosen"}</span>
+                    <span className="text-sm text-slate-500">{uploadFiles.length ? `${uploadFiles.length} file(s) selected` : "No file chosen"}</span>
                   </div>
                 </div>
               </div>
