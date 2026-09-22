@@ -46,16 +46,29 @@ const diarySelectBase = `
   (SELECT COUNT(*) FROM diary_attachments da WHERE da.diary_id = d.id) AS attachment_count
 `;
 
+const isDiaryCategoryRow = (category) => {
+  const typeValue = String(category?.catType || category?.type || category?.category_type || "").trim().toLowerCase();
+  const nameValue = String(category?.name || "").trim().toLowerCase();
+
+  return (
+    ["diary", "journal", "daily", "journal entry", "diary entry"].includes(typeValue) ||
+    ["diary", "journal", "daily"].some((keyword) => typeValue.includes(keyword)) ||
+    ["diary", "journal", "daily"].some((keyword) => nameValue.includes(keyword))
+  );
+};
+
 const getCategoryList = async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT c.*
        FROM categories c
-       WHERE c.user_id = ? OR c.user_id IS NULL
+       WHERE (c.user_id = ? OR c.user_id IS NULL)
        ORDER BY c.catType ASC, c.name ASC`,
       [req.user.user_id]
     );
-    res.json(rows);
+
+    const diaryOnly = rows.filter((row) => isDiaryCategoryRow(row));
+    res.json(diaryOnly);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch diary categories", error: error.message });
   }

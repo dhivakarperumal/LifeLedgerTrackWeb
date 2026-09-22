@@ -36,6 +36,18 @@ const formatDate = (value) => {
 
 const moodMap = Object.fromEntries(defaultMoodOptions.map((m) => [m.value, m.emoji]));
 
+const isDiaryCategory = (category) => {
+  const typeValue = String(category?.catType || category?.type || category?.category_type || "").trim().toLowerCase();
+  const nameValue = String(category?.name || "").trim().toLowerCase();
+  const diaryAliases = ["diary", "journal", "daily", "journal entry", "diary entry"];
+
+  return (
+    diaryAliases.includes(typeValue) ||
+    diaryAliases.some((keyword) => typeValue.includes(keyword)) ||
+    diaryAliases.some((keyword) => nameValue.includes(keyword))
+  );
+};
+
 const DiaryManagement = () => {
   const { user } = useAuth();
   const [entries, setEntries] = useState([]);
@@ -81,8 +93,10 @@ const DiaryManagement = () => {
         api.get("/categories"),
       ]);
       const categoryList = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
+      const diaryCategories = categoryList.filter(isDiaryCategory);
+
       setEntries(entriesRes.data || []);
-      setCategories(categoryList);
+      setCategories(diaryCategories);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load diary data.");
     } finally {

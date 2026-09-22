@@ -43,6 +43,7 @@ const AllExpensive = () => {
     // ── list state ────────────────────────────────────────────────────────────
     const [expenses, setExpenses] = useState([]);
     const [stats, setStats] = useState({ total: 0, totalAmount: 0, totalTransfer: 0, recurring: 0 });
+    const [categoryOptions, setCategoryOptions] = useState(EXPENSE_CATEGORIES);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("All");
@@ -68,14 +69,27 @@ const AllExpensive = () => {
     const fetchAll = async () => {
         setLoading(true);
         try {
-            const [expRes, statsRes, transRes] = await Promise.all([
+            const [expRes, statsRes, transRes, categoriesRes] = await Promise.all([
                 api.get("/expenses"),
                 api.get("/expenses/stats"),
                 api.get("/transfers"),
+                api.get("/categories"),
             ]);
+
+            const sharedCategories = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
+            const expenseCategories = sharedCategories.length
+                ? sharedCategories
+                    .filter((category) => {
+                        const typeValue = String(category?.catType || category?.type || category?.category_type || "").trim().toLowerCase();
+                        return ["expensive", "expense", "expenses", "expenditure", "expenditures"].includes(typeValue);
+                    })
+                    .map((category) => category.name)
+                : EXPENSE_CATEGORIES;
+
             setExpenses(expRes.data || []);
             setStats(statsRes.data || { total: 0, totalAmount: 0, totalTransfer: 0, recurring: 0 });
             setTransfers(transRes.data || []);
+            setCategoryOptions(expenseCategories.length ? expenseCategories : EXPENSE_CATEGORIES);
         } catch (err) {
             console.error(err);
             toast.error("Failed to load expenses.");
@@ -216,7 +230,7 @@ const AllExpensive = () => {
                     className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none hover:border-[#7b2cbf] transition-all cursor-pointer"
                 >
                     <option value="All">All Categories</option>
-                    {EXPENSE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                    {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <div className="flex items-center gap-3">
                     <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
@@ -583,7 +597,7 @@ const AllExpensive = () => {
                                         className={selectCls}
                                     >
                                         <option value="">Select a category</option>
-                                        {EXPENSE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                                        {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </Field>
 
