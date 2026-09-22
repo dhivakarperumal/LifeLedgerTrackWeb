@@ -161,30 +161,57 @@ const Transfer = () => {
                         <thead className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] text-xs uppercase tracking-wider text-[#FCD34D]">
                             <tr>
                                 <th className="px-6 py-4">Title</th>
-                                <th className="px-6 py-4">From</th>
-                                <th className="px-6 py-4">To</th>
                                 <th className="px-6 py-4">Category</th>
-                                <th className="px-6 py-4">Amount</th>
+                                <th className="px-6 py-4">Transfer Amount</th>
+                                <th className="px-6 py-4">Total Expense</th>
+                                <th className="px-6 py-4">Remaining Amount</th>
                                 <th className="px-6 py-4">Payment Method</th>
                                 <th className="px-6 py-4">Date</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {visibleTransfers.map((transfer) => (
+                            {visibleTransfers.map((transfer) => {
+                                const trAmt = Number(transfer.amount || 0);
+                                const remAmt = Number(transfer.remaining_amount ?? transfer.amount ?? 0);
+                                const expAmt = Math.max(trAmt - remAmt, 0);
+
+                                return (
                                 <tr key={transfer.id} className="text-slate-700 hover:bg-purple-50/40">
                                     <td className="px-6 py-4 font-bold">{transfer.title}</td>
-                                    <td className="px-6 py-4">{transfer.transfer_from || "-"}</td>
-                                    <td className="px-6 py-4">{transfer.transfer_to || "-"}</td>
                                     <td className="px-6 py-4">{transfer.category || "-"}</td>
-                                    <td className="px-6 py-4 font-bold text-purple-800">₹{Number(transfer.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                                    <td className="px-6 py-4 font-bold text-slate-800">₹{trAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                                    <td className="px-6 py-4 font-bold text-red-500">₹{expAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                                    <td className="px-6 py-4 font-black text-[#00bfa5]">₹{remAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
                                     <td className="px-6 py-4">{transfer.payment_method || "-"}</td>
-                                    <td className="px-6 py-4">{transfer.transfer_date || "-"}</td>
+                                    <td className="px-6 py-4">{transfer.transfer_date ? String(transfer.transfer_date).split("T")[0] : "-"}</td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div> : <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
-                    {visibleTransfers.map((transfer) => <div key={transfer.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-slate-800">{transfer.title}</p><p className="text-xs text-slate-500">{transfer.transfer_from || "-"} to {transfer.transfer_to || "-"}</p></div><p className="font-black text-[#4b0b78]">₹{Number(transfer.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p></div><p className="mt-4 text-xs text-slate-500">{transfer.category || "-"} · {transfer.transfer_date || "-"}</p></div>)}
+                    {visibleTransfers.map((transfer) => {
+                        const trAmt = Number(transfer.amount || 0);
+                        const remAmt = Number(transfer.remaining_amount ?? transfer.amount ?? 0);
+                        const expAmt = Math.max(trAmt - remAmt, 0);
+                        return (
+                        <div key={transfer.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="font-bold text-slate-800">{transfer.title}</p>
+                                    <p className="text-xs text-slate-500">{transfer.category || "-"}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs text-slate-400 line-through">₹{trAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                                    <p className="font-black text-[#00bfa5]">₹{remAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                                </div>
+                            </div>
+                            <p className="mt-4 text-xs text-slate-500">
+                                Expense: ₹{expAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 })} · {transfer.transfer_date ? String(transfer.transfer_date).split("T")[0] : "-"}
+                            </p>
+                        </div>
+                        );
+                    })}
                 </div>}
                 {visibleTransfers.length === 0 && <p className="p-8 text-center text-sm font-semibold text-slate-400">No transfer records found.</p>}
             </div>

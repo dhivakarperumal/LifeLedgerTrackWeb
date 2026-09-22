@@ -21,18 +21,12 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/auth", require("./src/routes/authRoutes"));
-app.use("/api/banners", require("./src/routes/bannerRoutes"));
-app.use("/api/products", require("./src/routes/productRoutes"));
 app.use("/api/categories", require("./src/routes/categoryRoutes"));
-app.use("/api/videos", require("./src/routes/videoRoutes"));
-app.use("/api/addresses", require("./src/routes/addressRoutes"));
-
-app.use("/api/reviews", require("./src/routes/reviewRoutes"));
 app.use("/api/dashboard", require("./src/routes/dashboardRoutes"));
-app.use("/api/reports", require("./src/routes/reportRoutes"));
 app.use("/api/incomes", require("./src/routes/incomeRoutes"));
 app.use("/api/transfers", require("./src/routes/transferRoutes"));
 app.use("/api/expenses", require("./src/routes/expenseRoutes"));
+app.use("/api/diary", require("./src/routes/diaryRoutes"));
 
 app.use((error, req, res, next) => {
   console.error(error);

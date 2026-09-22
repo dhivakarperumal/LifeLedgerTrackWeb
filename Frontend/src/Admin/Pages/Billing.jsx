@@ -155,7 +155,7 @@ const Billing = () => {
                     {viewMode === "table" ? <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-[#350866] text-xs uppercase tracking-wider text-[#FCD34D]">
-                                <tr><th className="px-6 py-4">Title</th><th className="px-6 py-4">Category</th><th className="px-6 py-4">Amount</th><th className="px-6 py-4">Date</th><th className="px-6 py-4">Payment</th></tr>
+                                <tr><th className="px-6 py-4">Title</th><th className="px-6 py-4">Category</th><th className="px-6 py-4">Amount</th><th className="px-6 py-4">Remaining</th><th className="px-6 py-4">Date</th><th className="px-6 py-4">Payment</th></tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {visibleIncomes.map((income) => (
@@ -163,6 +163,7 @@ const Billing = () => {
                                         <td className="px-6 py-4 font-bold">{income.title}</td>
                                         <td className="px-6 py-4">{income.category}</td>
                                         <td className="px-6 py-4 font-bold">₹{Number(income.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                                        <td className="px-6 py-4 font-black text-[#00bfa5]">₹{Number(income.remaining_amount ?? income.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
                                         <td className="px-6 py-4">{income.income_date}</td>
                                         <td className="px-6 py-4">{income.payment_method || "-"}</td>
                                     </tr>
@@ -174,7 +175,10 @@ const Billing = () => {
                             <div key={income.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
                                 <div className="flex items-start justify-between gap-3">
                                     <div><p className="font-bold text-slate-800">{income.title}</p><p className="text-xs text-slate-500">{income.category || "Uncategorized"}</p></div>
-                                    <p className="font-black text-[#4b0b78]">₹{Number(income.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                                    <div className="text-right">
+                                        <p className="text-xs text-slate-400 line-through">₹{Number(income.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                                        <p className="font-black text-[#00bfa5]">₹{Number(income.remaining_amount ?? income.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                                    </div>
                                 </div>
                                 <p className="mt-4 text-xs text-slate-500">{income.income_date} · {income.payment_method || "-"}</p>
                             </div>

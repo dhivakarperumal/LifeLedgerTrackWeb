@@ -66,7 +66,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Wrong password" });
     }
 
-    const token = jwt.sign({ id: user.id }, "secretkey", {
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || "secretkey", {
       expiresIn: "1d",
     });
 
@@ -247,7 +247,7 @@ exports.googleLogin = async (req, res) => {
     // generate JWT using same secret as regular login
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      "secretkey",
+      process.env.JWT_SECRET || "secretkey",
       { expiresIn: "1d" }
     );
 

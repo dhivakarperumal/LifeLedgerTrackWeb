@@ -22,7 +22,7 @@ const Dashboard = React.lazy(() => import("./Admin/Dashboard.jsx"));
 const AllProducts = React.lazy(() => import("./Components/Pages/AllProducts.jsx"));
 const AllExpensive = React.lazy(() => import("./Admin/Pages/AllExpensive.jsx"));
 const Category = React.lazy(() => import("./Admin/Pages/Category.jsx"));
-
+const DiaryManagement = React.lazy(() => import("./Admin/Pages/DiaryManagement.jsx"));
 
 const Users = React.lazy(() => import("./Admin/Pages/Users.jsx"));
 
@@ -67,6 +67,7 @@ const router = createBrowserRouter([
       // Others
       { path: "users/all", element: <Users initialTab="All" /> },
       { path: "users/new", element: <Users initialTab="New" /> },
+      { path: "users/diary", element: <DiaryManagement /> },
       // Marketing & Support
 
       // Finance

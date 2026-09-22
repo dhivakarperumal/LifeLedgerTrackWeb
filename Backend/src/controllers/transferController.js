@@ -5,14 +5,20 @@ const normalizeMoney = (value) => {
     return Number.isFinite(numericValue) ? numericValue : null;
 };
 
-const applyIncomeBalanceDelta = async (incomeId, deltaAmount) => {
+const applyIncomeBalanceDelta = async (incomeId) => {
     if (!incomeId) return;
 
+    // Recalculate remaining amount based on total transferred amount
     const [incomeRows] = await db.query("SELECT * FROM income WHERE id = ?", [incomeId]);
     if (!incomeRows[0]) return;
+    const incomeAmount = Number(incomeRows[0].amount || 0);
 
-    const currentRemaining = Number(incomeRows[0].remaining_amount ?? incomeRows[0].amount ?? 0);
-    const updatedRemaining = Number(Math.max(currentRemaining + Number(deltaAmount || 0), 0).toFixed(2));
+    const [transferSumRows] = await db.query(
+        "SELECT COALESCE(SUM(amount), 0) as total_transferred FROM transfers WHERE source_income_id = ?",
+        [incomeId]
+    );
+    const totalTransferred = Number(transferSumRows[0].total_transferred || 0);
+    const updatedRemaining = Number(Math.max(incomeAmount - totalTransferred, 0).toFixed(2));
 
     await db.query("UPDATE income SET remaining_amount = ? WHERE id = ?", [updatedRemaining, incomeId]);
 };
@@ -58,13 +64,13 @@ exports.createTransfer = async (req, res) => {
 
         const [result] = await db.query(
             `INSERT INTO transfers
-                (title, amount, source_income_id, category, transfer_from, transfer_to, transfer_date, payment_method, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [title.trim(), numericAmount, sourceIncomeId ? Number(sourceIncomeId) : null, category, "Account", "Account", date, paymentMethod || "Cash", notes || null]
+                (title, amount, remaining_amount, source_income_id, category, transfer_from, transfer_to, transfer_date, payment_method, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [title.trim(), numericAmount, numericAmount, sourceIncomeId ? Number(sourceIncomeId) : null, category, "Account", "Account", date, paymentMethod || "Cash", notes || null]
         );
 
         if (selectedIncome) {
-            await applyIncomeBalanceDelta(Number(sourceIncomeId), -numericAmount);
+            await applyIncomeBalanceDelta(Number(sourceIncomeId));
         }
 
         const [rows] = await db.query("SELECT * FROM transfers WHERE id = ?", [result.insertId]);
@@ -95,18 +101,7 @@ exports.updateTransfer = async (req, res) => {
         const currentSourceIncomeId = existingTransfer.source_income_id ? Number(existingTransfer.source_income_id) : null;
         const targetIncomeId = sourceIncomeId ? Number(sourceIncomeId) : currentSourceIncomeId;
 
-        if (currentSourceIncomeId) {
-            const [incomeRows] = await db.query("SELECT * FROM income WHERE id = ?", [currentSourceIncomeId]);
-            const currentIncome = incomeRows[0];
-            if (currentIncome) {
-                const currentRemaining = Number(currentIncome.remaining_amount ?? currentIncome.amount ?? 0);
-                await db.query(
-                    "UPDATE income SET remaining_amount = ? WHERE id = ?",
-                    [Number((currentRemaining + Number(existingTransfer.amount || 0)).toFixed(2)), currentSourceIncomeId]
-                );
-            }
-        }
-
+        // Validation for new amount vs income
         if (targetIncomeId) {
             const [incomeRows] = await db.query("SELECT * FROM income WHERE id = ?", [targetIncomeId]);
             const targetIncome = incomeRows[0];
@@ -114,17 +109,19 @@ exports.updateTransfer = async (req, res) => {
                 return res.status(400).json({ message: "Selected income record was not found." });
             }
 
-            const availableAmount = Number(targetIncome.remaining_amount ?? targetIncome.amount ?? 0);
+            // check if the new transfer will exceed income
+            const [transferSumRows] = await db.query(
+                "SELECT COALESCE(SUM(amount), 0) as total_transferred FROM transfers WHERE source_income_id = ? AND id != ?",
+                [targetIncomeId, id]
+            );
+            const otherTransfers = Number(transferSumRows[0].total_transferred || 0);
+            const availableAmount = Number(targetIncome.amount || 0) - otherTransfers;
+            
             if (newAmount > availableAmount) {
                 return res.status(400).json({
-                    message: `Insufficient income balance. Available amount: ₹${availableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                    message: `Insufficient income balance. Available amount for new transfers: ₹${availableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
                 });
             }
-
-            await db.query(
-                "UPDATE income SET remaining_amount = ? WHERE id = ?",
-                [Number((availableAmount - newAmount).toFixed(2)), targetIncomeId]
-            );
         }
 
         await db.query(
@@ -145,6 +142,18 @@ exports.updateTransfer = async (req, res) => {
             ]
         );
 
+        // recalculate remaining_amount of transfer
+        const [expenseSumRows] = await db.query(
+            "SELECT COALESCE(SUM(expense_amount), 0) as total_expenses FROM expenses WHERE transfer_id = ?",
+            [id]
+        );
+        const totalExpenses = Number(expenseSumRows[0].total_expenses || 0);
+        const transferRemaining = Number(Math.max(newAmount - totalExpenses, 0).toFixed(2));
+        await db.query("UPDATE transfers SET remaining_amount = ? WHERE id = ?", [transferRemaining, id]);
+
+        if (currentSourceIncomeId) await applyIncomeBalanceDelta(currentSourceIncomeId);
+        if (targetIncomeId && targetIncomeId !== currentSourceIncomeId) await applyIncomeBalanceDelta(targetIncomeId);
+
         const [updatedRows] = await db.query("SELECT * FROM transfers WHERE id = ?", [id]);
         res.json({ message: "Transfer updated successfully", transfer: updatedRows[0] });
     } catch (error) {
@@ -163,19 +172,12 @@ exports.deleteTransfer = async (req, res) => {
             return res.status(404).json({ message: "Transfer not found." });
         }
 
+        await db.query("DELETE FROM transfers WHERE id = ?", [id]);
+
         if (transfer.source_income_id) {
-            const [incomeRows] = await db.query("SELECT * FROM income WHERE id = ?", [transfer.source_income_id]);
-            const income = incomeRows[0];
-            if (income) {
-                const currentRemaining = Number(income.remaining_amount ?? income.amount ?? 0);
-                await db.query(
-                    "UPDATE income SET remaining_amount = ? WHERE id = ?",
-                    [Number((currentRemaining + Number(transfer.amount || 0)).toFixed(2)), transfer.source_income_id]
-                );
-            }
+            await applyIncomeBalanceDelta(Number(transfer.source_income_id));
         }
 
-        await db.query("DELETE FROM transfers WHERE id = ?", [id]);
         res.json({ message: "Transfer deleted successfully" });
     } catch (error) {
         console.error("Delete Transfer Error:", error);

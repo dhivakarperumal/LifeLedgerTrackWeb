@@ -16,6 +16,7 @@ const emptyForm = () => ({
     title: "",
     expense_amount: "",
     transfer_amount: "",
+    transfer_id: "",
     category: "",
     payment_method: "Cash",
     date: new Date().toISOString().split("T")[0],
@@ -59,19 +60,22 @@ const AllExpensive = () => {
 
     // ── calculated values ─────────────────────────────────────────────────────
     const expAmt = parseFloat(form.expense_amount) || 0;
-    const trfAmt = parseFloat(form.transfer_amount) || 0;
-    const remaining = form.transfer_amount !== "" ? trfAmt - expAmt : null;
+    const selectedTransfer = form.transfer_id ? transfers.find((t) => String(t.id) === String(form.transfer_id)) : null;
+    const trfAmt = Number(form.transfer_amount !== "" ? form.transfer_amount : (selectedTransfer?.remaining_amount ?? selectedTransfer?.amount ?? 0));
+    const remaining = form.transfer_amount !== "" || selectedTransfer ? trfAmt - expAmt : null;
 
     // ── fetch ─────────────────────────────────────────────────────────────────
     const fetchAll = async () => {
         setLoading(true);
         try {
-            const [expRes, statsRes] = await Promise.all([
+            const [expRes, statsRes, transRes] = await Promise.all([
                 api.get("/expenses"),
                 api.get("/expenses/stats"),
+                api.get("/transfers"),
             ]);
             setExpenses(expRes.data || []);
             setStats(statsRes.data || { total: 0, totalAmount: 0, totalTransfer: 0, recurring: 0 });
+            setTransfers(transRes.data || []);
         } catch (err) {
             console.error(err);
             toast.error("Failed to load expenses.");
@@ -80,16 +84,7 @@ const AllExpensive = () => {
         }
     };
 
-    const fetchTransfers = async () => {
-        try {
-            const res = await api.get("/transfers");
-            setTransfers(res.data || []);
-        } catch (err) {
-            console.error("Failed to load transfers:", err);
-        }
-    };
-
-    useEffect(() => { fetchAll(); fetchTransfers(); }, []);
+    useEffect(() => { fetchAll(); }, []);
 
     // ── form handlers ─────────────────────────────────────────────────────────
     const handleChange = (e) => {
@@ -446,7 +441,7 @@ const AllExpensive = () => {
                                             type="button"
                                             onClick={() => {
                                                 setManualTransfer((m) => !m);
-                                                setForm((f) => ({ ...f, transfer_amount: "" }));
+                                                setForm((f) => ({ ...f, transfer_amount: "", transfer_id: "" }));
                                             }}
                                             className="text-[10px] font-bold text-[#7b2cbf] hover:underline"
                                         >
@@ -469,10 +464,16 @@ const AllExpensive = () => {
                                     ) : (
                                         /* Dropdown from saved transfer records */
                                         <select
-                                            value={form.transfer_amount}
-                                            onChange={(e) =>
-                                                setForm((f) => ({ ...f, transfer_amount: e.target.value }))
-                                            }
+                                            value={form.transfer_id}
+                                            onChange={(e) => {
+                                                const selId = e.target.value;
+                                                const selTransfer = transfers.find(t => String(t.id) === String(selId));
+                                                setForm((f) => ({
+                                                    ...f,
+                                                    transfer_id: selId,
+                                                    transfer_amount: selTransfer ? (selTransfer.remaining_amount ?? selTransfer.amount ?? "") : ""
+                                                }));
+                                            }}
                                             className={selectCls}
                                         >
                                             <option value="">— No transfer / select record —</option>
@@ -485,9 +486,9 @@ const AllExpensive = () => {
                                                     ? String(t.transfer_date).split("T")[0]
                                                     : "";
                                                 return (
-                                                    <option key={t.id} value={t.amount}>
+                                                    <option key={t.id} value={t.id}>
                                                         {t.title} — ₹{Number(t.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                                       
+                                                        {dateStr ? `  (${dateStr})` : ""}
                                                     </option>
                                                 );
                                             })}

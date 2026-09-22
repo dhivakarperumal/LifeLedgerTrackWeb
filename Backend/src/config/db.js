@@ -34,6 +34,23 @@ const createDatabaseIfMissing = async () => {
 
 const pool = mysql.createPool(dbConfig);
 
+const ensureColumn = async (tableName, columnName, columnDefinition) => {
+  const [result] = await pool.query(
+    `SELECT COUNT(*) AS columnCount
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = ?
+       AND column_name = ?`,
+    [tableName, columnName]
+  );
+
+  if (result[0].columnCount > 0) {
+    return;
+  }
+
+  await pool.query(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${columnDefinition}`);
+};
+
 const initializeDatabase = async () => {
   await createDatabaseIfMissing();
 
@@ -251,6 +268,52 @@ const initializeDatabase = async () => {
       recurring ENUM('Yes', 'No') NOT NULL DEFAULT 'No',
       attachment TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS diary_categories (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_diary_category_user_name (user_id, name)
+    )`,
+    `CREATE TABLE IF NOT EXISTS diary_entries (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      content LONGTEXT NOT NULL,
+      category_id INT NULL,
+      mood VARCHAR(50) DEFAULT 'Normal',
+      tags JSON NULL,
+      location VARCHAR(255) NULL,
+      entry_date DATE NOT NULL,
+      entry_time TIME NULL,
+      status ENUM('published', 'draft') DEFAULT 'published',
+      is_favorite BOOLEAN DEFAULT FALSE,
+      is_private BOOLEAN DEFAULT FALSE,
+      is_locked BOOLEAN DEFAULT FALSE,
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_diary_user_date (user_id, entry_date),
+      KEY idx_diary_category (category_id),
+      CONSTRAINT fk_diary_entry_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+      CONSTRAINT fk_diary_entry_category FOREIGN KEY (category_id) REFERENCES diary_categories(id) ON DELETE SET NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS diary_attachments (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      diary_id INT NOT NULL,
+      file_name VARCHAR(255) NOT NULL,
+      file_url VARCHAR(500) NOT NULL,
+      file_type VARCHAR(100) NULL,
+      file_size BIGINT DEFAULT 0,
+      created_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_diary_attachment_diary (diary_id),
+      CONSTRAINT fk_diary_attachment_entry FOREIGN KEY (diary_id) REFERENCES diary_entries(id) ON DELETE CASCADE
     )`
   ];
 
@@ -330,6 +393,106 @@ const initializeDatabase = async () => {
     await pool.query(
       "ALTER TABLE transfers ADD COLUMN payment_method VARCHAR(100) AFTER transfer_date"
     );
+  }
+
+  const auditTables = [
+    { table: 'users', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['created_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'categories', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'products', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['created_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'banners', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'videos', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'dealers', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'reviews', columns: [
+      ['user_id', 'INT NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'cart', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'wishlist', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'orders', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'income', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'transfers', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'order_items', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'order_addresses', columns: [
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'expenses', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] }
+  ];
+
+  for (const { table, columns } of auditTables) {
+    for (const [columnName, columnDefinition] of columns) {
+      await ensureColumn(table, columnName, columnDefinition);
+    }
   }
 
   return pool;

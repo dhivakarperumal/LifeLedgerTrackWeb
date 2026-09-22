@@ -29,6 +29,12 @@ router.post("/", (req, res, next) => {
         next();
     });
 }, expenseController.createExpense);
+router.put("/:id", (req, res, next) => {
+    upload.single("attachment")(req, res, (error) => {
+        if (error) return res.status(400).json({ message: error.message || "Receipt upload failed." });
+        next();
+    });
+}, expenseController.updateExpense);
 router.delete("/:id", expenseController.deleteExpense);
 
 module.exports = router;
