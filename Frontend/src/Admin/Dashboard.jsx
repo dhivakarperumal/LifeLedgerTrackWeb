@@ -194,6 +194,7 @@ const Dashboard = () => {
             case "users": return <FiUsers className="text-white" size={22} />;
             case "lowstock": return <FiBox className="text-white" size={22} />;
             case "offer": return <FiTag className="text-white" size={22} />;
+            case "memories": return <FiImage className="text-white" size={22} />;
             default: return <FiBox className="text-white" size={22} />;
         }
     };

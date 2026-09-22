@@ -224,8 +224,13 @@ const initializeDatabase = async () => {
     "memory_albums"
   ];
 
-  for (const tableName of staleTables) {
-    await pool.query(`DROP TABLE IF EXISTS \`${tableName}\``);
+  try {
+    await pool.query("SET FOREIGN_KEY_CHECKS = 0");
+    for (const tableName of staleTables) {
+      await pool.query(`DROP TABLE IF EXISTS \`${tableName}\``);
+    }
+  } finally {
+    await pool.query("SET FOREIGN_KEY_CHECKS = 1");
   }
 
   await ensureColumn("memories", "media_gallery", "JSON NULL");
