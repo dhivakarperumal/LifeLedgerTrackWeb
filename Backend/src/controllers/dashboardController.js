@@ -19,6 +19,60 @@ const tableExists = async (tableName) => {
     }
 };
 
+const getLastMonthsExpenseTrend = async (hasExpenses) => {
+    if (!hasExpenses) {
+        return [];
+    }
+
+    const [rows] = await db.query(
+        `SELECT DATE_FORMAT(expense_date, '%Y-%m') AS month,
+                COALESCE(SUM(expense_amount), 0) AS total
+         FROM expenses
+         WHERE expense_date >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
+         GROUP BY DATE_FORMAT(expense_date, '%Y-%m')
+         ORDER BY month ASC`
+    );
+
+    const monthlyMap = new Map(rows.map((row) => [row.month, safeNumber(row.total, 0)]));
+    const trend = [];
+    const today = new Date();
+
+    for (let i = 11; i >= 0; i -= 1) {
+        const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        const monthLabel = date.toLocaleDateString("en-US", { month: "short" });
+        trend.push({
+            month: monthLabel,
+            revenue: monthlyMap.get(monthKey) || 0,
+            total: monthlyMap.get(monthKey) || 0,
+        });
+    }
+
+    return trend;
+};
+
+const getCategoryBreakdown = async (hasExpenses) => {
+    if (!hasExpenses) {
+        return [];
+    }
+
+    const [rows] = await db.query(
+        `SELECT category,
+                COALESCE(SUM(expense_amount), 0) AS totalAmount,
+                COUNT(*) AS count
+         FROM expenses
+         GROUP BY category
+         ORDER BY totalAmount DESC
+         LIMIT 6`
+    );
+
+    return rows.map((row) => ({
+        label: row.category || "Uncategorized",
+        value: safeNumber(row.totalAmount, 0),
+        count: safeNumber(row.count, 0),
+    }));
+};
+
 exports.getDashboardData = async (req, res) => {
     try {
         const hasOrders = await tableExists("orders");
@@ -65,6 +119,8 @@ exports.getDashboardData = async (req, res) => {
         const netBalance = totalIncome - totalExpenses;
         const monthlyIncome = hasIncome ? totalIncome : 0;
         const monthlyExpenses = hasExpenses ? totalExpenses : 0;
+        const monthlyExpenseTrends = await getLastMonthsExpenseTrend(hasExpenses);
+        const categoryAnalytics = await getCategoryBreakdown(hasExpenses);
 
         const orderStatusCounts = {
             "Order Placed": 0,
@@ -90,9 +146,9 @@ exports.getDashboardData = async (req, res) => {
             recentOrders: [],
             topProducts: [],
             lowStockAlerts: [],
-            categoryAnalytics: [],
+            categoryAnalytics,
             regionalSales: [],
-            revenueTrends: []
+            revenueTrends: monthlyExpenseTrends
         };
 
         res.json(dashboardData);

@@ -15,7 +15,13 @@ import {
     FiTrendingUp,
     FiTrendingDown,
     FiEye,
-    FiTag
+    FiTag,
+    FiBook,
+    FiImage,
+    FiSend,
+    FiRepeat,
+    FiCalendar,
+    FiArrowRight,
 } from "react-icons/fi";
 import { FaRupeeSign, FaTshirt, FaTruck } from "react-icons/fa";
 import { Bar, Doughnut } from 'react-chartjs-2';
@@ -73,9 +79,56 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(!dashboardData);
     const [salesRange, setSalesRange] = useState("week");
 
+    // ── Recent Activity State ───────────────────────────────────────────
+    const [recentExpenses,  setRecentExpenses]  = useState([]);
+    const [recentTransfers, setRecentTransfers] = useState([]);
+    const [recentMemories,  setRecentMemories]  = useState([]);
+    const [recentDiary,     setRecentDiary]     = useState([]);
+    const [activityLoading, setActivityLoading] = useState(true);
+
     useEffect(() => {
         fetchDashboardData("week");
+        fetchRecentActivity();
     }, []);
+
+    const fetchRecentActivity = async () => {
+        setActivityLoading(true);
+        try {
+            const today = new Date().toISOString().split("T")[0];
+            const [expRes, trfRes, memRes, diaRes] = await Promise.allSettled([
+                api.get("/expenses"),
+                api.get("/transfers"),
+                api.get("/memories"),
+                api.get("/diary"),
+            ]);
+
+            if (expRes.status === "fulfilled") {
+                const all = expRes.value.data || [];
+                const todayItems = all.filter((e) => (e.expense_date || "").startsWith(today));
+                setRecentExpenses((todayItems.length ? todayItems : all).slice(0, 5));
+            }
+            if (trfRes.status === "fulfilled") {
+                const all = trfRes.value.data || [];
+                const todayItems = all.filter((t) => (t.transfer_date || "").startsWith(today));
+                setRecentTransfers((todayItems.length ? todayItems : all).slice(0, 5));
+            }
+            if (memRes.status === "fulfilled") {
+                const all = memRes.value.data || [];
+                const todayItems = all.filter((m) => (m.created_at || "").startsWith(today));
+                setRecentMemories((todayItems.length ? todayItems : all).slice(0, 4));
+            }
+            if (diaRes.status === "fulfilled") {
+                const raw = diaRes.value.data;
+                const all = Array.isArray(raw) ? raw : (raw?.entries || raw?.data || []);
+                const todayItems = all.filter((d) => (d.entry_date || d.created_at || "").startsWith(today));
+                setRecentDiary((todayItems.length ? todayItems : all).slice(0, 4));
+            }
+        } catch (err) {
+            console.error("Fetch Recent Activity Error:", err);
+        } finally {
+            setActivityLoading(false);
+        }
+    };
 
     const fetchDashboardData = async (range = salesRange) => {
         if (!dashboardData) setLoading(true);
@@ -133,20 +186,22 @@ const Dashboard = () => {
         )
     }
 
-    const { stats, recentOrders, topProducts, lowStockAlerts, revenueTrends = [], orderStatusCounts = {} } = dashboardData;
+    const { stats, recentOrders, topProducts, lowStockAlerts, revenueTrends = [], categoryAnalytics = [] } = dashboardData;
 
-    // ── Bar Chart: Real Revenue Trends ──────────────────────────────
+    // ── Bar Chart: Real Expense Trends ──────────────────────────────
+    const expenseSeries = revenueTrends.length > 0
+        ? revenueTrends.map((item) => Number(item.total ?? item.revenue ?? 0))
+        : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
     const barChartData = {
         labels: revenueTrends.length > 0
-            ? revenueTrends.map(t => t.month)
+            ? revenueTrends.map((item) => item.month || item.label || 'Month')
             : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
         datasets: [{
-            label: 'Revenue',
-            data: revenueTrends.length > 0
-                ? revenueTrends.map(t => t.revenue)
-                : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            backgroundColor: '#D4AF37',
-            borderColor: '#B8941F',
+            label: 'Expenses',
+            data: expenseSeries,
+            backgroundColor: '#8B5CF6',
+            borderColor: '#7C3AED',
             borderWidth: 1,
             borderRadius: 6,
             borderSkipped: false,
@@ -167,7 +222,7 @@ const Dashboard = () => {
                 borderColor: '#eee',
                 borderWidth: 1,
                 callbacks: {
-                    label: (context) => `Revenue: ₹${context.parsed.y.toLocaleString('en-IN')}`
+                    label: (context) => `Expense: ₹${context.parsed.y.toLocaleString('en-IN')}`
                 }
             }
         },
@@ -194,19 +249,21 @@ const Dashboard = () => {
         { value: "all", label: "All Time" },
     ];
 
-    // ── Doughnut Chart: Real Order Status Counts ─────────────────────
-    const statusLabels  = ['Order Placed', 'Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
-    const statusColors  = ['#fbbf24', '#3b82f6', '#a855f7', '#f97316', '#10b981', '#ef4444'];
-    const statusBgCols  = ['bg-yellow-400', 'bg-blue-500', 'bg-purple-500', 'bg-orange-500', 'bg-emerald-500', 'bg-red-500'];
-
-    const statusCounts  = statusLabels.map(s => orderStatusCounts[s] || 0);
-    const totalOrders   = statusCounts.reduce((a, b) => a + b, 0);
+    // ── Doughnut Chart: Expense Category Breakdown ──────────────────
+    const categoryColors = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899'];
+    const categoryLabels = categoryAnalytics.length > 0
+        ? categoryAnalytics.map((item) => item.label)
+        : ['Food', 'Travel', 'Bills', 'Shopping', 'Health'];
+    const categoryValues = categoryAnalytics.length > 0
+        ? categoryAnalytics.map((item) => Number(item.value || 0))
+        : [0, 0, 0, 0, 0];
+    const totalCategoryValue = categoryValues.reduce((sum, value) => sum + value, 0);
 
     const doughnutData = {
-        labels: statusLabels,
+        labels: categoryLabels,
         datasets: [{
-            data: statusCounts,
-            backgroundColor: statusColors,
+            data: categoryValues,
+            backgroundColor: categoryColors,
             borderWidth: 0,
             cutout: '70%',
         }]
@@ -218,11 +275,12 @@ const Dashboard = () => {
         plugins: { legend: { display: false } }
     };
 
-    const orderStats = statusLabels.map((label, i) => ({
+    const categoryStats = categoryLabels.map((label, i) => ({
         label,
-        count: statusCounts[i],
-        pct: totalOrders > 0 ? `${((statusCounts[i] / totalOrders) * 100).toFixed(1)}%` : '0%',
-        color: statusBgCols[i]
+        count: categoryAnalytics[i]?.count || 0,
+        amount: categoryValues[i] || 0,
+        pct: totalCategoryValue > 0 ? `${((categoryValues[i] / totalCategoryValue) * 100).toFixed(1)}%` : '0%',
+        color: categoryColors[i % categoryColors.length]
     }));
 
     const cardStyles = [
@@ -314,7 +372,7 @@ const Dashboard = () => {
                 {/* Sales Overview Bar Chart */}
                 <div className="lg:col-span-6 bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-slate-800">Sales Overview</h3>
+                        <h3 className="text-lg font-bold text-slate-800">Expense Overview</h3>
                         <label className="flex items-center gap-2 text-xs text-gray-500 border border-gray-200 rounded px-2 py-1">
                             <FiClock />
                             <select
@@ -337,26 +395,26 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* Orders Overview Pie Chart */}
+                {/* Category Overview Pie Chart */}
                 <div className="lg:col-span-3 bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 mb-4">Orders Overview</h3>
+                    <h3 className="text-lg font-bold text-slate-800 mb-4">Category Overview</h3>
                     <div className="flex flex-col flex-1">
                         <div className="relative h-40 flex items-center justify-center mb-6">
                             <Doughnut data={doughnutData} options={doughnutOptions} />
                             <div className="absolute flex flex-col items-center">
-                                <span className="text-xl font-bold text-slate-800">{totalOrders.toLocaleString('en-IN')}</span>
-                                <span className="text-xs text-gray-500">Total Orders</span>
+                                <span className="text-xl font-bold text-slate-800">₹{totalCategoryValue.toLocaleString('en-IN')}</span>
+                                <span className="text-xs text-gray-500">Total Spend</span>
                             </div>
                         </div>
                         <div className="space-y-2">
-                            {orderStats.map((item, i) => (
+                            {categoryStats.map((item, i) => (
                                 <div key={i} className="flex items-center justify-between text-xs">
                                     <div className="flex items-center gap-2 text-gray-600">
-                                        <div className={`w-2 h-2 rounded ${item.color}`}></div>
+                                        <div className="w-2 h-2 rounded" style={{ backgroundColor: item.color }}></div>
                                         {item.label}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="font-bold text-slate-800">{item.count}</span>
+                                        <span className="font-bold text-slate-800">₹{item.amount.toLocaleString('en-IN')}</span>
                                         <span className="text-gray-400">({item.pct})</span>
                                     </div>
                                 </div>
