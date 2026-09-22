@@ -21,6 +21,8 @@ import {
   Handshake,
   Video,
   Image,
+  CalendarCheck2,
+  BellRing,
 } from "lucide-react";
 
 import { useAuth } from "../PrivateRouter/AuthContext";
@@ -54,12 +56,15 @@ const navItems = [
   // { path: "/admin/reviews", label: "Customer Reviews", icon: MessageSquare },
   { path: "/admin/reports", label: "Reports", icon: BarChart3 },
 
+
+
   {
     label: "More",
     icon: Package,
     children: [
       { path: "/admin/more/income", label: "All Income", icon: List },
       { path: "/admin/more/transfer", label: "Transfer Amount", icon: PlusCircle },
+      { path: "/admin/planner/calendar", label: "Calendar", icon: CalendarCheck2 },
     ],
   },
 

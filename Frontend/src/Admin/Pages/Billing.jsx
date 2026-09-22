@@ -119,7 +119,7 @@ const Billing = () => {
 
             {isIncomePage ? (
                 <>
-                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5">
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-6">
                         <IncomeStatCard label="Total Income" value={totalIncome} caption="All recorded income" color="bg-[#4b0b78]" icon="$" />
                         <IncomeStatCard label="This Month" value={monthlyIncome} caption="Income this month" color="bg-[#00bfa5]" icon="↗" />
                         <IncomeStatCard label="Recurring Income" value={recurringIncome} caption="Recurring entries" color="bg-[#ff9200]" icon="↻" />

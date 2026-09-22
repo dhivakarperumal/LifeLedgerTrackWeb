@@ -91,10 +91,43 @@ const Dashboard = () => {
         fetchRecentActivity();
     }, []);
 
+    const getLocalDateKey = (value) => {
+        if (!value) return "";
+
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+            const str = String(value).trim();
+            const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) {
+                return `${match[1]}-${match[2]}-${match[3]}`;
+            }
+            return "";
+        }
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    };
+
+    const getTodayItems = (items, dateFields = []) => {
+        const list = Array.isArray(items) ? items : [];
+        const todayKey = getLocalDateKey(new Date());
+        const filtered = list.filter((item) => {
+            if (!item) return false;
+            return dateFields.some((field) => {
+                const val = item[field];
+                if (!val) return false;
+                return getLocalDateKey(val) === todayKey;
+            });
+        });
+
+        return filtered.length ? filtered : list;
+    };
+
     const fetchRecentActivity = async () => {
         setActivityLoading(true);
         try {
-            const today = new Date().toISOString().split("T")[0];
             const [expRes, trfRes, memRes, diaRes] = await Promise.allSettled([
                 api.get("/expenses"),
                 api.get("/transfers"),
@@ -104,24 +137,20 @@ const Dashboard = () => {
 
             if (expRes.status === "fulfilled") {
                 const all = expRes.value.data || [];
-                const todayItems = all.filter((e) => (e.expense_date || "").startsWith(today));
-                setRecentExpenses((todayItems.length ? todayItems : all).slice(0, 5));
+                setRecentExpenses(getTodayItems(all, ["expense_date", "created_at"]).slice(0, 5));
             }
             if (trfRes.status === "fulfilled") {
                 const all = trfRes.value.data || [];
-                const todayItems = all.filter((t) => (t.transfer_date || "").startsWith(today));
-                setRecentTransfers((todayItems.length ? todayItems : all).slice(0, 5));
+                setRecentTransfers(getTodayItems(all, ["transfer_date", "created_at"]).slice(0, 5));
             }
             if (memRes.status === "fulfilled") {
                 const all = memRes.value.data || [];
-                const todayItems = all.filter((m) => (m.created_at || "").startsWith(today));
-                setRecentMemories((todayItems.length ? todayItems : all).slice(0, 4));
+                setRecentMemories(getTodayItems(all, ["created_at", "memory_date"]).slice(0, 4));
             }
             if (diaRes.status === "fulfilled") {
                 const raw = diaRes.value.data;
                 const all = Array.isArray(raw) ? raw : (raw?.entries || raw?.data || []);
-                const todayItems = all.filter((d) => (d.entry_date || d.created_at || "").startsWith(today));
-                setRecentDiary((todayItems.length ? todayItems : all).slice(0, 4));
+                setRecentDiary(getTodayItems(all, ["entry_date", "created_at", "date"]).slice(0, 4));
             }
         } catch (err) {
             console.error("Fetch Recent Activity Error:", err);

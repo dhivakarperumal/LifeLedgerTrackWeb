@@ -34,6 +34,7 @@ const ErrorPage = React.lazy(() => import("./Admin/Pages/ErrorPage.jsx"));
 const Transfer = React.lazy(() => import("./Admin/Pages/Transfer.jsx"));
 const Income = React.lazy(() => import("./Admin/Pages/Billing.jsx"));
 const Reports = React.lazy(() => import("./Admin/Pages/Reports.jsx"));
+const CalendarReminder = React.lazy(() => import("./Admin/Pages/CalendarReminder.jsx"));
 
 const router = createBrowserRouter([
   {
@@ -79,8 +80,8 @@ const router = createBrowserRouter([
       { path: "more/transfer", element: <Transfer /> },
       { path: "more/add", element: <Transfer /> },
       { path: "reports", element: <Reports /> },
-     
-     
+      { path: "planner/calendar", element: <CalendarReminder /> },
+      { path: "planner/reminders", element: <CalendarReminder /> },
     ],
   },
 ]);
