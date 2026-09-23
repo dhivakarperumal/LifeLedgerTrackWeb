@@ -554,6 +554,7 @@ const Category = () => {
                                         <option value="Transfer">Transfer</option>
                                         <option value="Memories">Memories</option>
                                         <option value="Diary">Diary</option>
+                                        <option value="CalendarEvent">Calendar Event</option>
                                     </select>
                                 </div>
 
