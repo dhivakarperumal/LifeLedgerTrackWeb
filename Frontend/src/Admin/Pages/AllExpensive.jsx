@@ -8,7 +8,7 @@ import {
     FiX, FiArrowDown, FiArrowUp, FiRepeat, FiAlertCircle,
     FiDollarSign, FiCalendar, FiTag, FiCreditCard,
     FiFileText, FiRefreshCw, FiPaperclip, FiInfo,
-    FiTrendingDown, FiCheckCircle,
+    FiTrendingDown, FiCheckCircle, FiEye, FiEdit2,
 } from "react-icons/fi";
 
 // ─── empty form factory ───────────────────────────────────────────────────────
@@ -54,6 +54,9 @@ const AllExpensive = () => {
 
     // ── modal state ───────────────────────────────────────────────────────────
     const [isOpen, setIsOpen] = useState(false);
+    const [modalMode, setModalMode] = useState("add");
+    const [editId, setEditId] = useState(null);
+    const [viewExpense, setViewExpense] = useState(null);
     const [form, setForm] = useState(emptyForm());
     const [saving, setSaving] = useState(false);
     // toggle: false = select from list, true = enter manually
@@ -110,7 +113,44 @@ const AllExpensive = () => {
         }
     };
 
-    const closeModal = () => { setIsOpen(false); setForm(emptyForm()); setManualTransfer(false); };
+    const openCreateModal = () => {
+        setEditId(null);
+        setModalMode("add");
+        setForm(emptyForm());
+        setManualTransfer(false);
+        setIsOpen(true);
+    };
+
+    const openEditExpense = (expense) => {
+        setEditId(expense.id);
+        setModalMode("edit");
+        setForm({
+            title: expense.title || "",
+            expense_amount: expense.expense_amount ?? "",
+            transfer_amount: expense.transfer_amount ?? "",
+            transfer_id: expense.transfer_id ?? "",
+            category: expense.category || "",
+            payment_method: expense.payment_method || "Cash",
+            date: expense.expense_date ? String(expense.expense_date).split("T")[0] : new Date().toISOString().split("T")[0],
+            notes: expense.notes || "",
+            recurring: expense.recurring || "No",
+            attachment: null,
+        });
+        setManualTransfer(!expense.transfer_id);
+        setIsOpen(true);
+    };
+
+    const openViewExpense = (expense) => {
+        setViewExpense(expense);
+    };
+
+    const closeModal = () => {
+        setIsOpen(false);
+        setEditId(null);
+        setModalMode("add");
+        setForm(emptyForm());
+        setManualTransfer(false);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -123,15 +163,26 @@ const AllExpensive = () => {
             const payload = new FormData();
             Object.entries(form).forEach(([k, v]) => {
                 if (k === "attachment") { if (v) payload.append(k, v); }
-                else payload.append(k, v);
+                else if (v !== null && v !== undefined && v !== "") payload.append(k, v);
             });
-            const res = await api.post("/expenses", payload, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
-            setExpenses((prev) => [res.data.expense, ...prev]);
-            toast.success("Expense recorded! 💸");
+
+            let res;
+            if (editId) {
+                res = await api.put(`/expenses/${editId}`, payload, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+                setExpenses((prev) => prev.map((item) => item.id === editId ? res.data.expense : item));
+                toast.success("Expense updated! 💸");
+            } else {
+                res = await api.post("/expenses", payload, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+                setExpenses((prev) => [res.data.expense, ...prev]);
+                toast.success("Expense recorded! 💸");
+            }
+
             closeModal();
-            fetchAll();             // refresh stats
+            fetchAll();
         } catch (err) {
             toast.error(err.response?.data?.message || "Failed to save expense.");
         } finally {
@@ -242,7 +293,7 @@ const AllExpensive = () => {
                         </button>
                     </div>
                     <button
-                        onClick={() => setIsOpen(true)}
+                        onClick={openCreateModal}
                         className="flex items-center gap-2 bg-gradient-to-r from-[#240046] to-[#7b2cbf] hover:from-[#10002b] hover:to-[#5a189a] text-white px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-purple-900/30 active:scale-95"
                     >
                         <FiPlus size={16} /> Add Expense
@@ -311,16 +362,23 @@ const AllExpensive = () => {
                                             <td className="px-4 py-4">
                                                 <div className="flex items-center gap-2">
                                                     {ex.attachment && (
-                                                        <a
-                                                            href={`${import.meta.env.VITE_API_URL.replace("/api", "")}${ex.attachment}`}
-                                                            target="_blank"
-                                                            rel="noreferrer"
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openViewExpense(ex)}
                                                             className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all"
                                                             title="View Receipt"
                                                         >
-                                                            <FiPaperclip size={13} />
-                                                        </a>
+                                                            <FiEye size={13} />
+                                                        </button>
                                                     )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openEditExpense(ex)}
+                                                        className="w-8 h-8 rounded-lg bg-violet-50 text-violet-500 flex items-center justify-center hover:bg-violet-500 hover:text-white transition-all"
+                                                        title="Edit expense"
+                                                    >
+                                                        <FiEdit2 size={13} />
+                                                    </button>
                                                     <button
                                                         onClick={() => handleDelete(ex.id)}
                                                         className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
@@ -356,12 +414,32 @@ const AllExpensive = () => {
                                             {ex.category}
                                         </span>
                                     </div>
-                                    <button
-                                        onClick={() => handleDelete(ex.id)}
-                                        className="w-7 h-7 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shrink-0"
-                                    >
-                                        <FiTrash2 size={12} />
-                                    </button>
+                                    <div className="flex gap-1.5">
+                                        {ex.attachment && (
+                                            <button
+                                                type="button"
+                                                onClick={() => openViewExpense(ex)}
+                                                className="w-7 h-7 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all shrink-0"
+                                                title="View"
+                                            >
+                                                <FiEye size={12} />
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => openEditExpense(ex)}
+                                            className="w-7 h-7 rounded-lg bg-violet-50 text-violet-500 flex items-center justify-center hover:bg-violet-500 hover:text-white transition-all shrink-0"
+                                            title="Edit"
+                                        >
+                                            <FiEdit2 size={12} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(ex.id)}
+                                            className="w-7 h-7 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shrink-0"
+                                        >
+                                            <FiTrash2 size={12} />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="flex flex-col gap-1.5 pt-2 border-t border-gray-50">
@@ -418,6 +496,68 @@ const AllExpensive = () => {
             {/* ════════════════════════════════════════════════════════════════
                 ADD EXPENSE MODAL
             ════════════════════════════════════════════════════════════════ */}
+            {viewExpense && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+                    <div className="absolute inset-0" onClick={() => setViewExpense(null)} />
+                    <div className="relative z-10 w-full max-w-xl bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FCD34D]/70">Expense Details</p>
+                                <h2 className="text-2xl font-black mt-1">{viewExpense.title}</h2>
+                            </div>
+                            <button onClick={() => setViewExpense(null)} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
+                                <FiX size={18} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4 text-sm text-slate-700">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Category</p>
+                                    <p className="mt-2 font-bold text-slate-800">{viewExpense.category || "—"}</p>
+                                </div>
+                                <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Amount</p>
+                                    <p className="mt-2 font-black text-rose-600">₹{fmt(viewExpense.expense_amount)}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date</p>
+                                    <p className="mt-2 font-bold text-slate-800">{viewExpense.expense_date ? String(viewExpense.expense_date).split("T")[0] : "—"}</p>
+                                </div>
+                                <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment</p>
+                                    <p className="mt-2 font-bold text-slate-800">{viewExpense.payment_method || "—"}</p>
+                                </div>
+                            </div>
+
+                            {viewExpense.notes && (
+                                <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notes</p>
+                                    <p className="mt-2 leading-6 text-slate-700">{viewExpense.notes}</p>
+                                </div>
+                            )}
+
+                            {viewExpense.attachment && (
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Receipt</p>
+                                    <a
+                                        href={`${import.meta.env.VITE_API_URL.replace("/api", "")}${viewExpense.attachment}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="mt-3 inline-flex items-center gap-2 rounded-xl bg-violet-100 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-200"
+                                    >
+                                        <FiPaperclip size={14} /> Open attachment
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {isOpen && createPortal(
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
                     <div
@@ -430,7 +570,7 @@ const AllExpensive = () => {
                         <div className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-8 py-6 text-white flex items-center justify-between shrink-0">
                             <div>
                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FCD34D]/70">Finance Management</p>
-                                <h2 className="text-2xl font-black mt-1">💸 Add Expense</h2>
+                                <h2 className="text-2xl font-black mt-1">💸 {modalMode === "edit" ? "Edit Expense" : "Add Expense"}</h2>
                             </div>
                             <button onClick={closeModal} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
                                 <FiX size={18} />
