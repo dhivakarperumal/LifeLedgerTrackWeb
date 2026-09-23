@@ -25,14 +25,6 @@ const emptyForm = () => ({
     attachment: null,
 });
 
-// ─── categories ──────────────────────────────────────────────────────────────
-const EXPENSE_CATEGORIES = [
-    "Food & Dining", "Transportation", "Shopping", "Entertainment",
-    "Health & Medical", "Bills & Utilities", "Education", "Travel",
-    "Groceries", "Personal Care", "Rent & Housing", "Investment",
-    "Savings", "Business", "Other",
-];
-
 const PAYMENT_METHODS = ["Cash", "UPI", "Bank Transfer", "Card", "Cheque", "Other"];
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -43,7 +35,7 @@ const AllExpensive = () => {
     // ── list state ────────────────────────────────────────────────────────────
     const [expenses, setExpenses] = useState([]);
     const [stats, setStats] = useState({ total: 0, totalAmount: 0, totalTransfer: 0, recurring: 0 });
-    const [categoryOptions, setCategoryOptions] = useState(EXPENSE_CATEGORIES);
+    const [categoryOptions, setCategoryOptions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("All");
@@ -80,19 +72,17 @@ const AllExpensive = () => {
             ]);
 
             const sharedCategories = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
-            const expenseCategories = sharedCategories.length
-                ? sharedCategories
-                    .filter((category) => {
-                        const typeValue = String(category?.catType || category?.type || category?.category_type || "").trim().toLowerCase();
-                        return ["expensive", "expense", "expenses", "expenditure", "expenditures"].includes(typeValue);
-                    })
-                    .map((category) => category.name)
-                : EXPENSE_CATEGORIES;
+            const expenseCategories = sharedCategories
+                .filter((category) => {
+                    const typeValue = String(category?.catType || category?.type || category?.category_type || "").trim().toLowerCase();
+                    return ["expensive", "expense", "expenses", "expenditure", "expenditures"].includes(typeValue);
+                })
+                .map((category) => category.name);
 
             setExpenses(expRes.data || []);
             setStats(statsRes.data || { total: 0, totalAmount: 0, totalTransfer: 0, recurring: 0 });
             setTransfers(transRes.data || []);
-            setCategoryOptions(expenseCategories.length ? expenseCategories : EXPENSE_CATEGORIES);
+            setCategoryOptions(expenseCategories);
         } catch (err) {
             console.error(err);
             toast.error("Failed to load expenses.");
@@ -736,7 +726,7 @@ const AllExpensive = () => {
                                         onChange={handleChange}
                                         className={selectCls}
                                     >
-                                        <option value="">Select a category</option>
+                                        <option value="">{categoryOptions.length ? "Select a category" : "No categories available"}</option>
                                         {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </Field>

@@ -19,19 +19,22 @@ const tableExists = async (tableName) => {
     }
 };
 
-const getLastMonthsExpenseTrend = async (hasExpenses) => {
+const getLastMonthsExpenseTrend = async (hasExpenses, userId) => {
     if (!hasExpenses) {
         return [];
     }
 
-    const [rows] = await db.query(
-        `SELECT DATE_FORMAT(expense_date, '%Y-%m') AS month,
-                COALESCE(SUM(expense_amount), 0) AS total
-         FROM expenses
-         WHERE expense_date >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
-         GROUP BY DATE_FORMAT(expense_date, '%Y-%m')
-         ORDER BY month ASC`
-    );
+    const query = `
+        SELECT DATE_FORMAT(expense_date, '%Y-%m') AS month,
+               COALESCE(SUM(expense_amount), 0) AS total
+        FROM expenses
+        WHERE expense_date >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
+          ${userId ? "AND user_id = ?" : ""}
+        GROUP BY DATE_FORMAT(expense_date, '%Y-%m')
+        ORDER BY month ASC
+    `;
+
+    const [rows] = await db.query(query, userId ? [userId] : []);
 
     const monthlyMap = new Map(rows.map((row) => [row.month, safeNumber(row.total, 0)]));
     const trend = [];
@@ -51,20 +54,23 @@ const getLastMonthsExpenseTrend = async (hasExpenses) => {
     return trend;
 };
 
-const getCategoryBreakdown = async (hasExpenses) => {
+const getCategoryBreakdown = async (hasExpenses, userId) => {
     if (!hasExpenses) {
         return [];
     }
 
-    const [rows] = await db.query(
-        `SELECT category,
-                COALESCE(SUM(expense_amount), 0) AS totalAmount,
-                COUNT(*) AS count
-         FROM expenses
-         GROUP BY category
-         ORDER BY totalAmount DESC
-         LIMIT 6`
-    );
+    const query = `
+        SELECT category,
+               COALESCE(SUM(expense_amount), 0) AS totalAmount,
+               COUNT(*) AS count
+        FROM expenses
+        ${userId ? "WHERE user_id = ?" : ""}
+        GROUP BY category
+        ORDER BY totalAmount DESC
+        LIMIT 6
+    `;
+
+    const [rows] = await db.query(query, userId ? [userId] : []);
 
     return rows.map((row) => ({
         label: row.category || "Uncategorized",
@@ -73,24 +79,27 @@ const getCategoryBreakdown = async (hasExpenses) => {
     }));
 };
 
-const getLowTransferAlerts = async (hasTransfers) => {
+const getLowTransferAlerts = async (hasTransfers, userId) => {
     if (!hasTransfers) {
         return [];
     }
 
-    const [rows] = await db.query(
-        `SELECT id,
-                title,
-                amount,
-                remaining_amount,
-                category,
-                transfer_from,
-                transfer_to
-         FROM transfers
-         WHERE remaining_amount IS NOT NULL
-         ORDER BY remaining_amount ASC, amount DESC
-         LIMIT 4`
-    );
+    const query = `
+        SELECT id,
+               title,
+               amount,
+               remaining_amount,
+               category,
+               transfer_from,
+               transfer_to
+        FROM transfers
+        WHERE remaining_amount IS NOT NULL
+          ${userId ? "AND user_id = ?" : ""}
+        ORDER BY remaining_amount ASC, amount DESC
+        LIMIT 4
+    `;
+
+    const [rows] = await db.query(query, userId ? [userId] : []);
 
     return rows.map((row) => ({
         id: row.id,
@@ -105,6 +114,7 @@ const getLowTransferAlerts = async (hasTransfers) => {
 
 exports.getDashboardData = async (req, res) => {
     try {
+        const currentUserId = req.user?.user_id || null;
         const hasOrders = await tableExists("orders");
         const hasIncome = await tableExists("income");
         const hasExpenses = await tableExists("expenses");
@@ -119,38 +129,57 @@ exports.getDashboardData = async (req, res) => {
         const defaultFinancial = { totalIncome: 0, totalExpenses: 0, incomeCount: 0, expenseCount: 0, totalTransfers: 0 };
 
         const [[customerResult]] = hasUsers
-            ? await db.query("SELECT COUNT(*) AS totalCustomers FROM users")
-            : [ [defaultUserCount] ];
+            ? currentUserId
+                ? await db.query("SELECT COUNT(*) AS totalCustomers FROM users WHERE user_id = ?", [currentUserId])
+                : await db.query("SELECT COUNT(*) AS totalCustomers FROM users")
+            : [[defaultUserCount]];
 
         const [[categoryResult]] = hasCategories
-            ? await db.query("SELECT COUNT(*) AS totalCategories FROM categories")
-            : [ [defaultCategoryCount] ];
+            ? currentUserId
+                ? await db.query("SELECT COUNT(*) AS totalCategories FROM categories WHERE user_id = ? OR user_id IS NULL", [currentUserId])
+                : await db.query("SELECT COUNT(*) AS totalCategories FROM categories")
+            : [[defaultCategoryCount]];
 
         const [[incomeResult]] = hasIncome
-            ? await db.query("SELECT COALESCE(SUM(amount), 0) AS totalIncome, COUNT(*) AS incomeCount FROM income")
-            : [ [defaultFinancial] ];
+            ? currentUserId
+                ? await db.query("SELECT COALESCE(SUM(amount), 0) AS totalIncome, COUNT(*) AS incomeCount FROM income WHERE user_id = ?", [currentUserId])
+                : await db.query("SELECT COALESCE(SUM(amount), 0) AS totalIncome, COUNT(*) AS incomeCount FROM income")
+            : [[defaultFinancial]];
 
         const [[expenseResult]] = hasExpenses
-            ? await db.query("SELECT COALESCE(SUM(expense_amount), 0) AS totalExpenses, COUNT(*) AS expenseCount FROM expenses")
-            : [ [defaultFinancial] ];
+            ? currentUserId
+                ? await db.query("SELECT COALESCE(SUM(expense_amount), 0) AS totalExpenses, COUNT(*) AS expenseCount FROM expenses WHERE user_id = ?", [currentUserId])
+                : await db.query("SELECT COALESCE(SUM(expense_amount), 0) AS totalExpenses, COUNT(*) AS expenseCount FROM expenses")
+            : [[defaultFinancial]];
 
         const [[transferResult]] = hasTransfers
-            ? await db.query("SELECT COALESCE(SUM(amount), 0) AS totalTransfers FROM transfers")
-            : [ [defaultFinancial] ];
+            ? currentUserId
+                ? await db.query("SELECT COALESCE(SUM(amount), 0) AS totalTransfers FROM transfers WHERE user_id = ?", [currentUserId])
+                : await db.query("SELECT COALESCE(SUM(amount), 0) AS totalTransfers FROM transfers")
+            : [[defaultFinancial]];
 
         const [[memoriesResult]] = hasMemories
-            ? await db.query("SELECT COUNT(*) AS totalMemories FROM memories")
-            : [ [{ totalMemories: 0 }] ];
+            ? currentUserId
+                ? await db.query("SELECT COUNT(*) AS totalMemories FROM memories WHERE user_id = ?", [currentUserId])
+                : await db.query("SELECT COUNT(*) AS totalMemories FROM memories")
+            : [[{ totalMemories: 0 }]];
 
         const [[diaryResult]] = hasDiary
-            ? await db.query("SELECT COUNT(*) AS totalDiary FROM diary_entries")
-            : [ [{ totalDiary: 0 }] ];
+            ? currentUserId
+                ? await db.query("SELECT COUNT(*) AS totalDiary FROM diary_entries WHERE user_id = ?", [currentUserId])
+                : await db.query("SELECT COUNT(*) AS totalDiary FROM diary_entries")
+            : [[{ totalDiary: 0 }]];
 
         const [[todayExpenseResult]] = hasExpenses
-            ? await db.query(
-                "SELECT COALESCE(SUM(expense_amount), 0) AS todayExpense FROM expenses WHERE DATE(expense_date) = CURDATE()"
-              )
-            : [ [{ todayExpense: 0 }] ];
+            ? currentUserId
+                ? await db.query(
+                    "SELECT COALESCE(SUM(expense_amount), 0) AS todayExpense FROM expenses WHERE DATE(expense_date) = CURDATE() AND user_id = ?",
+                    [currentUserId]
+                  )
+                : await db.query(
+                    "SELECT COALESCE(SUM(expense_amount), 0) AS todayExpense FROM expenses WHERE DATE(expense_date) = CURDATE()"
+                  )
+            : [[{ todayExpense: 0 }]];
 
         const totalIncome = safeNumber(incomeResult.totalIncome || 0);
         const totalExpenses = safeNumber(expenseResult.totalExpenses || 0);
@@ -168,9 +197,9 @@ exports.getDashboardData = async (req, res) => {
         const netBalance = totalIncome - totalExpenses;
         const monthlyIncome = hasIncome ? totalIncome : 0;
         const monthlyExpenses = hasExpenses ? totalExpenses : 0;
-        const monthlyExpenseTrends = await getLastMonthsExpenseTrend(hasExpenses);
-        const categoryAnalytics = await getCategoryBreakdown(hasExpenses);
-        const lowStockAlerts = await getLowTransferAlerts(hasTransfers);
+        const monthlyExpenseTrends = await getLastMonthsExpenseTrend(hasExpenses, currentUserId);
+        const categoryAnalytics = await getCategoryBreakdown(hasExpenses, currentUserId);
+        const lowStockAlerts = await getLowTransferAlerts(hasTransfers, currentUserId);
 
         const orderStatusCounts = {
             "Order Placed": 0,
