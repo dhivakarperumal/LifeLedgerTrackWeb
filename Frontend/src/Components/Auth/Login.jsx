@@ -35,7 +35,7 @@ function Login() {
       if (userData.role === "admin") {
         navigate("/admin");
       } else {
-        navigate("/");
+        navigate("/login");
       }
     } catch (error) {
       console.error("Login Error:", error);
@@ -67,7 +67,7 @@ function Login() {
       if (userData.role === "admin") {
         navigate("/admin");
       } else {
-        navigate("/");
+        navigate("/login");
       }
     } catch (error) {
       console.error("Google Login Error:", error);

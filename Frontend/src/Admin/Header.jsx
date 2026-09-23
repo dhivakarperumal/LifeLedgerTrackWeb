@@ -13,8 +13,10 @@ import {
   X,
   AlertTriangle,
   TrendingDown,
+  CalendarDays,
 } from "lucide-react";
 
+import api from "../api";
 import { useAuth } from "../PrivateRouter/AuthContext";
 
 const backendUrl = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "");
@@ -87,6 +89,8 @@ const Header = ({ onMenuClick }) => {
   const [showSearch, setShowSearch] = useState(false);
   const [notifications, setNotifications] = useState({ today: [], earlier: [] });
   const [unreadCount, setUnreadCount] = useState(0);
+  const [todayCalendarEvents, setTodayCalendarEvents] = useState([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -139,9 +143,48 @@ const Header = ({ onMenuClick }) => {
     setUnreadCount(0);
   };
 
+  const fetchCalendarNotifications = async () => {
+    try {
+      const res = await api.get("/calendar/events");
+      const eventList = Array.isArray(res?.data?.data) ? res.data.data : [];
+
+      const today = new Date();
+      const todayKey = today.toISOString().split("T")[0];
+
+      const todayEvents = eventList.filter((event) => {
+        const candidate = event?.startDate || event?.reminderDate || event?.event_date || event?.date || event?.created_at;
+        if (!candidate) return false;
+
+        const date = new Date(candidate);
+        if (Number.isNaN(date.getTime())) return false;
+
+        return date.toISOString().split("T")[0] === todayKey;
+      });
+
+      setTodayCalendarEvents(todayEvents);
+    } catch (error) {
+      console.error("Calendar notification fetch failed", error);
+      setTodayCalendarEvents([]);
+    }
+  };
+
   useEffect(() => {
     setAllOrders([]);
     fetchNotifications();
+    fetchCalendarNotifications();
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+      fetchCalendarNotifications();
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    setCurrentTime(new Date());
   }, []);
 
   // Live search filter
@@ -266,6 +309,21 @@ const Header = ({ onMenuClick }) => {
 
         {/* RIGHT */}
         <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 shadow-sm">
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-bold text-emerald-700 tracking-wide">
+              {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </span>
+          </div>
+
+          {todayCalendarEvents.length > 0 && (
+            <div className="hidden sm:flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 shadow-sm">
+              <CalendarDays className="w-4 h-4 text-violet-600" />
+              <span className="text-xs font-bold text-violet-700 tracking-wide">
+                Today: {todayCalendarEvents.length}
+              </span>
+            </div>
+          )}
 
           {/* SEARCH */}
           <div className="relative flex items-center" ref={searchWrapperRef}>
@@ -362,9 +420,9 @@ const Header = ({ onMenuClick }) => {
                 : 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/20 hover:shadow-lg hover:scale-105'}`}
             >
               <Bell className="w-[18px] h-[18px]" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[9px] font-black text-blue-600 ring-2 ring-blue-400">
-                  {unreadCount}
+              {(unreadCount > 0 || todayCalendarEvents.length > 0) && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-white text-[9px] font-black text-blue-600 ring-2 ring-blue-400">
+                  {unreadCount + todayCalendarEvents.length}
                 </span>
               )}
             </button>
@@ -377,16 +435,46 @@ const Header = ({ onMenuClick }) => {
 
                   <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between bg-white sticky top-0">
                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">
-                      New Orders
+                      {todayCalendarEvents.length > 0 ? "Today Events" : "New Orders"}
                     </h3>
                     <span className="text-[10px] font-black bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg uppercase">
-                      {(notifications.today?.length || 0) + (notifications.earlier?.length || 0)} Pending
+                      {todayCalendarEvents.length > 0 ? todayCalendarEvents.length : (notifications.today?.length || 0) + (notifications.earlier?.length || 0)}
                     </span>
                   </div>
 
                   <div className="max-h-[450px] overflow-y-auto custom-scrollbar">
-                    {notifications.today?.length > 0 || notifications.earlier?.length > 0 ? (
+                    {todayCalendarEvents.length > 0 || todayCalendarEvents.length > 0 || notifications.today?.length > 0 || notifications.earlier?.length > 0 ? (
                       <div className="divide-y divide-slate-50">
+                        {todayCalendarEvents.length > 0 && (
+                          <>
+                            <div className="px-5 py-2 bg-violet-50/50 sticky top-0 z-10 backdrop-blur-sm">
+                              <p className="text-[9px] font-black text-violet-600 uppercase tracking-[0.2em]">Today Calendar Events</p>
+                            </div>
+                            {todayCalendarEvents.map((event, index) => (
+                              <button
+                                key={`${event.id || index}-calendar`}
+                                onClick={() => navigate("/admin/planner/calendar")}
+                                className="w-full px-5 py-4 flex items-start gap-4 hover:bg-violet-50/40 transition-all text-left group"
+                              >
+                                <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center text-violet-600 shrink-0 group-hover:scale-110 transition-transform shadow-sm">
+                                  <CalendarDays className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    <p className="text-sm font-black text-slate-800 tracking-tight">{event.title || "Calendar Event"}</p>
+                                    <span className="text-[9px] bg-violet-100 text-violet-700 font-black px-1.5 py-0.5 rounded uppercase">
+                                      {event.category || "Event"}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 font-bold">
+                                    {(event.startDate || event.reminderDate || event.event_date || event.date || "Today")}
+                                  </p>
+                                </div>
+                              </button>
+                            ))}
+                          </>
+                        )}
+
                         {/* Today Section */}
                         {notifications.today?.length > 0 && (
                           <>
@@ -472,13 +560,13 @@ const Header = ({ onMenuClick }) => {
                     )}
                   </div>
 
-                  {(notifications.today?.length > 0 || notifications.earlier?.length > 0) && (
+                  {(notifications.today?.length > 0 || notifications.earlier?.length > 0 || todayCalendarEvents.length > 0) && (
                     <Link
-                      to="/admin/orders/new"
+                      to={todayCalendarEvents.length > 0 ? "/admin/planner/calendar" : "/admin/orders/new"}
                       onClick={() => setShowNotifications(false)}
                       className="block w-full py-4 text-center text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] bg-blue-50/50 hover:bg-blue-50 transition-colors border-t border-slate-50"
                     >
-                      View All Manifests
+                      {todayCalendarEvents.length > 0 ? "View Calendar" : "View All Manifests"}
                     </Link>
                   )}
                 </div>
