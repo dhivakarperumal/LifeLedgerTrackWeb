@@ -190,7 +190,7 @@ const Reports = () => {
             </div>
 
             {/* ── STAT CARDS ── */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {[
                     { label: "Total Records",    value: stats.totalRecords,             icon: <FiList size={18} />,        gradient: "from-[#240046] to-[#7b2cbf]" },
                     { label: "Expenses",         value: stats.expCount,                 icon: <FiTrendingDown size={18} />, gradient: "from-rose-500 to-pink-500" },
@@ -198,15 +198,14 @@ const Reports = () => {
                     { label: "Total Spent",      value: `₹${fmt(stats.totalExpense)}`,  icon: <FaRupeeSign size={16} />,   gradient: "from-rose-400 to-rose-600" },
                     { label: "Total Transferred",value: `₹${fmt(stats.totalTransfer)}`, icon: <FiRepeat size={18} />,      gradient: "from-amber-400 to-orange-500" },
                     { label: "Remaining",        value: `₹${fmt(stats.totalRemaining)}`,icon: <FiCheckCircle size={18} />, gradient: "from-emerald-400 to-teal-500" },
-                    { label: "Recurring",        value: stats.recurring,                icon: <FiRefreshCw size={18} />,   gradient: "from-cyan-400 to-sky-500" },
                 ].map((s, i) => (
-                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-all min-w-0">
-                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${s.gradient} flex items-center justify-center text-white shadow-sm shrink-0`}>
+                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-all min-w-0 min-h-[92px]">
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.gradient} flex items-center justify-center text-white shadow-sm shrink-0`}>
                             {s.icon}
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                             <p className="text-[10px] text-gray-400 font-medium truncate">{s.label}</p>
-                            <p className="text-lg font-black text-slate-800 leading-none truncate">{s.value}</p>
+                            <p className="mt-1 text-[1.05rem] font-black text-slate-800 leading-tight break-words">{s.value}</p>
                         </div>
                     </div>
                 ))}
