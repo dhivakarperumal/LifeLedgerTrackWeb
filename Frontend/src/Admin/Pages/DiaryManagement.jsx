@@ -140,14 +140,26 @@ const DiaryManagement = () => {
     return "";
   };
 
+  const resetDiaryMediaState = () => {
+    setFiles([]);
+    setExistingFiles([]);
+    setExistingImages([]);
+    setExistingVideos([]);
+    setExistingAudios([]);
+    setNewImages([]);
+    setNewVideos([]);
+    setNewAudios([]);
+    setRemovedImageIds([]);
+    setRemovedVideoIds([]);
+    setRemovedAudioIds([]);
+  };
+
   const normalizeExistingDiaryMedia = (entry) => {
     if (!entry) return [];
 
-    const mediaList = Array.isArray(entry.attachments) && entry.attachments.length
-      ? entry.attachments
-      : Array.isArray(entry.media_files) && entry.media_files.length
-        ? entry.media_files
-        : [];
+    const sources = [];
+    if (Array.isArray(entry.media_files) && entry.media_files.length) sources.push(...entry.media_files);
+    if (Array.isArray(entry.attachments) && entry.attachments.length) sources.push(...entry.attachments);
 
     const fallbackEntries = [];
     ["image_path", "video_path", "audio_path", "file_path"].forEach((key) => {
@@ -161,20 +173,26 @@ const DiaryManagement = () => {
       }
     });
 
-    const combined = [...fallbackEntries, ...mediaList].filter(Boolean);
+    const combined = [...fallbackEntries, ...sources].filter(Boolean);
+    const uniqueByKey = new Map();
 
-    return combined.map((item, index) => {
-      const fileUrl = item.file_url || item.url || item.src || item.path || item;
-      const fileName = item.file_name || item.name || item.filename || `attachment-${index + 1}`;
-      const type = String(item.file_type || item.type || "application/octet-stream");
+    combined.forEach((item, index) => {
+      const fileUrl = item?.file_url || item?.url || item?.src || item?.path || item || "";
+      const fileName = item?.file_name || item?.name || item?.filename || `attachment-${index + 1}`;
+      const type = String(item?.file_type || item?.type || "application/octet-stream");
+      const key = `${fileName}-${type}-${String(fileUrl)}`;
 
-      return {
-        id: String(item.id || `${fileName}-${index}`),
-        name: fileName,
-        type,
-        previewUrl: fileUrl,
-      };
+      if (!uniqueByKey.has(key)) {
+        uniqueByKey.set(key, {
+          id: String(item?.id || `${fileName}-${index}`),
+          name: fileName,
+          type,
+          previewUrl: fileUrl,
+        });
+      }
     });
+
+    return Array.from(uniqueByKey.values());
   };
 
   const splitExistingDiaryMedia = (mediaList = []) => {
@@ -341,17 +359,7 @@ const DiaryManagement = () => {
 
     setEditingId(null);
     setSelectedEntry(null);
-    setFiles([]);
-    setExistingFiles([]);
-    setExistingImages([]);
-    setExistingVideos([]);
-    setExistingAudios([]);
-    setNewImages([]);
-    setNewVideos([]);
-    setNewAudios([]);
-    setRemovedImageIds([]);
-    setRemovedVideoIds([]);
-    setRemovedAudioIds([]);
+    resetDiaryMediaState();
     setFormState({
       title: "",
       content: "",
@@ -378,19 +386,13 @@ const DiaryManagement = () => {
     const normalizedMedia = normalizeExistingDiaryMedia(entry);
     const { images, videos, audios } = splitExistingDiaryMedia(normalizedMedia);
 
+    resetDiaryMediaState();
     setEditingId(entry.id);
     setSelectedEntry(entry);
     setExistingFiles(normalizedMedia);
     setExistingImages(images);
     setExistingVideos(videos);
     setExistingAudios(audios);
-    setNewImages([]);
-    setNewVideos([]);
-    setNewAudios([]);
-    setRemovedImageIds([]);
-    setRemovedVideoIds([]);
-    setRemovedAudioIds([]);
-    setFiles([]);
     setFormState({
       title: entry.title || "",
       content: entry.content || "",
@@ -422,17 +424,7 @@ const DiaryManagement = () => {
 
     setIsEditorOpen(false);
     setEditingId(null);
-    setFiles([]);
-    setExistingFiles([]);
-    setExistingImages([]);
-    setExistingVideos([]);
-    setExistingAudios([]);
-    setNewImages([]);
-    setNewVideos([]);
-    setNewAudios([]);
-    setRemovedImageIds([]);
-    setRemovedVideoIds([]);
-    setRemovedAudioIds([]);
+    resetDiaryMediaState();
     setSelectedEntry(null);
     setDraftSaved(true);
     localStorage.removeItem("diary-draft-temp");
