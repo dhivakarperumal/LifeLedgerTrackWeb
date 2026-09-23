@@ -165,21 +165,15 @@ const MemoriesManagement = () => {
     const audios = [];
 
     mediaList.forEach((item) => {
-      const lowerType = String(item?.type || "").toLowerCase();
-      const kind =
-        lowerType.startsWith("image/") || lowerType.includes("image")
-          ? "image"
-          : lowerType.startsWith("video/") || lowerType.includes("video")
-            ? "video"
-            : lowerType.startsWith("audio/") || lowerType.includes("audio")
-              ? "audio"
-              : (String(item?.name || "").toLowerCase().match(/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/) ? "image" :
-                  String(item?.name || "").toLowerCase().match(/\.(mp4|webm|mov|m4v|ogg)$/) ? "video" :
-                  String(item?.name || "").toLowerCase().match(/\.(mp3|wav|m4a|aac)$/) ? "audio" : "image");
+      const lowerType = String(item?.type || item?.file_type || "").toLowerCase();
+      const fileName = String(item?.name || item?.file_name || "").toLowerCase();
+      const isImage = lowerType.startsWith("image/") || lowerType.includes("image") || /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(fileName);
+      const isVideo = lowerType.startsWith("video/") || lowerType.includes("video") || /\.(mp4|webm|mov|m4v|ogg)$/i.test(fileName);
+      const isAudio = lowerType.startsWith("audio/") || lowerType.includes("audio") || /\.(mp3|wav|m4a|aac)$/i.test(fileName);
 
-      if (kind === "image") images.push(item);
-      if (kind === "video") videos.push(item);
-      if (kind === "audio") audios.push(item);
+      if (isImage) images.push(item);
+      if (isVideo) videos.push(item);
+      if (isAudio) audios.push(item);
     });
 
     return { images, videos, audios };

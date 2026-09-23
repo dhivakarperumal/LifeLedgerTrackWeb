@@ -35,6 +35,7 @@ const Transfer = () => {
     const [editingTransferId, setEditingTransferId] = useState(null);
     const [formData, setFormData] = useState(emptyForm());
     const [receiptFile, setReceiptFile] = useState(null);
+    const [existingReceipt, setExistingReceipt] = useState(null);
     const fileInputRef = useRef(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,6 +97,7 @@ const Transfer = () => {
         setSelectedIncomeId("");
         setSelectedTransfer(null);
         setEditingTransferId(null);
+        setExistingReceipt(null);
         setFormData(emptyForm());
         setReceiptFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -104,6 +106,7 @@ const Transfer = () => {
     const openAddTransfer = () => {
         setSelectedTransfer(null);
         setEditingTransferId(null);
+        setExistingReceipt(null);
         setSelectedIncomeId("");
         setFormData(emptyForm());
         setReceiptFile(null);
@@ -111,8 +114,9 @@ const Transfer = () => {
     };
 
     const openEditTransfer = (transfer) => {
-        setSelectedTransfer(transfer);
+        setSelectedTransfer(null);
         setEditingTransferId(transfer.id);
+        setExistingReceipt(transfer.receipt || null);
         setSelectedIncomeId(transfer.source_income_id ? String(transfer.source_income_id) : "");
         setFormData({
             title: transfer.title || "",
@@ -634,6 +638,50 @@ const Transfer = () => {
                                 <span className="mb-2 block text-sm font-bold text-slate-700">
                                     Upload Receipt <small className="font-normal text-slate-400">(Optional — JPG, PNG, PDF · max 10 MB)</small>
                                 </span>
+
+                                {/* ── Existing receipt preview (edit mode only) ── */}
+                                {existingReceipt && !receiptFile && (
+                                    <div className="mb-3 flex items-start gap-3 rounded-xl border border-purple-200 bg-purple-50 p-3">
+                                        <div className="shrink-0">
+                                            {/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(existingReceipt) ? (
+                                                <a
+                                                    href={`${(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "")}${existingReceipt}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    <img
+                                                        src={`${(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "")}${existingReceipt}`}
+                                                        alt="Current receipt"
+                                                        className="h-20 w-20 rounded-lg border border-purple-200 object-cover shadow-sm hover:opacity-90 transition-opacity"
+                                                    />
+                                                </a>
+                                            ) : (
+                                                <a
+                                                    href={`${(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "")}${existingReceipt}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="flex h-20 w-20 items-center justify-center rounded-lg border border-purple-200 bg-white text-purple-600 shadow-sm hover:bg-purple-100 transition-colors"
+                                                >
+                                                    <FiPaperclip size={24} />
+                                                </a>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[11px] font-black uppercase tracking-widest text-purple-600">Current Receipt</p>
+                                            <a
+                                                href={`${(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "")}${existingReceipt}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="mt-1 block truncate text-xs font-semibold text-slate-600 hover:text-purple-700 hover:underline"
+                                            >
+                                                {existingReceipt.split("/").pop()}
+                                            </a>
+                                            <p className="mt-1 text-[10px] text-slate-400">Upload a new file below to replace it</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ── File picker ── */}
                                 <label
                                     className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-4 transition-all ${
                                         receiptFile
@@ -652,7 +700,7 @@ const Transfer = () => {
                                             </>
                                         ) : (
                                             <>
-                                                <p className="text-sm font-semibold text-slate-600">Click to browse or drag & drop</p>
+                                                <p className="text-sm font-semibold text-slate-600">Click to browse or drag &amp; drop</p>
                                                 <p className="text-xs text-slate-400">Supports: JPG, PNG, WEBP, PDF</p>
                                             </>
                                         )}

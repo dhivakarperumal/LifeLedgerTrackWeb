@@ -185,17 +185,14 @@ const DiaryManagement = () => {
     mediaList.forEach((item) => {
       const type = String(item?.type || item?.file_type || "").toLowerCase();
       const name = String(item?.name || item?.file_name || "").toLowerCase();
-      const kind = type.startsWith("image/") || type === "image" || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name)
-        ? "image"
-        : type.startsWith("video/") || type === "video" || /\.(mp4|webm|mov|m4v|ogg)$/i.test(name)
-          ? "video"
-          : type.startsWith("audio/") || type === "audio" || /\.(mp3|wav|m4a|aac)$/i.test(name)
-            ? "audio"
-            : "image";
 
-      if (kind === "image") images.push(item);
-      if (kind === "video") videos.push(item);
-      if (kind === "audio") audios.push(item);
+      const isImage = type.startsWith("image/") || type === "image" || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
+      const isVideo = type.startsWith("video/") || type === "video" || /\.(mp4|webm|mov|m4v|ogg)$/i.test(name);
+      const isAudio = type.startsWith("audio/") || type === "audio" || /\.(mp3|wav|m4a|aac)$/i.test(name);
+
+      if (isImage) images.push(item);
+      if (isVideo) videos.push(item);
+      if (isAudio) audios.push(item);
     });
 
     return { images, videos, audios };
