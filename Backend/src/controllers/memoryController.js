@@ -53,6 +53,37 @@ const parseBooleanValue = (value, fallback = false) => {
   return fallback;
 };
 
+const parseJsonArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch (error) {
+    return String(value)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+};
+
+const normalizeGalleryEntries = (gallery = []) =>
+  gallery
+    .filter(Boolean)
+    .map((item, index) => {
+      const value = typeof item === "string" ? item : item?.file_url || item?.url || item?.path || item?.src || "";
+      const fileName = String(item?.file_name || item?.name || value.split("/").pop() || `media-${index + 1}`);
+      const id = typeof item === "string" ? `existing-${index}-${fileName}` : (item?.id || `existing-${index}-${fileName}`);
+
+      return {
+        id,
+        value,
+        fileName,
+        item,
+      };
+    });
+
 const syncMemoryCategoryFromShared = async (userId, categoryId, fallbackName = null) => {
   const resolvedId = categoryId ? Number(categoryId) : null;
 
@@ -297,30 +328,29 @@ const updateMemory = async (req, res) => {
       return res.status(404).json({ message: "Memory not found." });
     }
 
-    const { title, description, category_id, memory_date, location, tags, mood, status, is_favorite, voice_note, removed_media } = req.body;
+    const { title, description, category_id, memory_date, location, tags, mood, status, is_favorite, voice_note } = req.body;
     const favoriteFlag = parseBooleanValue(is_favorite, Boolean(existing[0][0].is_favorite));
     const resolvedCategory = await syncMemoryCategoryFromShared(req.user.user_id, category_id ?? existing[0][0].category_id, req.body.category_name || req.body.category || null);
     const uploadedFiles = Array.isArray(req.files) ? req.files : [];
 
-    const removedMediaList = (() => {
-      if (!removed_media) return [];
-      try {
-        const parsed = JSON.parse(removed_media);
-        return Array.isArray(parsed) ? parsed : [parsed];
-      } catch {
-        return String(removed_media).split(",").map((item) => item.trim()).filter(Boolean);
-      }
-    })();
+    const removedImageIds = parseJsonArray(req.body.removed_image_ids);
+    const removedVideoIds = parseJsonArray(req.body.removed_video_ids);
+    const removedAudioIds = parseJsonArray(req.body.removed_audio_ids);
 
-    const existingGallery = normalizeMediaGallery(existing[0][0].media_gallery || existing[0][0].gallery || []);
-    const remainingGallery = existingGallery.filter((item) => {
-      const value = typeof item === "string" ? item : item?.file_url || item?.url || item?.path || item?.src || "";
-      return !removedMediaList.some((removed) => String(removed) === String(value));
-    });
+    const existingGallery = normalizeGalleryEntries(normalizeMediaGallery(existing[0][0].media_gallery || existing[0][0].gallery || []));
+    const remainingGallery = existingGallery.filter((entry) => {
+      const isRemoved =
+        removedImageIds.includes(entry.id) ||
+        removedVideoIds.includes(entry.id) ||
+        removedAudioIds.includes(entry.id) ||
+        removedImageIds.includes(entry.value) ||
+        removedVideoIds.includes(entry.value) ||
+        removedAudioIds.includes(entry.value);
+      return !isRemoved;
+    }).map((entry) => entry.value);
 
-    const gallery = uploadedFiles.length
-      ? uploadedFiles.map((file) => `/uploads/memories/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}`)
-      : remainingGallery;
+    const uploadedGallery = uploadedFiles.map((file) => `/uploads/memories/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}`);
+    const finalGallery = [...remainingGallery, ...uploadedGallery];
 
     const primaryFile = uploadedFiles[0] || null;
     const mediaType = primaryFile ? (
@@ -330,8 +360,8 @@ const updateMemory = async (req, res) => {
     ) : (uploadedFiles.length ? "file" : existing[0][0].media_type || "image");
 
     const mediaUrl = primaryFile
-      ? gallery[0]
-      : (req.body.media_url || existing[0][0].media_url || (remainingGallery[0] || ""));
+      ? uploadedGallery[0]
+      : (req.body.media_url || existing[0][0].media_url || (finalGallery[0] || ""));
 
     const tagValue = Array.isArray(tags) ? JSON.stringify(tags) : JSON.stringify(parseTags(tags ?? existing[0][0].tags));
 
@@ -353,7 +383,7 @@ const updateMemory = async (req, res) => {
         status !== undefined ? status : existing[0][0].status,
         favoriteFlag ? 1 : 0,
         mediaUrl,
-        JSON.stringify(gallery),
+        JSON.stringify(finalGallery),
         mediaType,
         voice_note !== undefined ? voice_note : existing[0][0].voice_note,
         req.user.user_id,

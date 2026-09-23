@@ -106,9 +106,15 @@ const MemoriesManagement = () => {
   const [editingId, setEditingId] = useState(null);
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [form, setForm] = useState(initialForm);
-  const [uploadFiles, setUploadFiles] = useState([]);
-  const [existingMedia, setExistingMedia] = useState([]);
-  const [removedMedia, setRemovedMedia] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
+  const [existingVideos, setExistingVideos] = useState([]);
+  const [existingAudios, setExistingAudios] = useState([]);
+  const [newImages, setNewImages] = useState([]);
+  const [newVideos, setNewVideos] = useState([]);
+  const [newAudios, setNewAudios] = useState([]);
+  const [removedImageIds, setRemovedImageIds] = useState([]);
+  const [removedVideoIds, setRemovedVideoIds] = useState([]);
+  const [removedAudioIds, setRemovedAudioIds] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVoiceName, setRecordedVoiceName] = useState("");
   const mediaRecorderRef = useRef(null);
@@ -126,6 +132,8 @@ const MemoriesManagement = () => {
     return URL.createObjectURL(file);
   };
 
+  const getAllNewFiles = () => [...newImages, ...newVideos, ...newAudios];
+
   const normalizeExistingMedia = (memoryItem) => {
     const gallery = Array.isArray(memoryItem?.media_gallery) && memoryItem.media_gallery.length
       ? memoryItem.media_gallery
@@ -139,15 +147,42 @@ const MemoriesManagement = () => {
         const value = typeof item === "string" ? item : item?.file_url || item?.url || item?.path || item?.src || "";
         const fileName = String(item?.file_name || item?.name || value.split("/").pop() || `media-${index + 1}`);
         const type = getFileTypeFromName(fileName, item?.file_type || item?.type || "application/octet-stream");
+        const id = typeof item === "string" ? `existing-${index}-${fileName}` : (item?.id || `existing-${index}-${fileName}`);
 
         return {
-          id: `existing-${index}-${fileName}`,
+          id,
           name: fileName,
           type,
           previewUrl: getMediaUrl(value),
           isExisting: true,
         };
       });
+  };
+
+  const splitExistingMedia = (mediaList = []) => {
+    const images = [];
+    const videos = [];
+    const audios = [];
+
+    mediaList.forEach((item) => {
+      const lowerType = String(item?.type || "").toLowerCase();
+      const kind =
+        lowerType.startsWith("image/") || lowerType.includes("image")
+          ? "image"
+          : lowerType.startsWith("video/") || lowerType.includes("video")
+            ? "video"
+            : lowerType.startsWith("audio/") || lowerType.includes("audio")
+              ? "audio"
+              : (String(item?.name || "").toLowerCase().match(/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/) ? "image" :
+                  String(item?.name || "").toLowerCase().match(/\.(mp4|webm|mov|m4v|ogg)$/) ? "video" :
+                  String(item?.name || "").toLowerCase().match(/\.(mp3|wav|m4a|aac)$/) ? "audio" : "image");
+
+      if (kind === "image") images.push(item);
+      if (kind === "video") videos.push(item);
+      if (kind === "audio") audios.push(item);
+    });
+
+    return { images, videos, audios };
   };
 
   const fetchData = async () => {
@@ -214,9 +249,15 @@ const MemoriesManagement = () => {
   const openNewMemory = () => {
     setEditingId(null);
     setSelectedMemory(null);
-    setUploadFiles([]);
-    setExistingMedia([]);
-    setRemovedMedia([]);
+    setExistingImages([]);
+    setExistingVideos([]);
+    setExistingAudios([]);
+    setNewImages([]);
+    setNewVideos([]);
+    setNewAudios([]);
+    setRemovedImageIds([]);
+    setRemovedVideoIds([]);
+    setRemovedAudioIds([]);
     setRecordedVoiceName("");
     setForm({
       ...initialForm,
@@ -228,9 +269,18 @@ const MemoriesManagement = () => {
   const openEditMemory = (memory) => {
     setEditingId(memory.id);
     setSelectedMemory(memory);
-    setUploadFiles([]);
-    setExistingMedia(normalizeExistingMedia(memory));
-    setRemovedMedia([]);
+    const normalized = normalizeExistingMedia(memory);
+    const { images, videos, audios } = splitExistingMedia(normalized);
+
+    setExistingImages(images);
+    setExistingVideos(videos);
+    setExistingAudios(audios);
+    setNewImages([]);
+    setNewVideos([]);
+    setNewAudios([]);
+    setRemovedImageIds([]);
+    setRemovedVideoIds([]);
+    setRemovedAudioIds([]);
     setRecordedVoiceName("");
     setForm({
       title: memory.title || "",
@@ -279,11 +329,11 @@ const MemoriesManagement = () => {
         formData.append(key, value);
       });
 
-      if (removedMedia.length) {
-        formData.append("removed_media", JSON.stringify(removedMedia));
-      }
+      if (removedImageIds.length) formData.append("removed_image_ids", JSON.stringify(removedImageIds));
+      if (removedVideoIds.length) formData.append("removed_video_ids", JSON.stringify(removedVideoIds));
+      if (removedAudioIds.length) formData.append("removed_audio_ids", JSON.stringify(removedAudioIds));
 
-      uploadFiles.forEach((file) => {
+      getAllNewFiles().forEach((file) => {
         formData.append("media", file);
       });
 
@@ -297,9 +347,15 @@ const MemoriesManagement = () => {
 
       setIsEditorOpen(false);
       setForm(initialForm);
-      setUploadFiles([]);
-      setExistingMedia([]);
-      setRemovedMedia([]);
+      setExistingImages([]);
+      setExistingVideos([]);
+      setExistingAudios([]);
+      setNewImages([]);
+      setNewVideos([]);
+      setNewAudios([]);
+      setRemovedImageIds([]);
+      setRemovedVideoIds([]);
+      setRemovedAudioIds([]);
       setRecordedVoiceName("");
       fetchData();
     } catch (error) {
@@ -359,7 +415,7 @@ const MemoriesManagement = () => {
       recorder.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: "audio/webm" });
-        setUploadFiles((prevFiles) => mergeUniqueFiles(prevFiles, [file]));
+        setNewAudios((prevFiles) => mergeUniqueFiles(prevFiles, [file]));
         setRecordedVoiceName((prevName) => (prevName ? `${prevName}, ${file.name}` : file.name));
         stream.getTracks().forEach((track) => track.stop());
       };
@@ -740,7 +796,14 @@ const MemoriesManagement = () => {
                         multiple
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
-                          setUploadFiles((prevFiles) => mergeUniqueFiles(prevFiles, files));
+                          const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+                          const videoFiles = files.filter((file) => file.type.startsWith("video/"));
+                          const audioFiles = files.filter((file) => file.type.startsWith("audio/"));
+
+                          setNewImages((prevFiles) => mergeUniqueFiles(prevFiles, imageFiles));
+                          setNewVideos((prevFiles) => mergeUniqueFiles(prevFiles, videoFiles));
+                          setNewAudios((prevFiles) => mergeUniqueFiles(prevFiles, audioFiles));
+
                           if (files.length) {
                             setRecordedVoiceName((prevName) => {
                               const nextNames = files.map((file) => file.name);
@@ -752,20 +815,29 @@ const MemoriesManagement = () => {
                       />
                     </label>
                     <span className="text-sm text-slate-500">
-                      {uploadFiles.length ? `${uploadFiles.length} file(s) selected` : "No file chosen"}
+                      {(newImages.length + newVideos.length + newAudios.length) ? `${newImages.length + newVideos.length + newAudios.length} new file(s) selected` : "No file chosen"}
                     </span>
                   </div>
 
-                  {(existingMedia.length > 0 || uploadFiles.length > 0) && (
+                  {((existingImages.length > 0 || existingVideos.length > 0 || existingAudios.length > 0 || newImages.length > 0 || newVideos.length > 0 || newAudios.length > 0) && (
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      {existingMedia.map((item, index) => renderMediaPreviewCard(item, index, () => {
-                        const removedValue = item.previewUrl || item.name || item.file_url || item.url || "";
-                        setRemovedMedia((prev) => (removedValue ? [...prev, removedValue] : prev));
-                        setExistingMedia((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+                      {existingImages.map((item, index) => renderMediaPreviewCard(item, index, () => {
+                        setRemovedImageIds((prev) => [...new Set([...prev, item.id])]);
+                        setExistingImages((prev) => prev.filter((image) => image.id !== item.id));
                       }))}
-                      {uploadFiles.map((file, index) => renderMediaPreviewCard(file, index, () => setUploadFiles((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))))}
+                      {existingVideos.map((item, index) => renderMediaPreviewCard(item, index, () => {
+                        setRemovedVideoIds((prev) => [...new Set([...prev, item.id])]);
+                        setExistingVideos((prev) => prev.filter((video) => video.id !== item.id));
+                      }))}
+                      {existingAudios.map((item, index) => renderMediaPreviewCard(item, index, () => {
+                        setRemovedAudioIds((prev) => [...new Set([...prev, item.id])]);
+                        setExistingAudios((prev) => prev.filter((audio) => audio.id !== item.id));
+                      }))}
+                      {newImages.map((file, index) => renderMediaPreviewCard(file, index, () => setNewImages((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))))}
+                      {newVideos.map((file, index) => renderMediaPreviewCard(file, index, () => setNewVideos((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))))}
+                      {newAudios.map((file, index) => renderMediaPreviewCard(file, index, () => setNewAudios((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))))}
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
 

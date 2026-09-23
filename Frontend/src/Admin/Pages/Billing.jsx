@@ -91,7 +91,7 @@ const Billing = () => {
   };
 
   const openEditIncome = (income) => {
-    setSelectedIncome(income);
+    setSelectedIncome(null);
     setEditingIncomeId(income.id);
     setForm({
       title: income.title || "",
