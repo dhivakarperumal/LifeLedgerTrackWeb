@@ -82,6 +82,42 @@ const DiaryManagement = () => {
     return URL.createObjectURL(file);
   };
 
+  const normalizeExistingDiaryMedia = (entry) => {
+    if (!entry) return [];
+
+    const mediaList = Array.isArray(entry.attachments) && entry.attachments.length
+      ? entry.attachments
+      : Array.isArray(entry.media_files) && entry.media_files.length
+        ? entry.media_files
+        : [];
+
+    const fallbackEntries = [];
+    ["image_path", "video_path", "audio_path", "file_path"].forEach((key) => {
+      if (entry?.[key]) {
+        fallbackEntries.push({
+          file_name: entry[key].split("/").pop() || key,
+          file_url: entry[key],
+          file_type: key.includes("image") ? "image" : key.includes("video") ? "video" : key.includes("audio") ? "audio" : "file",
+        });
+      }
+    });
+
+    const combined = [...fallbackEntries, ...mediaList].filter(Boolean);
+
+    return combined.map((item, index) => {
+      const fileUrl = item.file_url || item.url || item.src || item.path || item;
+      const fileName = item.file_name || item.name || item.filename || `attachment-${index + 1}`;
+      const type = String(item.file_type || item.type || "application/octet-stream");
+
+      return {
+        id: item.id || `${fileName}-${index}`,
+        name: fileName,
+        type,
+        previewUrl: fileUrl,
+      };
+    });
+  };
+
   const [formState, setFormState] = useState({
     title: "",
     content: "",
@@ -237,6 +273,7 @@ const DiaryManagement = () => {
   const openEditEntry = (entry) => {
     setEditingId(entry.id);
     setSelectedEntry(entry);
+    setFiles(normalizeExistingDiaryMedia(entry));
     setFormState({
       title: entry.title || "",
       content: entry.content || "",
@@ -522,6 +559,7 @@ const DiaryManagement = () => {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c]">
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider w-16 text-center">S No</th>
                       <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Date</th>
                       <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Title & Content</th>
                       <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Category</th>
@@ -530,8 +568,11 @@ const DiaryManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {filteredEntries.map((entry) => (
+                    {filteredEntries.map((entry, index) => (
                       <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-4 whitespace-nowrap text-center font-bold text-slate-400">
+                          {index + 1}
+                        </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="text-slate-800 font-bold">{formatDate(entry.entry_date)}</div>
                         </td>
