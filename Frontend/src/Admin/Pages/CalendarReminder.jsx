@@ -636,32 +636,141 @@ const CalendarReminder = () => {
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Today</p>
-              <h3 className="mt-1 text-lg font-bold text-slate-900">Quick schedule</h3>
-            </div>
+        <div className="rounded-[30px]  bg-[#111827] p-4 text-slate-100 shadow-md">
+          <div className="mb-3 flex items-center justify-between">
+            <button
+              onClick={() => setCalendarMonth((prev) => addMonths(prev, -1))}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-800 text-black transition hover:bg-slate-700"
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="text-xl font-bold ">{toMonthLabel(calendarMonth)}</div>
+            <button
+              onClick={() => setCalendarMonth((prev) => addMonths(prev, 1))}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-800 text-black transition hover:bg-slate-700"
+              aria-label="Next month"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
-          <div className="mt-4 space-y-3">
-            {selectedDayEvents.length === 0 && selectedDayReminders.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">No items for this date.</div>
-            ) : (
-              [...selectedDayEvents.map((event) => ({ ...event, kind: 'event' })), ...selectedDayReminders.map((reminder) => ({ ...reminder, kind: 'reminder' }))]
-                .slice(0, 5)
-                .map((item) => (
-                  <div key={`${item.kind}-${item.id}`} className="rounded-2xl border border-slate-200 bg-white p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${item.kind === 'event' ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {item.kind}
-                      </span>
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{item.priority || 'Medium'}</span>
-                    </div>
-                    <p className="mt-2 font-semibold text-slate-900">{item.title}</p>
-                    <p className="mt-1 text-xs text-slate-600">{item.startTime || item.reminderTime || 'All day'}</p>
-                  </div>
-                ))
-            )}
+
+          <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium ">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+              <div key={day} className="py-1">
+                {day}
+              </div>
+            ))}
+
+            {monthDays.map((date) => {
+              const isCurrentMonth = date.getMonth() === calendarMonth.getMonth();
+              const isSelected = isSameDay(date, selectedDate);
+              const isToday = isSameDay(date, new Date());
+
+              return (
+                <button
+                  key={date.toISOString()}
+                  onClick={() => setSelectedDate(date)}
+                  className={`flex h-9 items-center justify-center rounded-full text-sm transition ${
+                    isSelected
+                      ? "bg-gradient-to-br from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/30"
+                      : isToday
+                        ? "bg-slate-700 text-red-400"
+                        : isCurrentMonth
+                          ? "text-gray-500 hover:bg-slate-800"
+                          : "text-black"
+                  }`}
+                >
+                  {date.getDate()}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-6">
+            <h3 className="text-2xl font-bold text-slate-100">Today's Events</h3>
+            <p className="mt-2 text-sm ">
+              {formatDate(selectedDate, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+            </p>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-800/80 p-4">
+              {selectedDayEvents.length === 0 && selectedDayReminders.length === 0 ? (
+                <div className="flex items-center justify-center gap-3 rounded-xl border border-dashed border-slate-600 bg-slate-900/40 px-3 py-6 text-sm font-medium text-slate-300">
+                  <CalendarDays className="h-5 w-5 text-slate-400" />
+                  No events today
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {[...selectedDayEvents.map((event) => ({ ...event, kind: "event" })), ...selectedDayReminders.map((reminder) => ({ ...reminder, kind: "reminder" }))]
+                    .slice(0, 3)
+                    .map((item) => (
+                      <div key={`${item.kind}-${item.id}`} className="rounded-xl border border-slate-200 bg-slate-200/40 p-2 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${item.kind === "event" ? "bg-violet-100 text-violet-700" : "bg-emerald-100 text-emerald-700"}`}>
+                            {item.kind}
+                          </span>
+                          <span className="text-[10px] text-slate-400">{item.priority || "Medium"}</span>
+                        </div>
+                        <p className="mt-2 font-semibold text-slate-100">{item.title}</p>
+                        <p className="mt-1 text-xs text-slate-300">{item.startTime || item.reminderTime || "All day"}</p>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setViewMode("agenda")}
+              className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+            >
+              View All Events
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="mt-6">
+            <h3 className="text-2xl font-bold text-slate-100">Quick Actions</h3>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => openPanel("event")}
+                className="rounded-2xl border border-slate-200 bg-[#1f2937] p-4 text-left text-slate-100 transition hover:bg-[#243244]"
+              >
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold">
+                  <Plus className="h-5 w-5" />
+                </div>
+                <div className="text-base font-semibold text-slate-100">Add Event</div>
+              </button>
+
+              <button
+                onClick={() => openPanel("event")}
+                className="rounded-2xl border border-slate-200 bg-[#1f2937] p-4 text-left text-slate-100 transition hover:bg-[#243244]"
+              >
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-lg font-bold">
+                  <NotebookPen className="h-5 w-5" />
+                </div>
+                <div className="text-base font-semibold text-slate-100">Add Meeting</div>
+              </button>
+
+              <button
+                onClick={() => openPanel("event")}
+                className="rounded-2xl border border-slate-200 bg-[#1f2937] p-4 text-left text-slate-100 transition hover:bg-[#243244]"
+              >
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 text-lg font-bold">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div className="text-base font-semibold text-slate-100">Add Task</div>
+              </button>
+
+              <button
+                onClick={() => openPanel("reminder")}
+                className="rounded-2xl border border-slate-200 bg-[#1f2937] p-4 text-left text-slate-100 transition hover:bg-[#243244]"
+              >
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-orange-500 text-lg font-bold">
+                  <BellRing className="h-5 w-5" />
+                </div>
+                <div className="text-base font-semibold text-slate-100">Add Reminder</div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
