@@ -26,39 +26,43 @@ const navItems = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
 
   {
-    label: "Expensive ",
-    icon: Wallet,
+    label: "More",
+    icon: Landmark,
     children: [
-      { path: "/admin/expensive/all", label: "All Expensive", icon: ReceiptText },
       {
         path: "/admin/expensive/category",
-        label: "Expensive Categories",
+        label: "Categories",
         icon: Layers,
       },
+      {
+        path: "/admin/more/income",
+        label: "All Income",
+        icon: CircleDollarSign,
+      },
+      {
+        path: "/admin/more/transfer",
+        label: "Transfer Amount",
+        icon: ArrowLeftRight,
+      },
     ],
+  },
+
+  {
+    path: "/admin/expensive/all",
+    label: "All Expensive",
+    icon: ReceiptText,
+  },
+
+  {
+    path: "/admin/planner/calendar",
+    label: "Calendar",
+    icon: CalendarDays,
   },
 
   { path: "/admin/users/memories", label: "Memories", icon: Image },
   { path: "/admin/users/diary", label: "My Diary", icon: NotebookText },
 
   { path: "/admin/users/all", label: "Customers", icon: Users },
-  {
-    label: "More",
-    icon: Landmark,
-    children: [
-      { path: "/admin/more/income", label: "All Income", icon: CircleDollarSign },
-      {
-        path: "/admin/more/transfer",
-        label: "Transfer Amount",
-        icon: ArrowLeftRight,
-      },
-      {
-        path: "/admin/planner/calendar",
-        label: "Calendar",
-        icon: CalendarDays,
-      },
-    ],
-  },
 
   { path: "/admin/reports", label: "Reports", icon: BarChart3 },
 ];
@@ -77,7 +81,6 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
   useEffect(() => {
     setOrderCounts({ all: 0, new: 0, delivery: 0, cancelled: 0 });
   }, []);
-
 
   /* ================= HELPERS & LOGIC ================= */
   const isActiveRoute = (item) => {

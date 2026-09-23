@@ -145,12 +145,16 @@ const CalendarReminder = () => {
   const fetchCalendar = async () => {
     setLoading(true);
     try {
-      const [eventsRes, categoriesRes] = await Promise.all([
-        api.get("/calendar/events"),
+      const [eventsRes, remindersRes, summaryRes, categoriesRes] = await Promise.all([
+        api.get("/calendar/events").catch(() => ({ data: { data: [] } })),
+        api.get("/calendar/reminders").catch(() => ({ data: { data: [] } })),
+        api.get("/calendar/summary").catch(() => ({ data: { data: { todayEvents: 0, todayReminders: 0, upcomingEvents: 0, overdueReminders: 0 } } })),
         api.get("/categories").catch(() => ({ data: [] })),
       ]);
 
       const eventList = Array.isArray(eventsRes?.data?.data) ? eventsRes.data.data : [];
+      const reminderList = Array.isArray(remindersRes?.data?.data) ? remindersRes.data.data : [];
+      const summaryData = summaryRes?.data?.data || {};
       const categoryList = Array.isArray(categoriesRes?.data)
         ? categoriesRes.data
         : Array.isArray(categoriesRes?.data?.data)
@@ -172,12 +176,29 @@ const CalendarReminder = () => {
         .filter(Boolean);
 
       setEvents(eventList);
-      setReminders([]);
+      setReminders(reminderList);
       setCalendarCategoryOptions(mappedCategories.length ? mappedCategories : CALENDAR_CATEGORY_FALLBACK);
-      setSummary({});
+      setSummary({
+        todayEvents: Number(summaryData.todayEvents || 0),
+        todayReminders: Number(summaryData.todayReminders || 0),
+        upcomingEvents: Number(summaryData.upcomingEvents || 0),
+        upcomingReminders: Number(summaryData.upcomingReminders || 0),
+        overdueReminders: Number(summaryData.overdueReminders || 0),
+        completedEvents: Number(summaryData.completedEvents || 0),
+      });
     } catch (error) {
       console.error("Calendar fetch failed", error);
       setCalendarCategoryOptions(CALENDAR_CATEGORY_FALLBACK);
+      setEvents([]);
+      setReminders([]);
+      setSummary({
+        todayEvents: 0,
+        todayReminders: 0,
+        upcomingEvents: 0,
+        upcomingReminders: 0,
+        overdueReminders: 0,
+        completedEvents: 0,
+      });
       toast.error(error?.response?.data?.message || "Failed to load calendar data.");
     } finally {
       setLoading(false);
