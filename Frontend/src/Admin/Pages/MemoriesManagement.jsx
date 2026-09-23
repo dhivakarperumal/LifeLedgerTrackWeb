@@ -19,6 +19,7 @@ import {
   FiBookOpen,
   FiSave,
   FiX,
+  FiEye,
   FiTag,
   FiClock,
 } from "react-icons/fi";
@@ -451,6 +452,9 @@ const MemoriesManagement = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
+                        <button onClick={() => navigate(`/admin/users/memories/${memory.id}`)} className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200">
+                          <FiEye size={15} />
+                        </button>
                         <button onClick={() => openEditMemory(memory)} className="rounded-lg bg-violet-100 p-2 text-violet-700 transition hover:bg-violet-200">
                           <FiEdit2 size={15} />
                         </button>
@@ -516,6 +520,7 @@ const MemoriesManagement = () => {
 
                 <div className="flex items-center justify-between">
                   <div className="flex gap-2">
+                    <button onClick={() => navigate(`/admin/users/memories/${memory.id}`)} className="rounded-lg bg-slate-100 p-2 text-slate-700"><FiEye size={15} /></button>
                     <button onClick={() => openEditMemory(memory)} className="rounded-lg bg-violet-100 p-2 text-violet-700"><FiEdit2 size={15} /></button>
                     <button onClick={() => handleDelete(memory.id)} className="rounded-lg bg-rose-100 p-2 text-rose-600"><FiTrash2 size={15} /></button>
                   </div>

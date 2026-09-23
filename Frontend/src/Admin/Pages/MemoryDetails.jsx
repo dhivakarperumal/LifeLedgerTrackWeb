@@ -178,31 +178,58 @@ const MemoryDetails = () => {
             </div>
 
             {/* Media Gallery */}
-            {memory.media_gallery?.length > 1 && (
-              <div className="mb-10">
-                <h3 className="mb-4 text-xl font-bold text-slate-800">Media Gallery</h3>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                  {memory.media_gallery.map((mediaUrl, idx) => {
-                    const isVideo = mediaUrl.match(/\.(mp4|webm|ogg|mov)$/i);
-                    const isAudio = mediaUrl.match(/\.(mp3|wav|ogg)$/i);
-                    return (
-                      <a key={idx} href={getMediaUrl(mediaUrl)} target="_blank" rel="noreferrer" className="group relative block aspect-square w-full overflow-hidden rounded-2xl bg-slate-100 shadow-sm">
-                         {isVideo ? (
-                           <video src={getMediaUrl(mediaUrl)} className="h-full w-full object-cover transition duration-300 group-hover:scale-110" />
-                         ) : isAudio ? (
-                           <div className="flex h-full w-full items-center justify-center bg-violet-50 text-violet-400 transition duration-300 group-hover:bg-violet-100 group-hover:text-violet-600"><FiMusic size={24} /></div>
-                         ) : (
-                           <img src={getMediaUrl(mediaUrl)} alt={`Gallery ${idx + 1}`} className="h-full w-full object-cover transition duration-300 group-hover:scale-110" />
-                         )}
-                         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/0 opacity-0 transition duration-300 group-hover:bg-slate-900/30 group-hover:opacity-100">
-                           <FiEye className="text-white" size={28} />
-                         </div>
-                      </a>
-                    );
-                  })}
+            {(() => {
+              const galleryItems = Array.isArray(memory.media_gallery) && memory.media_gallery.length
+                ? memory.media_gallery
+                : memory.media_url
+                  ? [memory.media_url]
+                  : [];
+
+              const uniqueGallery = galleryItems.filter((item, index, arr) => item && arr.indexOf(item) === index);
+
+              if (!uniqueGallery.length) return null;
+
+              return (
+                <div className="mb-10 rounded-[22px] border border-slate-200 bg-[#f4f5f7] p-4 md:p-6">
+                  <h3 className="mb-5 text-[11px] font-extrabold uppercase tracking-[0.25em] text-slate-500">Media & attachments</h3>
+
+                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {uniqueGallery.map((mediaUrl, idx) => {
+                      const resolvedUrl = getMediaUrl(mediaUrl);
+                      const isVideo = /(\.(mp4|webm|ogg|mov|m4v))$/i.test(mediaUrl || "");
+                      const isAudio = /(\.(mp3|wav|ogg|m4a|aac))$/i.test(mediaUrl || "");
+                      const fileName = (mediaUrl || "").split("/").pop() || `Attachment ${idx + 1}`;
+
+                      return (
+                        <div key={`${mediaUrl}-${idx}`} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
+                          <div className={isAudio ? "flex h-[220px] items-center justify-center bg-gradient-to-r from-violet-500 to-pink-500 p-4" : "h-[220px] overflow-hidden bg-black"}>
+                            {isVideo ? (
+                              <video src={resolvedUrl} controls className="h-full w-full object-cover" />
+                            ) : isAudio ? (
+                              <div className="flex w-full items-center justify-center">
+                                <div className="flex w-full max-w-[94%] items-center gap-3 rounded-full bg-white/95 px-4 py-3 shadow-lg">
+                                  <span className="text-lg text-slate-700">▶</span>
+                                  <audio src={resolvedUrl} controls className="h-9 w-full" />
+                                </div>
+                              </div>
+                            ) : (
+                              <img src={resolvedUrl} alt={fileName} className="h-full w-full object-cover" />
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 px-3 py-3">
+                            <span className="truncate text-[12px] text-slate-700">{fileName}</span>
+                            <a href={resolvedUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100">
+                              Open
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="grid gap-6 md:grid-cols-2">
               {/* Tags */}
