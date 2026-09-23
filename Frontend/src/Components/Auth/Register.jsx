@@ -1,10 +1,10 @@
 ﻿import { useState } from "react";
-import axios from "axios";
+import api from "../../api";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { Eye, EyeOff } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
+import { Eye, EyeOff } from "lucide-react";
 
 function Register() {
   const navigate = useNavigate();
@@ -24,13 +24,15 @@ function Register() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) {
       return toast.error("Passwords do not match");
     }
     try {
-      await axios.post("http://localhost:5000/api/auth/register", {
+      await api.post("/auth/register", {
         username: form.username,
         email: form.email,
         phone: form.phone,
@@ -43,15 +45,22 @@ function Register() {
     }
   };
 
-  const handleSuccess = (credentialResponse) => {
+  const handleGoogleSuccess = async (credentialResponse) => {
     try {
       const decoded = jwtDecode(credentialResponse.credential);
-      console.log(decoded);
-      toast.success("Google Sign up successful!");
+      const googleUser = {
+        name: decoded.name,
+        email: decoded.email,
+        picture: decoded.picture,
+        googleId: decoded.sub,
+      };
+
+      await api.post("/auth/google-login", googleUser);
+      toast.success("Google sign up successful! Please login.");
       navigate("/login");
     } catch (error) {
-      console.error(error);
-      toast.error("Google Sign up failed");
+      console.error("Google Sign Up Error:", error);
+      toast.error(error.response?.data?.message || error.message || "Google sign up failed");
     }
   };
 
@@ -76,7 +85,7 @@ function Register() {
       <div className="hidden lg:block lg:w-5/12 flex-shrink-0 relative h-full">
         <div className="absolute inset-0 w-[103%] h-full bg-gradient-to-b from-yellow-300 via-yellow-500 to-yellow-800 z-10" style={{ clipPath: "url(#sCurveReg)" }} />
         <div className="absolute inset-0 w-full h-full z-20" style={{ clipPath: "url(#sCurveReg)" }}>
-          <img src="/silksbanner/saree_maroon_kanchipuram.png" alt="Premium Sarees" className="w-full h-full object-cover" />
+          <img src="/login.png" alt="Premium Sarees" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-primary/85 via-black/20 to-transparent" />
           <div className="absolute bottom-10 left-0 right-[15%] px-10 py-8 z-30">
             <svg className="w-7 h-7 text-yellow-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -198,13 +207,20 @@ function Register() {
                 <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
               </button>
 
-              <div className="flex items-center gap-3 py-0">
-                <div className="flex-1 h-px bg-gray-100" />
-                <span className="text-[11px] text-gray-400 font-semibold uppercase tracking-widest">OR</span>
-                <div className="flex-1 h-px bg-gray-100" />
-              </div>
-
-         
+              {googleClientId && (
+                <div className="flex justify-center w-full hover:scale-[1.02] transition-transform">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => toast.error("Google sign up failed")}
+                    type="standard"
+                    theme="outline"
+                    size="large"
+                    shape="rectangular"
+                    width="100%"
+                    logo_alignment="center"
+                  />
+                </div>
+              )}
 
               <p className="text-center text-xs text-gray-400 pt-1">
                 Already have an account?{" "}

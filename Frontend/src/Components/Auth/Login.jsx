@@ -43,22 +43,27 @@ function Login() {
     }
   };
 
-  const handleSuccess = async (credentialResponse) => {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const handleGoogleSuccess = async (credentialResponse) => {
     try {
       const decoded = jwtDecode(credentialResponse.credential);
       const googleUser = {
         name: decoded.name,
         email: decoded.email,
         picture: decoded.picture,
-        googleId: decoded.sub
+        googleId: decoded.sub,
       };
+
       const res = await api.post("/auth/google-login", googleUser);
       const userData = {
         ...res.data.user,
         role: String(res.data.user.role || "").trim().toLowerCase(),
       };
+
       login(userData, res.data.token);
-      toast.success("Google Login Successful!");
+      toast.success("Google login successful!");
+
       if (userData.role === "admin") {
         navigate("/admin");
       } else {
@@ -66,7 +71,7 @@ function Login() {
       }
     } catch (error) {
       console.error("Google Login Error:", error);
-      toast.error(error.response?.data?.message || error.message || "Google Login Failed");
+      toast.error(error.response?.data?.message || error.message || "Google login failed");
     }
   };
 
@@ -97,7 +102,7 @@ function Login() {
           style={{ clipPath: 'url(#sCurve)' }}
         >
           <img
-            src="/silksbanner/saree_maroon_kanchipuram.png"
+            src="/login.png"
             alt="Premium Sarees"
             className="w-full h-full object-cover opacity-90 transition-transform duration-1000 hover:scale-105 origin-left"
           />
@@ -224,19 +229,20 @@ function Login() {
               <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent via-gray-300 to-gray-300"></div>
             </div>
 
-            {/* Google Login */}
-            <div className="flex justify-center w-full [&>div]:w-full [&>div]:flex [&>div]:justify-center hover:scale-[1.02] transition-transform">
-              <GoogleLogin
-                onSuccess={handleSuccess}
-                onError={() => console.log("Login Failed")}
-                type="standard"
-                theme="outline"
-                size="large"
-                shape="rectangular"
-                width="100%"
-                logo_alignment="center"
-              />
-            </div>
+            {googleClientId && (
+              <div className="flex justify-center w-full hover:scale-[1.02] transition-transform">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => toast.error("Google login failed")}
+                  type="standard"
+                  theme="outline"
+                  size="large"
+                  shape="rectangular"
+                  width="100%"
+                  logo_alignment="center"
+                />
+              </div>
+            )}
 
             {/* Register Link */}
             <p className="text-center text-sm text-gray-500">

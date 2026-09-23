@@ -29,6 +29,8 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     localStorage.removeItem("user");
     localStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    sessionStorage.removeItem("token");
   };
 
   // Map user data for Header/Sidebar compatibility
