@@ -109,10 +109,10 @@ function Login() {
           <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-black/20 to-transparent pointer-events-none" />
           <div className="absolute bottom-44 left-12 xl:left-16 text-white z-30">
             <h1 className="text-4xl xl:text-5xl font-serif mb-4 leading-tight drop-shadow-2xl text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300">
-              Timeless <br/> Tradition
+              Life <br/> Ledger
             </h1>
             <p className="text-gray-200 text-sm max-w-[260px] font-light tracking-wide drop-shadow-md">
-              Discover breathtaking handwoven sarees crafted for elegance and perfect for every occasion.
+              Track daily expenses, capture memories, and keep your personal diary in one secure place.
             </p>
             <div className="flex items-center gap-3 mt-6">
               <div className="h-[2px] w-10 bg-gradient-to-r from-yellow-400 to-transparent" />
@@ -139,9 +139,9 @@ function Login() {
               </svg>
             </div>
             
-            <p className="text-xs text-yellow-700 font-bold tracking-[0.2em] uppercase mb-4">Elegance in every drape</p>
+            <p className="text-xs text-yellow-700 font-bold tracking-[0.2em] uppercase mb-4">Your personal life dashboard</p>
             <h3 className="text-xl font-serif text-gray-800 mb-1">Welcome Back</h3>
-            <p className="text-gray-500 text-sm">Sign in to continue your saree shopping journey.</p>
+            <p className="text-gray-500 text-sm">Sign in to manage your expenses, diary, and memories.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -262,10 +262,10 @@ function Login() {
         <div className="flex flex-col items-center justify-center text-center group">
           <div className="p-3 bg-white/5 rounded-full mb-2 group-hover:bg-white/10 transition-colors">
             <svg className="w-7 h-7 text-yellow-400 group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 1.343-3 3v1h6v-1c0-1.657-1.343-3-3-3zm-3 5h6v5H9v-5zm-5-3h2m11 0h2M6 18h12" />
             </svg>
           </div>
-          <span className="text-white text-[10px] uppercase font-bold tracking-widest">Premium<br/>Quality</span>
+          <span className="text-white text-[10px] uppercase font-bold tracking-widest">Expense<br/>Insights</span>
         </div>
 
         <div className="w-[1px] h-16 bg-gradient-to-b from-transparent via-yellow-600/30 to-transparent" />
@@ -273,10 +273,10 @@ function Login() {
         <div className="flex flex-col items-center justify-center text-center group">
           <div className="p-3 bg-white/5 rounded-full mb-2 group-hover:bg-white/10 transition-colors">
             <svg className="w-7 h-7 text-yellow-400 group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6.75A2.75 2.75 0 016.75 4h10.5A2.75 2.75 0 0120 6.75v10.5A2.75 2.75 0 0117.25 20H6.75A2.75 2.75 0 014 17.25V6.75zm3 2.5h10m-10 4h7" />
             </svg>
           </div>
-          <span className="text-white text-[10px] uppercase font-bold tracking-widest">New Arrival<br/>Every Week</span>
+          <span className="text-white text-[10px] uppercase font-bold tracking-widest">Diary<br/>Journal</span>
         </div>
 
         <div className="w-[1px] h-16 bg-gradient-to-b from-transparent via-yellow-600/30 to-transparent" />
@@ -284,10 +284,10 @@ function Login() {
         <div className="flex flex-col items-center justify-center text-center group">
           <div className="p-3 bg-white/5 rounded-full mb-2 group-hover:bg-white/10 transition-colors">
             <svg className="w-7 h-7 text-yellow-400 group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3.75a4.75 4.75 0 014.75 4.75c0 2.55-1.57 4.7-3.97 5.76l-.53.22V18h-1.5v-3.49l-.53-.22A5.74 5.74 0 017.25 8.5 4.75 4.75 0 0112 3.75zm0 15.25h.01" />
             </svg>
           </div>
-          <span className="text-white text-[10px] uppercase font-bold tracking-widest">Easy<br/>Returns</span>
+          <span className="text-white text-[10px] uppercase font-bold tracking-widest">Memory<br/>Vault</span>
         </div>
 
       </div>

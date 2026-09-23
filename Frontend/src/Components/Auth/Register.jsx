@@ -91,7 +91,7 @@ function Register() {
             <svg className="w-7 h-7 text-yellow-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
             </svg>
-            <h2 className="text-2xl font-serif text-white leading-snug mb-5 tracking-wide">Unveil Your Beauty<br />In Every Drape</h2>
+            <h2 className="text-2xl font-serif text-white leading-snug mb-5 tracking-wide">Track Every Chapter<br />Of Your Life</h2>
             <div className="flex items-center gap-3">
               <div className="h-px w-8 bg-yellow-500/70" />
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-yellow-400">
@@ -117,12 +117,12 @@ function Register() {
               </svg>
             </div>
             
-            <p className="text-[11px] text-yellow-700 font-bold tracking-[0.2em] uppercase">Elegance in every drape</p>
+            <p className="text-[11px] text-yellow-700 font-bold tracking-[0.2em] uppercase">Life Ledger</p>
           </div>
 
           <div className="px-0">
             <div className="text-center mb-3"><h2 className="text-xl font-serif text-primary mb-1">Create Your Account</h2>
-              <p className="text-gray-400 text-sm">Become a part of our saree-loving community.</p>
+              <p className="text-gray-400 text-sm">Start tracking your life with clarity and confidence.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-2.5">
