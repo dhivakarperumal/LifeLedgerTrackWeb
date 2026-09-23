@@ -2,27 +2,21 @@ import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
-  Package,
-  ShoppingCart,
+  Wallet,
+  ReceiptText,
   Users,
-  MessageSquare,
   BarChart3,
   X,
   ChevronDown,
   ChevronLeft,
-  Home,
-  Tag,
-  PlusCircle,
+  NotebookText,
+  Image,
+  CalendarDays,
+  ArrowLeftRight,
+  Landmark,
   List,
   Layers,
-  Truck,
-  XCircle,
-  Archive,
-  Handshake,
-  Video,
-  Image,
-  CalendarCheck2,
-  BellRing,
+  CircleDollarSign,
 } from "lucide-react";
 
 import { useAuth } from "../PrivateRouter/AuthContext";
@@ -33,9 +27,9 @@ const navItems = [
 
   {
     label: "Expensive ",
-    icon: Package,
+    icon: Wallet,
     children: [
-      { path: "/admin/expensive/all", label: "All Expensive", icon: List },
+      { path: "/admin/expensive/all", label: "All Expensive", icon: ReceiptText },
       {
         path: "/admin/expensive/category",
         label: "Add Expensive Categories",
@@ -44,30 +38,29 @@ const navItems = [
     ],
   },
 
-
-  { path: "/admin/users/memories", label: "Memories", icon: Users },
-  { path: "/admin/users/diary", label: "My Diary", icon: Users },
+  { path: "/admin/users/memories", label: "Memories", icon: Image },
+  { path: "/admin/users/diary", label: "My Diary", icon: NotebookText },
 
   { path: "/admin/users/all", label: "Customers", icon: Users },
-
-  // { path: "/admin/banners", label: "Promotion Banners", icon: Image },
-  // { path: "/admin/videos", label: "Showcase Videos", icon: Video },
-  // { path: "/admin/reviews", label: "Customer Reviews", icon: MessageSquare },
-  { path: "/admin/reports", label: "Reports", icon: BarChart3 },
-
-
-
   {
     label: "More",
-    icon: Package,
+    icon: Landmark,
     children: [
-      { path: "/admin/more/income", label: "All Income", icon: List },
-      { path: "/admin/more/transfer", label: "Transfer Amount", icon: PlusCircle },
-      { path: "/admin/planner/calendar", label: "Calendar", icon: CalendarCheck2 },
+      { path: "/admin/more/income", label: "All Income", icon: CircleDollarSign },
+      {
+        path: "/admin/more/transfer",
+        label: "Transfer Amount",
+        icon: ArrowLeftRight,
+      },
+      {
+        path: "/admin/planner/calendar",
+        label: "Calendar",
+        icon: CalendarDays,
+      },
     ],
   },
 
- 
+  { path: "/admin/reports", label: "Reports", icon: BarChart3 },
 ];
 
 /* ================= SIDEBAR ================= */
@@ -84,22 +77,7 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
   useEffect(() => {
     setOrderCounts({ all: 0, new: 0, delivery: 0, cancelled: 0 });
   }, []);
-  /* ================= ACTIVE ROUTE MAP ================= */
-  const activeRouteMap = {
-    "/admin/products": [
-      "/admin/products/all",
-      "/admin/products/add",
-      "/admin/products/category",
-    ],
-    "/admin/orders": [
-      "/admin/orders/all",
-      "/admin/orders/new",
-      "/admin/orders/billing",
-      "/admin/orders/delivery",
-      "/admin/orders/cancelled",
-    ],
-    "/admin/users": ["/admin/users/all"],
-  };
+
 
   /* ================= HELPERS & LOGIC ================= */
   const isActiveRoute = (item) => {
@@ -180,11 +158,11 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
             </div>
             {!collapsed && (
               <div className="overflow-hidden">
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#D4AF37] mb-1">
+                <p className="text-[18px] font-extrabold uppercase tracking-[0.1em] text-[#D4AF37] mb-1">
                   Life Ledger
                 </p>
                 <p className="text-sm font-semibold tracking-wide text-white">
-                  Life Ledger Admin
+                  Manage Your Life (Admin)
                 </p>
               </div>
             )}

@@ -52,35 +52,18 @@ const getHeaderProductImage = (product) => {
 
 const pageTitles = {
   "/admin": "Dashboard",
-  "/admin/products/all": "All Products",
-  "/admin/products/add": "Add Product",
-  "/admin/products/edit": "Edit Product",
-  "/admin/products/category": "Categories",
-  "/admin/products/stock": "Stock Details",
-  "/admin/products/stock/add": "Add Stock",
-  "/admin/products": "Inventory",
-  "/admin/orders/billing": "Billing",
-  "/admin/orders/shop-create": "Create Billing",
-  "/admin/orders/new": "New Orders",
-  "/admin/orders/all": "All Orders",
-  "/admin/orders/delivery": "Delivery Orders",
-  "/admin/orders/cancelled": "Cancelled Orders",
-  "/admin/orders": "Orders",
+  "/admin/expensive/all": "All Expensive",
+  "/admin/expensive/category": "Categories",
   "/admin/users/all": "Customers",
   "/admin/users/new": "New Users",
   "/admin/users/diary": "My Diary",
   "/admin/users/memories": "Memories",
-  
-  "/admin/banners": "Banners",
-  "/admin/videos": "Reals Videos",
-  "/admin/dealers": "Dealers",
-  "/admin/dealers/add": "Add Dealer",
-  "/admin/invoices/add": "Add Invoice",
-  "/admin/reviews": "Reviews",
+  "/admin/more/income": "Income",
+  "/admin/more/transfer": "Transfer",
+  "/admin/planner/calendar": "Calendar",
   "/admin/reports": "Reports",
-  "/admin/settings": "Settings",
   "/admin/profile": "Profile",
-  "/admin/settings/profile": "Profile",
+
 };
 
 const Header = ({ onMenuClick }) => {
@@ -143,6 +126,52 @@ const Header = ({ onMenuClick }) => {
     setUnreadCount(0);
   };
 
+  const fetchSearchIndex = async () => {
+    try {
+      const [usersRes, expensesRes, eventsRes] = await Promise.all([
+        api.get("/auth/users").catch(() => ({ data: [] })),
+        api.get("/expenses").catch(() => ({ data: [] })),
+        api.get("/calendar/events").catch(() => ({ data: { data: [] } })),
+      ]);
+
+      const users = Array.isArray(usersRes?.data) ? usersRes.data : [];
+      const expenses = Array.isArray(expensesRes?.data) ? expensesRes.data : [];
+      const events = Array.isArray(eventsRes?.data?.data) ? eventsRes.data.data : [];
+
+      const searchItems = [
+        ...users.map((user) => ({
+          id: user.id || user.user_id,
+          type: "user",
+          name: user.name || user.username || "User",
+          label: user.name || user.username || "User",
+          subtitle: user.email || user.phone || "Customer",
+          path: "/admin/users/all",
+        })),
+        ...expenses.map((expense) => ({
+          id: expense.id,
+          type: "expense",
+          name: expense.title || expense.category || "Expense",
+          label: expense.title || expense.category || "Expense",
+          subtitle: `${expense.category || "Expense"} • ₹${Number(expense.expense_amount || 0).toLocaleString("en-IN")}`,
+          path: "/admin/expensive/all",
+        })),
+        ...events.map((event) => ({
+          id: event.id,
+          type: "event",
+          name: event.title || "Calendar Event",
+          label: event.title || "Calendar Event",
+          subtitle: event.startDate || event.reminderDate || event.date || "Calendar event",
+          path: "/admin/planner/calendar",
+        })),
+      ];
+
+      setAllOrders(searchItems);
+    } catch (error) {
+      console.error("Search index fetch failed", error);
+      setAllOrders([]);
+    }
+  };
+
   const fetchCalendarNotifications = async () => {
     try {
       const res = await api.get("/calendar/events");
@@ -171,6 +200,7 @@ const Header = ({ onMenuClick }) => {
   useEffect(() => {
     setAllOrders([]);
     fetchNotifications();
+    fetchSearchIndex();
     fetchCalendarNotifications();
   }, []);
 
@@ -196,26 +226,23 @@ const Header = ({ onMenuClick }) => {
       setShowSearchResults(false);
       return;
     }
+
     setSearchLoading(true);
     const lower = q.toLowerCase().trim();
-    const matched = allOrders.filter(o => {
-      const orderId = `ORD-0${o.id}`;
-      const name = (o.customer_name || "").toLowerCase();
-      const phone = (o.customer_phone || "").toLowerCase();
-      return (
-        orderId.toLowerCase().includes(lower) ||
-        String(o.id).includes(lower) ||
-        name.includes(lower) ||
-        phone.includes(lower)
-      );
-    }).slice(0, 6);
+    const matched = allOrders.filter((item) => {
+      const text = `${item.label || ""} ${item.subtitle || ""} ${item.type || ""}`.toLowerCase();
+      return text.includes(lower) || String(item.id || "").includes(lower);
+    }).slice(0, 8);
+
     setSearchResults(matched);
     setShowSearchResults(true);
     setSearchLoading(false);
   };
 
-  const handleSearchResultClick = (orderId) => {
-    navigate(`/admin/orders/${orderId}`);
+  const handleSearchResultClick = (item) => {
+    if (item?.path) {
+      navigate(item.path);
+    }
     setSearchQuery("");
     setSearchResults([]);
     setShowSearchResults(false);
@@ -309,21 +336,7 @@ const Header = ({ onMenuClick }) => {
 
         {/* RIGHT */}
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 shadow-sm">
-            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-bold text-emerald-700 tracking-wide">
-              {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-            </span>
-          </div>
-
-          {todayCalendarEvents.length > 0 && (
-            <div className="hidden sm:flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 shadow-sm">
-              <CalendarDays className="w-4 h-4 text-violet-600" />
-              <span className="text-xs font-bold text-violet-700 tracking-wide">
-                Today: {todayCalendarEvents.length}
-              </span>
-            </div>
-          )}
+    
 
           {/* SEARCH */}
           <div className="relative flex items-center" ref={searchWrapperRef}>
@@ -336,7 +349,7 @@ const Header = ({ onMenuClick }) => {
                   value={searchQuery}
                   onChange={handleSearchInput}
                   onFocus={() => searchQuery && setShowSearchResults(true)}
-                  placeholder="Order ID, name, phone..."
+                  placeholder="Search users, expenses, events..."
                   className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-3 text-sm focus:outline-none focus:ring-3 focus:ring-gray-500/10 focus:border-gray-300 text-slate-700 transition-all"
                 />
                 {searchQuery && (
@@ -355,33 +368,25 @@ const Header = ({ onMenuClick }) => {
                         <div className="px-4 py-2 bg-slate-50">
                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{searchResults.length} Result{searchResults.length > 1 ? 's' : ''} found</p>
                         </div>
-                        {searchResults.map(order => (
+                        {searchResults.map((item) => (
                           <button
-                            key={order.id}
-                            onClick={() => handleSearchResultClick(order.id)}
+                            key={`${item.type}-${item.id || item.label}`}
+                            onClick={() => handleSearchResultClick(item)}
                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-blue-50/50 transition-all text-left group"
                           >
-                            {/* Avatar */}
                             <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-white text-xs font-black shrink-0 shadow">
-                              {(order.customer_name || "?").charAt(0).toUpperCase()}
+                              {(item.label || item.name || "?").charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-xs font-black text-slate-800 truncate">{order.customer_name || "Unknown"}</p>
-                                <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded shrink-0">ORD-0{order.id}</span>
+                                <p className="text-xs font-black text-slate-800 truncate">{item.label || item.name || "Result"}</p>
+                                <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded shrink-0 uppercase">
+                                  {item.type}
+                                </span>
                               </div>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[10px] text-slate-400 font-bold truncate">{order.customer_phone || "No phone"}</span>
-                                <span className="text-[9px] text-slate-300">•</span>
-                                <span className="text-[10px] font-black text-emerald-600">₹{Number(order.total_amount).toLocaleString('en-IN')}</span>
+                                <span className="text-[10px] text-slate-400 font-bold truncate">{item.subtitle || "Life Ledger"}</span>
                               </div>
-                            </div>
-                            <div>
-                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${order.status === 'Order Placed' ? 'bg-blue-100 text-blue-700' :
-                                order.status === 'Delivered' ? 'bg-emerald-100 text-emerald-700' :
-                                  order.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                                    'bg-amber-100 text-amber-700'
-                                }`}>{order.status}</span>
                             </div>
                           </button>
                         ))}
@@ -389,8 +394,8 @@ const Header = ({ onMenuClick }) => {
                     ) : (
                       <div className="px-4 py-6 text-center">
                         <Search className="w-6 h-6 text-slate-200 mx-auto mb-2" />
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No orders found</p>
-                        <p className="text-[9px] text-slate-300 mt-1">Try name, phone or order ID</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No matching records</p>
+                        <p className="text-[9px] text-slate-300 mt-1">Try a name, category, date, or event title</p>
                       </div>
                     )}
                   </div>
