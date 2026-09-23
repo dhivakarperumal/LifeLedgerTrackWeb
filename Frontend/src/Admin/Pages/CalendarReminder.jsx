@@ -543,13 +543,23 @@ const CalendarReminder = () => {
                   </div>
                 </div>
                 {item.type === 'event' ? (
-                  <button onClick={(e) => { e.stopPropagation(); handleDeleteEvent(item.id); }} className="rounded-xl border border-red-200 bg-red-50 p-2 text-red-600 transition hover:bg-red-100 z-10 relative">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-2 z-10 relative">
+                    <button onClick={(e) => { e.stopPropagation(); openEditItem('event', item); }} className="rounded-xl border border-violet-200 bg-violet-50 p-2 text-violet-600 transition hover:bg-violet-100">
+                      <PencilLine className="h-4 w-4" />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteEvent(item.id); }} className="rounded-xl border border-red-200 bg-red-50 p-2 text-red-600 transition hover:bg-red-100">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 ) : (
-                  <button onClick={(e) => { e.stopPropagation(); handleCompleteReminder(item.id); }} className="rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-emerald-600 transition hover:bg-emerald-100 z-10 relative">
-                    <CheckCircle2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-2 z-10 relative">
+                    <button onClick={(e) => { e.stopPropagation(); openEditItem('reminder', item); }} className="rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-emerald-600 transition hover:bg-emerald-100">
+                      <PencilLine className="h-4 w-4" />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); handleCompleteReminder(item.id); }} className="rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-emerald-600 transition hover:bg-emerald-100">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
@@ -589,7 +599,10 @@ const CalendarReminder = () => {
                     <span>{event.location || 'No location'}</span>
                   </div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-red-600 z-10 relative"><Trash2 className="h-4 w-4" /></button>
+                <div className="flex items-center gap-1 z-10 relative">
+                  <button onClick={(e) => { e.stopPropagation(); openEditItem('event', event); }} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-violet-600"><PencilLine className="h-4 w-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                </div>
               </div>
             ))}
             </div>
@@ -610,7 +623,10 @@ const CalendarReminder = () => {
                   </div>
                   <div className="mt-2 text-xs text-slate-600">{reminder.notes || 'No notes'}</div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); handleDeleteReminder(reminder.id); }} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-red-600 z-10 relative"><Trash2 className="h-4 w-4" /></button>
+                <div className="flex items-center gap-1 z-10 relative">
+                  <button onClick={(e) => { e.stopPropagation(); openEditItem('reminder', reminder); }} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-emerald-600"><PencilLine className="h-4 w-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDeleteReminder(reminder.id); }} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                </div>
               </div>
             ))}
             </div>
