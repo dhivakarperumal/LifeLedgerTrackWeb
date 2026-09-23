@@ -69,6 +69,18 @@ const MemoriesManagement = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
+  const mergeUniqueFiles = (existingFiles, incomingFiles) => {
+    const seen = new Set(existingFiles.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
+    const uniqueFiles = incomingFiles.filter((file) => !seen.has(`${file.name}-${file.size}-${file.lastModified}`));
+    return [...existingFiles, ...uniqueFiles];
+  };
+
+  const getFilePreviewUrl = (file) => {
+    if (!file) return "";
+    if (typeof file === "string") return getMediaUrl(file);
+    return URL.createObjectURL(file);
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -134,6 +146,7 @@ const MemoriesManagement = () => {
     setEditingId(null);
     setSelectedMemory(null);
     setUploadFiles([]);
+    setRecordedVoiceName("");
     setForm({
       ...initialForm,
       category_id: memoryCategories[0]?.id || "",
@@ -144,6 +157,8 @@ const MemoriesManagement = () => {
   const openEditMemory = (memory) => {
     setEditingId(memory.id);
     setSelectedMemory(memory);
+    setUploadFiles([]);
+    setRecordedVoiceName("");
     setForm({
       title: memory.title || "",
       description: memory.description || "",
@@ -181,7 +196,7 @@ const MemoriesManagement = () => {
       Object.entries(form).forEach(([key, value]) => {
         if (value === null || value === undefined) return;
         if (key === "is_favorite") {
-          formData.append(key, value ? "true" : "false");
+          formData.append(key, value ? "1" : "0");
           return;
         }
         if (key === "category_id") {
@@ -206,6 +221,7 @@ const MemoriesManagement = () => {
       setIsEditorOpen(false);
       setForm(initialForm);
       setUploadFiles([]);
+      setRecordedVoiceName("");
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong.");
@@ -264,8 +280,8 @@ const MemoriesManagement = () => {
       recorder.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: "audio/webm" });
-        setUploadFile(file);
-        setRecordedVoiceName(file.name);
+        setUploadFiles((prevFiles) => mergeUniqueFiles(prevFiles, [file]));
+        setRecordedVoiceName((prevName) => (prevName ? `${prevName}, ${file.name}` : file.name));
         stream.getTracks().forEach((track) => track.stop());
       };
 
@@ -588,14 +604,59 @@ const MemoriesManagement = () => {
                         multiple
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
-                          setUploadFiles(files);
-                          if (files.length) setRecordedVoiceName(files[0].name);
+                          setUploadFiles((prevFiles) => mergeUniqueFiles(prevFiles, files));
+                          if (files.length) {
+                            setRecordedVoiceName((prevName) => {
+                              const nextNames = files.map((file) => file.name);
+                              return prevName ? `${prevName}, ${nextNames.join(", ")}` : nextNames.join(", ");
+                            });
+                          }
                         }}
                         className="hidden"
                       />
                     </label>
-                    <span className="text-sm text-slate-500">{uploadFiles.length ? `${uploadFiles.length} file(s) selected` : "No file chosen"}</span>
+                    <span className="text-sm text-slate-500">
+                      {uploadFiles.length ? `${uploadFiles.length} file(s) selected` : "No file chosen"}
+                    </span>
                   </div>
+
+                  {uploadFiles.length > 0 && (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      {uploadFiles.map((file, index) => {
+                        const fileType = file.type || "application/octet-stream";
+                        const previewUrl = getFilePreviewUrl(file);
+
+                        return (
+                          <div key={`${file.name}-${file.size}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                            <div className="max-h-44 overflow-hidden bg-slate-100">
+                              {fileType.startsWith("image/") ? (
+                                <img src={previewUrl} alt={file.name} className="h-44 w-full object-cover" />
+                              ) : fileType.startsWith("video/") ? (
+                                <video src={previewUrl} className="h-44 w-full object-cover" controls />
+                              ) : fileType.startsWith("audio/") ? (
+                                <div className="flex h-44 items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 p-3 text-white">
+                                  <audio src={previewUrl} controls className="w-full" />
+                                </div>
+                              ) : (
+                                <div className="flex h-44 items-center justify-center bg-slate-200 text-sm font-medium text-slate-700">{file.name}</div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between gap-3 px-3 py-2">
+                              <span className="truncate text-xs text-slate-600">{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => setUploadFiles((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))}
+                                className="rounded-lg bg-rose-100 px-2 py-1 text-[11px] font-semibold text-rose-600"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 

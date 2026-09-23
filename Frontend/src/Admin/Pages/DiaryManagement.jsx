@@ -23,9 +23,7 @@ const defaultMoodOptions = [
   { value: "Loved", emoji: "❤️" },
 ];
 
-const defaultCategories = [
-  "Personal", "Family", "Friends", "Work", "College", "Travel", "Birthday", "Wedding", "Goals", "Memories", "Ideas", "Important", "Other",
-];
+
 
 const formatDate = (value) => {
   if (!value) return "—";
@@ -39,7 +37,7 @@ const moodMap = Object.fromEntries(defaultMoodOptions.map((m) => [m.value, m.emo
 const isDiaryCategory = (category) => {
   const typeValue = String(category?.catType || category?.type || category?.category_type || "").trim().toLowerCase();
   const nameValue = String(category?.name || "").trim().toLowerCase();
-  const diaryAliases = ["diary", "journal", "daily", "journal entry", "diary entry"];
+  const diaryAliases = ["diary", "journal", "daily", "journal entry", "diary entry", "dairy"];
 
   return (
     diaryAliases.includes(typeValue) ||
@@ -664,9 +662,6 @@ const DiaryManagement = () => {
                       <option value="">Select category</option>
                       {categories.map((category) => (
                         <option key={category.id} value={category.id}>{category.name} {category.catType ? `(${category.catType})` : ""}</option>
-                      ))}
-                      {!categories.length && defaultCategories.map((name, index) => (
-                        <option key={`${name}-${index}`} value={index + 1}>{name}</option>
                       ))}
                     </select>
                     <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>

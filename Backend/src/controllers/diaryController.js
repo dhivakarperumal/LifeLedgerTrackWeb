@@ -95,9 +95,9 @@ const isDiaryCategoryRow = (category) => {
   const nameValue = String(category?.name || "").trim().toLowerCase();
 
   return (
-    ["diary", "journal", "daily", "journal entry", "diary entry"].includes(typeValue) ||
-    ["diary", "journal", "daily"].some((keyword) => typeValue.includes(keyword)) ||
-    ["diary", "journal", "daily"].some((keyword) => nameValue.includes(keyword))
+    ["diary", "journal", "daily", "journal entry", "diary entry", "dairy"].includes(typeValue) ||
+    ["diary", "journal", "daily", "dairy"].some((keyword) => typeValue.includes(keyword)) ||
+    ["diary", "journal", "daily", "dairy"].some((keyword) => nameValue.includes(keyword))
   );
 };
 

@@ -42,6 +42,17 @@ const parseTags = (value) => {
   return [];
 };
 
+const parseBooleanValue = (value, fallback = false) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["1", "true", "yes", "on"].includes(normalized)) return true;
+    if (["0", "false", "no", "off"].includes(normalized)) return false;
+  }
+  return fallback;
+};
+
 const syncMemoryCategoryFromShared = async (userId, categoryId, fallbackName = null) => {
   const resolvedId = categoryId ? Number(categoryId) : null;
 
@@ -229,6 +240,7 @@ const createMemory = async (req, res) => {
       return res.status(400).json({ message: "Memory title is required." });
     }
 
+    const favoriteFlag = parseBooleanValue(is_favorite, false);
     const resolvedCategory = await syncMemoryCategoryFromShared(req.user.user_id, category_id, req.body.category_name || req.body.category || null);
     const uploadedFiles = Array.isArray(req.files) ? req.files : [];
     const gallery = uploadedFiles.map((file) => `/uploads/memories/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}`);
@@ -260,7 +272,7 @@ const createMemory = async (req, res) => {
         mood || "Happy",
         tagValue,
         status || "published",
-        is_favorite ? 1 : 0,
+        favoriteFlag ? 1 : 0,
         mediaUrl,
         JSON.stringify(gallery),
         mediaType,
@@ -286,6 +298,7 @@ const updateMemory = async (req, res) => {
     }
 
     const { title, description, category_id, memory_date, location, tags, mood, status, is_favorite, voice_note } = req.body;
+    const favoriteFlag = parseBooleanValue(is_favorite, Boolean(existing[0][0].is_favorite));
     const resolvedCategory = await syncMemoryCategoryFromShared(req.user.user_id, category_id ?? existing[0][0].category_id, req.body.category_name || req.body.category || null);
     const uploadedFiles = Array.isArray(req.files) ? req.files : [];
     const gallery = uploadedFiles.length
@@ -321,7 +334,7 @@ const updateMemory = async (req, res) => {
         mood || existing[0][0].mood,
         tagValue,
         status || existing[0][0].status,
-        is_favorite ? 1 : (existing[0][0].is_favorite ? 1 : 0),
+        favoriteFlag ? 1 : 0,
         mediaUrl,
         JSON.stringify(gallery),
         mediaType,
