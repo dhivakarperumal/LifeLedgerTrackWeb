@@ -25,6 +25,7 @@ const applyIncomeBalanceDelta = async (incomeId) => {
 
 exports.getAllTransfers = async (req, res) => {
     try {
+        const userId = req.user?.user_id;
         const [rows] = await db.query(`
             SELECT
                 t.*,
@@ -32,9 +33,10 @@ exports.getAllTransfers = async (req, res) => {
                 (t.amount - COALESCE(SUM(e.expense_amount), 0)) AS computed_remaining
             FROM transfers t
             LEFT JOIN expenses e ON e.transfer_id = t.id
+            WHERE t.user_id = ?
             GROUP BY t.id
             ORDER BY t.transfer_date DESC, t.created_at DESC
-        `);
+        `, [userId]);
 
         /* Also keep remaining_amount in sync with computed value */
         const updates = rows
@@ -64,6 +66,7 @@ exports.getAllTransfers = async (req, res) => {
 exports.createTransfer = async (req, res) => {
     try {
         const { title, amount, category, paymentMethod, date, notes, sourceIncomeId } = req.body;
+        const userId = req.user?.user_id;
         if (!title || !amount || !category || !date) {
             return res.status(400).json({ message: "Title, amount, category, and date are required." });
         }
@@ -96,9 +99,24 @@ exports.createTransfer = async (req, res) => {
 
         const [result] = await db.query(
             `INSERT INTO transfers
-                (title, amount, remaining_amount, source_income_id, category, transfer_from, transfer_to, transfer_date, payment_method, notes, receipt)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [title.trim(), numericAmount, numericAmount, sourceIncomeId ? Number(sourceIncomeId) : null, category, "Account", "Account", date, paymentMethod || "Cash", notes || null, receiptPath]
+                (user_id, title, amount, remaining_amount, source_income_id, category, transfer_from, transfer_to, transfer_date, payment_method, notes, receipt, created_by, updated_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                userId || null,
+                title.trim(),
+                numericAmount,
+                numericAmount,
+                sourceIncomeId ? Number(sourceIncomeId) : null,
+                category,
+                "Account",
+                "Account",
+                date,
+                paymentMethod || "Cash",
+                notes || null,
+                receiptPath,
+                userId || null,
+                userId || null,
+            ]
         );
 
         if (selectedIncome) {
@@ -118,7 +136,7 @@ exports.updateTransfer = async (req, res) => {
         const { id } = req.params;
         const { title, amount, category, paymentMethod, date, notes, sourceIncomeId } = req.body;
 
-        const [transferRows] = await db.query("SELECT * FROM transfers WHERE id = ?", [id]);
+        const [transferRows] = await db.query("SELECT * FROM transfers WHERE id = ? AND user_id = ?", [id, req.user?.user_id]);
         const existingTransfer = transferRows[0];
 
         if (!existingTransfer) {
@@ -158,9 +176,10 @@ exports.updateTransfer = async (req, res) => {
 
         await db.query(
             `UPDATE transfers
-             SET title = ?, amount = ?, source_income_id = ?, category = ?, transfer_from = ?, transfer_to = ?, transfer_date = ?, payment_method = ?, notes = ?, receipt = ?
-             WHERE id = ?`,
+             SET user_id = ?, title = ?, amount = ?, source_income_id = ?, category = ?, transfer_from = ?, transfer_to = ?, transfer_date = ?, payment_method = ?, notes = ?, receipt = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND user_id = ?`,
             [
+                req.user?.user_id || existingTransfer.user_id,
                 (title || existingTransfer.title).trim(),
                 newAmount,
                 targetIncomeId || null,
@@ -171,7 +190,9 @@ exports.updateTransfer = async (req, res) => {
                 paymentMethod || existingTransfer.payment_method || "Cash",
                 notes ?? existingTransfer.notes,
                 req.file ? `/uploads/transfer-receipts/${req.file.filename}` : (existingTransfer.receipt || null),
+                req.user?.user_id || existingTransfer.user_id,
                 id,
+                req.user?.user_id,
             ]
         );
 
@@ -198,14 +219,14 @@ exports.updateTransfer = async (req, res) => {
 exports.deleteTransfer = async (req, res) => {
     try {
         const { id } = req.params;
-        const [transferRows] = await db.query("SELECT * FROM transfers WHERE id = ?", [id]);
+        const [transferRows] = await db.query("SELECT * FROM transfers WHERE id = ? AND user_id = ?", [id, req.user?.user_id]);
         const transfer = transferRows[0];
 
         if (!transfer) {
             return res.status(404).json({ message: "Transfer not found." });
         }
 
-        await db.query("DELETE FROM transfers WHERE id = ?", [id]);
+        await db.query("DELETE FROM transfers WHERE id = ? AND user_id = ?", [id, req.user?.user_id]);
 
         if (transfer.source_income_id) {
             await applyIncomeBalanceDelta(Number(transfer.source_income_id));

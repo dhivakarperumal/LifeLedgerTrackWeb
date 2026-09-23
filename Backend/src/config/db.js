@@ -100,6 +100,7 @@ const initializeDatabase = async () => {
     )`,
     `CREATE TABLE IF NOT EXISTS transfers (
       id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NULL,
       title VARCHAR(255) NOT NULL,
       amount DECIMAL(12,2) NOT NULL,
       remaining_amount DECIMAL(12,2) DEFAULT NULL,
@@ -111,7 +112,10 @@ const initializeDatabase = async () => {
       payment_method VARCHAR(100),
       notes TEXT,
       receipt VARCHAR(500) NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS expenses (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -124,10 +128,14 @@ const initializeDatabase = async () => {
       category VARCHAR(100) NOT NULL,
       payment_method VARCHAR(100) DEFAULT 'Cash',
       expense_date DATE NOT NULL,
+      expense_time TIME NULL,
       notes TEXT,
       recurring ENUM('Yes', 'No') NOT NULL DEFAULT 'No',
       attachment TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS memories (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -269,8 +277,14 @@ const initializeDatabase = async () => {
   await ensureColumn("income", "updated_by", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "user_id", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "transfer_id", "INT NULL");
+  await ensureColumn("expenses", "expense_time", "TIME NULL");
   await ensureColumn("expenses", "created_by", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "updated_by", "VARCHAR(50) NULL");
+  await ensureColumn("expenses", "updated_at", "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+  await ensureColumn("transfers", "user_id", "VARCHAR(50) NULL");
+  await ensureColumn("transfers", "created_by", "VARCHAR(50) NULL");
+  await ensureColumn("transfers", "updated_by", "VARCHAR(50) NULL");
+  await ensureColumn("transfers", "updated_at", "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
   await ensureColumn("transfers", "remaining_amount", "DECIMAL(12,2) DEFAULT NULL");
   await ensureColumn("transfers", "receipt", "VARCHAR(500) NULL");
 
@@ -285,6 +299,15 @@ const initializeDatabase = async () => {
   );
   await pool.query(
     "UPDATE expenses SET updated_by = user_id WHERE updated_by IS NULL AND user_id IS NOT NULL"
+  );
+  await pool.query(
+    "UPDATE expenses SET expense_time = TIME(created_at) WHERE expense_time IS NULL AND created_at IS NOT NULL"
+  );
+  await pool.query(
+    "UPDATE transfers SET created_by = user_id WHERE created_by IS NULL AND user_id IS NOT NULL"
+  );
+  await pool.query(
+    "UPDATE transfers SET updated_by = user_id WHERE updated_by IS NULL AND user_id IS NOT NULL"
   );
 
   const [incomeBalanceColumn] = await pool.query(

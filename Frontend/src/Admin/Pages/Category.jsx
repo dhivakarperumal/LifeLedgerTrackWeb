@@ -527,18 +527,19 @@ const Category = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Category ID (Auto)</label>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Category ID</label>
                                     <input
                                         type="text"
                                         name="catId"
                                         value={formData.catId}
                                         readOnly
+                                        placeholder="Enter category ID"
                                         className="w-full bg-gray-50 border border-gray-200 text-gray-500 font-bold rounded-xl px-4 py-2.5 cursor-not-allowed focus:outline-none text-sm"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Cat Type</label>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Category Type</label>
                                     <select
                                         value={formData.catType || "Expensive"}
                                         onChange={(e) => setFormData(prev => ({ ...prev, catType: e.target.value }))}
@@ -557,13 +558,13 @@ const Category = () => {
                                         name="name"
                                         value={formData.name}
                                         onChange={handleInputChange}
-                                        placeholder="e.g. Silk Sarees"
+                                        placeholder="Enter category name"
                                         className="w-full bg-white border border-gray-200 text-slate-800 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-sm"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">SubCategory</label>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Sub Category</label>
                                     <div className="space-y-2">
                                         {subcategories.map((subcategory, index) => (
                                             <div key={index} className="flex items-center gap-2">
@@ -571,7 +572,7 @@ const Category = () => {
                                                     type="text"
                                                     value={subcategory}
                                                     onChange={(e) => updateSubcategory(index, e.target.value)}
-                                                    placeholder={`SubCategory ${index + 1}`}
+                                                    placeholder={`Enter sub category ${index + 1}`}
                                                     className="flex-1 min-w-0 bg-white border border-gray-200 text-slate-800 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-sm"
                                                 />
                                                 {subcategories.length > 1 && (
@@ -591,7 +592,7 @@ const Category = () => {
                                             onClick={addSubcategoryField}
                                             className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-600 hover:text-purple-800"
                                         >
-                                            <FiPlus size={14} /> Add SubCategory
+                                            <FiPlus size={14} /> Add Sub Category
                                         </button>
                                     </div>
                                 </div>
@@ -604,7 +605,7 @@ const Category = () => {
                                         name="description"
                                         value={formData.description}
                                         onChange={handleInputChange}
-                                        placeholder="Brief description..."
+                                        placeholder="Enter description"
                                         rows="4"
                                         className="w-full bg-white border border-gray-200 text-slate-800 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none font-medium text-sm"
                                     ></textarea>
@@ -637,7 +638,7 @@ const Category = () => {
                                             <div className="w-8 h-8 bg-white shadow-sm rounded-full flex items-center justify-center mb-2 text-purple-500">
                                                 <FiUploadCloud size={16} />
                                             </div>
-                                            <p className="text-xs font-bold text-slate-700">Upload Images</p>
+                                            <p className="text-xs font-bold text-slate-700">Upload Category Images</p>
                                             <p className="text-[10px] text-gray-500 mt-0.5 font-medium">PNG, JPG up to 5MB</p>
                                         </label>
                                     )}

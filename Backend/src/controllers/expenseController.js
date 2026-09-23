@@ -42,6 +42,8 @@ exports.createExpense = async (req, res) => {
             category,
             payment_method,
             date,
+            time,
+            expense_time,
             notes,
             recurring,
         } = req.body;
@@ -87,11 +89,12 @@ exports.createExpense = async (req, res) => {
         const attachmentPath = req.file
             ? `/uploads/expense-receipts/${req.file.filename}`
             : null;
+        const expenseTime = time || expense_time || null;
 
         const [result] = await db.query(
             `INSERT INTO expenses
-                (user_id, title, expense_amount, transfer_amount, transfer_id, remaining_amount, category, payment_method, expense_date, notes, recurring, attachment)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                (user_id, title, expense_amount, transfer_amount, transfer_id, remaining_amount, category, payment_method, expense_date, expense_time, notes, recurring, attachment, created_by, updated_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 req.user?.user_id || null,
                 title.trim(),
@@ -102,9 +105,12 @@ exports.createExpense = async (req, res) => {
                 category,
                 payment_method || "Cash",
                 date,
+                expenseTime,
                 notes || null,
                 recurring === "Yes" ? "Yes" : "No",
                 attachmentPath,
+                req.user?.user_id || null,
+                req.user?.user_id || null,
             ]
         );
 
@@ -131,6 +137,8 @@ exports.updateExpense = async (req, res) => {
             category,
             payment_method,
             date,
+            time,
+            expense_time,
             notes,
             recurring,
         } = req.body;
@@ -178,10 +186,11 @@ exports.updateExpense = async (req, res) => {
 
         const remaining = numericTransfer !== null ? numericTransfer - numericExpense : null;
         const attachmentPath = req.file ? `/uploads/expense-receipts/${req.file.filename}` : existingExpense.attachment;
+        const expenseTime = time || expense_time || existingExpense.expense_time || null;
 
         await db.query(
             `UPDATE expenses
-             SET user_id = ?, title = ?, expense_amount = ?, transfer_amount = ?, transfer_id = ?, remaining_amount = ?, category = ?, payment_method = ?, expense_date = ?, notes = ?, recurring = ?, attachment = ?
+             SET user_id = ?, title = ?, expense_amount = ?, transfer_amount = ?, transfer_id = ?, remaining_amount = ?, category = ?, payment_method = ?, expense_date = ?, expense_time = ?, notes = ?, recurring = ?, attachment = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ? AND user_id = ?`,
             [
                 req.user?.user_id || existingExpense.user_id,
@@ -193,9 +202,11 @@ exports.updateExpense = async (req, res) => {
                 category || existingExpense.category,
                 payment_method || existingExpense.payment_method,
                 date || existingExpense.expense_date,
+                expenseTime,
                 notes !== undefined ? notes : existingExpense.notes,
                 recurring === "Yes" ? "Yes" : (recurring === "No" ? "No" : existingExpense.recurring),
                 attachmentPath,
+                req.user?.user_id || existingExpense.user_id,
                 id,
                 req.user?.user_id,
             ]
