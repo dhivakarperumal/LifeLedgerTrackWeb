@@ -47,9 +47,7 @@ const router = createBrowserRouter([
     path: "/home",
     element: <App />,
     errorElement: <ErrorPage />,
-    children: [
-      { path: "", element: <Home /> },
-    ],
+    children: [{ path: "", element: <Home /> }],
   },
   { path: "/register", element: <Register /> },
   {
@@ -64,23 +62,16 @@ const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       { index: true, element: <Dashboard /> },
-      // Products
       { path: "products/all", element: <AllProducts /> },
       { path: "products/category", element: <Category /> },
       { path: "expensive/all", element: <AllExpensive /> },
       { path: "expensive/category", element: <Category /> },
-      
-      // Others
       { path: "users/all", element: <Users initialTab="All" /> },
       { path: "users/new", element: <Users initialTab="New" /> },
       { path: "users/diary", element: <DiaryManagement /> },
       { path: "users/diary/:id", element: <DiaryDetails /> },
       { path: "users/memories", element: <MemoriesManagement /> },
       { path: "users/memories/:id", element: <MemoryDetails /> },
-      // Marketing & Support
-
-      // Finance
-      
       { path: "more/income", element: <Income /> },
       { path: "more/transfer", element: <Transfer /> },
       { path: "more/add", element: <Transfer /> },
