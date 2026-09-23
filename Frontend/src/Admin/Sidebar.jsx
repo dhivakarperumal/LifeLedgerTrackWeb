@@ -49,7 +49,7 @@ const navItems = [
 
   {
     path: "/admin/expensive/all",
-    label: "All Expensive",
+    label: "Expensive",
     icon: ReceiptText,
   },
 
