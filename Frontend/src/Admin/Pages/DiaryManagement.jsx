@@ -109,6 +109,15 @@ const DiaryManagement = () => {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [files, setFiles] = useState([]);
   const [existingFiles, setExistingFiles] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
+  const [existingVideos, setExistingVideos] = useState([]);
+  const [existingAudios, setExistingAudios] = useState([]);
+  const [newImages, setNewImages] = useState([]);
+  const [newVideos, setNewVideos] = useState([]);
+  const [newAudios, setNewAudios] = useState([]);
+  const [removedImageIds, setRemovedImageIds] = useState([]);
+  const [removedVideoIds, setRemovedVideoIds] = useState([]);
+  const [removedAudioIds, setRemovedAudioIds] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -144,6 +153,7 @@ const DiaryManagement = () => {
     ["image_path", "video_path", "audio_path", "file_path"].forEach((key) => {
       if (entry?.[key]) {
         fallbackEntries.push({
+          id: `${key}-${entry.id || Date.now()}`,
           file_name: entry[key].split("/").pop() || key,
           file_url: entry[key],
           file_type: key.includes("image") ? "image" : key.includes("video") ? "video" : key.includes("audio") ? "audio" : "file",
@@ -159,12 +169,36 @@ const DiaryManagement = () => {
       const type = String(item.file_type || item.type || "application/octet-stream");
 
       return {
-        id: item.id || `${fileName}-${index}`,
+        id: String(item.id || `${fileName}-${index}`),
         name: fileName,
         type,
         previewUrl: fileUrl,
       };
     });
+  };
+
+  const splitExistingDiaryMedia = (mediaList = []) => {
+    const images = [];
+    const videos = [];
+    const audios = [];
+
+    mediaList.forEach((item) => {
+      const type = String(item?.type || item?.file_type || "").toLowerCase();
+      const name = String(item?.name || item?.file_name || "").toLowerCase();
+      const kind = type.startsWith("image/") || type === "image" || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name)
+        ? "image"
+        : type.startsWith("video/") || type === "video" || /\.(mp4|webm|mov|m4v|ogg)$/i.test(name)
+          ? "video"
+          : type.startsWith("audio/") || type === "audio" || /\.(mp3|wav|m4a|aac)$/i.test(name)
+            ? "audio"
+            : "image";
+
+      if (kind === "image") images.push(item);
+      if (kind === "video") videos.push(item);
+      if (kind === "audio") audios.push(item);
+    });
+
+    return { images, videos, audios };
   };
 
   const [formState, setFormState] = useState({
@@ -312,6 +346,15 @@ const DiaryManagement = () => {
     setSelectedEntry(null);
     setFiles([]);
     setExistingFiles([]);
+    setExistingImages([]);
+    setExistingVideos([]);
+    setExistingAudios([]);
+    setNewImages([]);
+    setNewVideos([]);
+    setNewAudios([]);
+    setRemovedImageIds([]);
+    setRemovedVideoIds([]);
+    setRemovedAudioIds([]);
     setFormState({
       title: "",
       content: "",
@@ -335,9 +378,21 @@ const DiaryManagement = () => {
   };
 
   const openEditEntry = (entry) => {
+    const normalizedMedia = normalizeExistingDiaryMedia(entry);
+    const { images, videos, audios } = splitExistingDiaryMedia(normalizedMedia);
+
     setEditingId(entry.id);
     setSelectedEntry(entry);
-    setExistingFiles(normalizeExistingDiaryMedia(entry));
+    setExistingFiles(normalizedMedia);
+    setExistingImages(images);
+    setExistingVideos(videos);
+    setExistingAudios(audios);
+    setNewImages([]);
+    setNewVideos([]);
+    setNewAudios([]);
+    setRemovedImageIds([]);
+    setRemovedVideoIds([]);
+    setRemovedAudioIds([]);
     setFiles([]);
     setFormState({
       title: entry.title || "",
@@ -372,6 +427,15 @@ const DiaryManagement = () => {
     setEditingId(null);
     setFiles([]);
     setExistingFiles([]);
+    setExistingImages([]);
+    setExistingVideos([]);
+    setExistingAudios([]);
+    setNewImages([]);
+    setNewVideos([]);
+    setNewAudios([]);
+    setRemovedImageIds([]);
+    setRemovedVideoIds([]);
+    setRemovedAudioIds([]);
     setSelectedEntry(null);
     setDraftSaved(true);
     localStorage.removeItem("diary-draft-temp");
@@ -409,7 +473,14 @@ const DiaryManagement = () => {
       tags: formState.tags ? formState.tags.split(",").map((tag) => tag.trim()).filter(Boolean) : [],
       category_id: formState.category_id || null,
       mood: formState.mood || "Happy",
+      removed_image_ids: removedImageIds,
+      removed_video_ids: removedVideoIds,
+      removed_audio_ids: removedAudioIds,
     };
+
+    if (!removedImageIds.length) delete payload.removed_image_ids;
+    if (!removedVideoIds.length) delete payload.removed_video_ids;
+    if (!removedAudioIds.length) delete payload.removed_audio_ids;
 
     try {
       const config = { headers: { "Content-Type": "application/json" } };
@@ -423,7 +494,7 @@ const DiaryManagement = () => {
       }
 
       const savedEntryId = response?.data?.id || editingId;
-      const newUploadFiles = files.filter((file) => file instanceof File || file instanceof Blob);
+      const newUploadFiles = [...newImages, ...newVideos, ...newAudios, ...files.filter((file) => file instanceof File || file instanceof Blob)];
       if (newUploadFiles.length) {
         await uploadAttachmentFiles(savedEntryId, newUploadFiles);
       }
@@ -433,6 +504,15 @@ const DiaryManagement = () => {
       setSelectedEntry(response.data || selectedEntry);
       setFiles([]);
       setExistingFiles([]);
+      setExistingImages([]);
+      setExistingVideos([]);
+      setExistingAudios([]);
+      setNewImages([]);
+      setNewVideos([]);
+      setNewAudios([]);
+      setRemovedImageIds([]);
+      setRemovedVideoIds([]);
+      setRemovedAudioIds([]);
       setDraftSaved(true);
       await fetchData();
       closeEditor();
@@ -464,7 +544,14 @@ const DiaryManagement = () => {
 
   const handleFiles = (e) => {
     const selectedFiles = Array.from(e.target.files || []);
+    const imageFiles = selectedFiles.filter((file) => file.type.startsWith("image/"));
+    const videoFiles = selectedFiles.filter((file) => file.type.startsWith("video/"));
+    const audioFiles = selectedFiles.filter((file) => file.type.startsWith("audio/"));
+
     setFiles((prevFiles) => mergeUniqueFiles(prevFiles, selectedFiles));
+    setNewImages((prevFiles) => mergeUniqueFiles(prevFiles, imageFiles));
+    setNewVideos((prevFiles) => mergeUniqueFiles(prevFiles, videoFiles));
+    setNewAudios((prevFiles) => mergeUniqueFiles(prevFiles, audioFiles));
   };
 
   const startVoiceRecording = async () => {
@@ -481,6 +568,7 @@ const DiaryManagement = () => {
         const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: "audio/webm" });
         setFiles((prevFiles) => mergeUniqueFiles(prevFiles, [file]));
+        setNewAudios((prevFiles) => mergeUniqueFiles(prevFiles, [file]));
         stream.getTracks().forEach((track) => track.stop());
       };
 
@@ -843,50 +931,106 @@ const DiaryManagement = () => {
                       </label>
                     </div>
                   </div>
-                  {(existingFiles.length > 0 || files.length > 0) && (
+                  {(existingImages.length > 0 || existingVideos.length > 0 || existingAudios.length > 0 || newImages.length > 0 || newVideos.length > 0 || newAudios.length > 0) && (
                     <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {[...existingFiles, ...files].map((file, index) => {
-                        const fileType = file.type || file.file_type || "application/octet-stream";
-                        const previewUrl = getFilePreviewUrl(file);
-                        const isExisting = index < existingFiles.length;
-
-                        return (
-                          <div key={`${file.name}-${file.size}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div className="max-h-40 overflow-hidden bg-slate-100">
-                              {fileType.startsWith("image/") ? (
-                                <img src={previewUrl} alt={file.name} className="h-40 w-full object-cover" />
-                              ) : fileType.startsWith("video/") ? (
-                                <video src={previewUrl} className="h-40 w-full object-cover" controls />
-                              ) : fileType.startsWith("audio/") ? (
-                                <div className="flex h-40 items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500">
-                                  <audio src={previewUrl} controls className="w-full px-2" />
-                                </div>
-                              ) : (
-                                <div className="flex h-40 items-center justify-center bg-slate-200 px-3 text-center text-xs font-medium text-slate-700">
-                                  {file.name}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex items-center justify-between gap-2 px-3 py-2">
-                              <span className="truncate text-[11px] text-slate-600">{file.name}</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (isExisting) {
-                                    setExistingFiles((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index));
-                                  } else {
-                                    setFiles((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index - existingFiles.length));
-                                  }
-                                }}
-                                className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-600"
-                              >
-                                Remove
-                              </button>
-                            </div>
+                      {existingImages.map((file, index) => (
+                        <div key={`${file.id || file.name}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                          <div className="max-h-40 overflow-hidden bg-slate-100">
+                            <img src={getFilePreviewUrl(file)} alt={file.name} className="h-40 w-full object-cover" />
                           </div>
-                        );
-                      })}
+                          <div className="flex items-center justify-between gap-2 px-3 py-2">
+                            <span className="truncate text-[11px] text-slate-600">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRemovedImageIds((prev) => [...new Set([...prev, String(file.id)])]);
+                                setExistingImages((prev) => prev.filter((item) => String(item.id) !== String(file.id)));
+                              }}
+                              className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-600"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {existingVideos.map((file, index) => (
+                        <div key={`${file.id || file.name}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                          <div className="max-h-40 overflow-hidden bg-slate-100">
+                            <video src={getFilePreviewUrl(file)} className="h-40 w-full object-cover" controls />
+                          </div>
+                          <div className="flex items-center justify-between gap-2 px-3 py-2">
+                            <span className="truncate text-[11px] text-slate-600">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRemovedVideoIds((prev) => [...new Set([...prev, String(file.id)])]);
+                                setExistingVideos((prev) => prev.filter((item) => String(item.id) !== String(file.id)));
+                              }}
+                              className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-600"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {existingAudios.map((file, index) => (
+                        <div key={`${file.id || file.name}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                          <div className="max-h-40 overflow-hidden bg-gradient-to-br from-violet-500 to-pink-500">
+                            <audio src={getFilePreviewUrl(file)} controls className="w-full p-2" />
+                          </div>
+                          <div className="flex items-center justify-between gap-2 px-3 py-2">
+                            <span className="truncate text-[11px] text-slate-600">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRemovedAudioIds((prev) => [...new Set([...prev, String(file.id)])]);
+                                setExistingAudios((prev) => prev.filter((item) => String(item.id) !== String(file.id)));
+                              }}
+                              className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-600"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {newImages.map((file, index) => (
+                        <div key={`${file.name}-${file.size}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                          <div className="max-h-40 overflow-hidden bg-slate-100">
+                            <img src={getFilePreviewUrl(file)} alt={file.name} className="h-40 w-full object-cover" />
+                          </div>
+                          <div className="flex items-center justify-between gap-2 px-3 py-2">
+                            <span className="truncate text-[11px] text-slate-600">{file.name}</span>
+                            <button type="button" onClick={() => setNewImages((prev) => prev.filter((_, itemIndex) => itemIndex !== index))} className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-600">Remove</button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {newVideos.map((file, index) => (
+                        <div key={`${file.name}-${file.size}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                          <div className="max-h-40 overflow-hidden bg-slate-100">
+                            <video src={getFilePreviewUrl(file)} className="h-40 w-full object-cover" controls />
+                          </div>
+                          <div className="flex items-center justify-between gap-2 px-3 py-2">
+                            <span className="truncate text-[11px] text-slate-600">{file.name}</span>
+                            <button type="button" onClick={() => setNewVideos((prev) => prev.filter((_, itemIndex) => itemIndex !== index))} className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-600">Remove</button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {newAudios.map((file, index) => (
+                        <div key={`${file.name}-${file.size}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                          <div className="max-h-40 overflow-hidden bg-gradient-to-br from-violet-500 to-pink-500">
+                            <audio src={getFilePreviewUrl(file)} controls className="w-full p-2" />
+                          </div>
+                          <div className="flex items-center justify-between gap-2 px-3 py-2">
+                            <span className="truncate text-[11px] text-slate-600">{file.name}</span>
+                            <button type="button" onClick={() => setNewAudios((prev) => prev.filter((_, itemIndex) => itemIndex !== index))} className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-600">Remove</button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

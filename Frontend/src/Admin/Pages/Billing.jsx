@@ -10,6 +10,7 @@ import {
   FiEye,
   FiEdit2,
   FiTrash2,
+  FiFileText,
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import api from "../../api";
@@ -42,6 +43,7 @@ const Billing = () => {
   const [incomes, setIncomes] = useState([]);
   const [selectedIncome, setSelectedIncome] = useState(null);
   const [editingIncomeId, setEditingIncomeId] = useState(null);
+  const [existingAttachment, setExistingAttachment] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [incomeFilter, setIncomeFilter] = useState("All Income");
@@ -80,12 +82,14 @@ const Billing = () => {
     setIsModalOpen(false);
     setSelectedIncome(null);
     setEditingIncomeId(null);
+    setExistingAttachment(null);
     setForm(initialForm);
   };
 
   const openAddIncome = () => {
     setSelectedIncome(null);
     setEditingIncomeId(null);
+    setExistingAttachment(null);
     setForm(initialForm);
     setIsModalOpen(true);
   };
@@ -93,6 +97,7 @@ const Billing = () => {
   const openEditIncome = (income) => {
     setSelectedIncome(null);
     setEditingIncomeId(income.id);
+    setExistingAttachment(income.attachment || null);
     setForm({
       title: income.title || "",
       amount: income.amount ?? "",
@@ -754,24 +759,70 @@ const Billing = () => {
                     ))}
                   </div>
                 </fieldset>
-                <label>
+                <div>
                   <span className="mb-2 block text-sm font-bold text-slate-700">
                     Attachment / Receipt{" "}
                     <small className="font-normal text-slate-400">
                       (Optional)
                     </small>
                   </span>
-                  <span className="flex items-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500">
+
+                  {/* ── Existing receipt preview (edit mode only) ── */}
+                  {existingAttachment && !form.attachment && (
+                    <div className="mb-3 flex items-start gap-3 rounded-xl border border-purple-200 bg-purple-50 p-3">
+                      <div className="shrink-0">
+                        {/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(existingAttachment) ? (
+                          <a
+                            href={`${import.meta.env.VITE_API_URL.replace("/api", "")}${existingAttachment}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <img
+                              src={`${import.meta.env.VITE_API_URL.replace("/api", "")}${existingAttachment}`}
+                              alt="Current receipt"
+                              className="h-20 w-20 rounded-lg border border-purple-200 object-cover shadow-sm hover:opacity-90 transition-opacity"
+                            />
+                          </a>
+                        ) : (
+                          <a
+                            href={`${import.meta.env.VITE_API_URL.replace("/api", "")}${existingAttachment}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex h-20 w-20 items-center justify-center rounded-lg border border-purple-200 bg-white text-purple-600 shadow-sm hover:bg-purple-100 transition-colors"
+                          >
+                            <FiFileText size={24} />
+                          </a>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-black uppercase tracking-widest text-purple-600">Current Receipt</p>
+                        <a
+                          href={`${import.meta.env.VITE_API_URL.replace("/api", "")}${existingAttachment}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 block truncate text-xs font-semibold text-slate-600 hover:text-purple-700 hover:underline"
+                        >
+                          {existingAttachment.split("/").pop()}
+                        </a>
+                        <p className="mt-1 text-[10px] text-slate-400">Upload a new file below to replace it</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── File picker ── */}
+                  <label className="flex items-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500 cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-all">
                     <FiUpload />
                     <input
                       name="attachment"
                       type="file"
                       accept="image/*,.pdf"
-                      onChange={updateField}
+                      onChange={(e) => {
+                        updateField(e);
+                      }}
                       className="min-w-0 text-xs"
                     />
-                  </span>
-                </label>
+                  </label>
+                </div>
               </div>
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
                 <button

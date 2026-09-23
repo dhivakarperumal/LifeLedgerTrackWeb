@@ -81,6 +81,21 @@ const parseJsonField = (value) => {
   }
 };
 
+const parseIdList = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map((id) => String(id));
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map((id) => String(id)) : [String(parsed)];
+  } catch (error) {
+    return String(value)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((id) => String(id));
+  }
+};
+
 const diarySelectBase = `
   d.id, d.user_id, d.title, d.content, d.category_id,
   COALESCE(d.category_name, dc.name) AS category_name,
@@ -354,7 +369,22 @@ const updateDiaryEntry = async (req, res) => {
       media_files,
     } = req.body;
 
-    const nextMediaFiles = Array.isArray(media_files) ? media_files : parseJsonField(media_files);
+    const existingMediaFiles = parseJsonField(existing[0][0].media_files);
+    const removedImageIds = parseIdList(req.body.removed_image_ids || req.body.removedImages || req.body.removed_image_ids_json);
+    const removedVideoIds = parseIdList(req.body.removed_video_ids || req.body.removedVideos || req.body.removed_video_ids_json);
+    const removedAudioIds = parseIdList(req.body.removed_audio_ids || req.body.removedAudios || req.body.removed_audio_ids_json);
+    const nextMediaFiles = existingMediaFiles.filter((item) => {
+      const id = String(item?.id || "");
+      return !removedImageIds.includes(id) && !removedVideoIds.includes(id) && !removedAudioIds.includes(id);
+    });
+
+    const incomingMedia = Array.isArray(media_files) ? media_files : parseJsonField(media_files);
+    const finalMediaFiles = [...nextMediaFiles, ...incomingMedia];
+
+    const primaryImage = finalMediaFiles.find((file) => String(file.file_type || file.type || "").startsWith("image/")) || existing[0][0].image_path;
+    const primaryVideo = finalMediaFiles.find((file) => String(file.file_type || file.type || "").startsWith("video/")) || existing[0][0].video_path;
+    const primaryAudio = finalMediaFiles.find((file) => String(file.file_type || file.type || "").startsWith("audio/")) || existing[0][0].audio_path;
+    const primaryFile = finalMediaFiles.find((file) => !String(file.file_type || file.type || "").startsWith("image/") && !String(file.file_type || file.type || "").startsWith("video/") && !String(file.file_type || file.type || "").startsWith("audio/")) || existing[0][0].file_path;
 
     await db.query(
       `UPDATE diary_entries SET
@@ -376,11 +406,11 @@ const updateDiaryEntry = async (req, res) => {
         is_favorite !== undefined ? (is_favorite ? 1 : 0) : existing[0][0].is_favorite,
         is_private !== undefined ? (is_private ? 1 : 0) : existing[0][0].is_private,
         is_locked !== undefined ? (is_locked ? 1 : 0) : existing[0][0].is_locked,
-        image_path !== undefined ? image_path : existing[0][0].image_path,
-        video_path !== undefined ? video_path : existing[0][0].video_path,
-        audio_path !== undefined ? audio_path : existing[0][0].audio_path,
-        file_path !== undefined ? file_path : existing[0][0].file_path,
-        JSON.stringify(nextMediaFiles),
+        image_path !== undefined ? image_path : (typeof primaryImage === "string" ? primaryImage : primaryImage?.file_url || existing[0][0].image_path),
+        video_path !== undefined ? video_path : (typeof primaryVideo === "string" ? primaryVideo : primaryVideo?.file_url || existing[0][0].video_path),
+        audio_path !== undefined ? audio_path : (typeof primaryAudio === "string" ? primaryAudio : primaryAudio?.file_url || existing[0][0].audio_path),
+        file_path !== undefined ? file_path : (typeof primaryFile === "string" ? primaryFile : primaryFile?.file_url || existing[0][0].file_path),
+        JSON.stringify(finalMediaFiles),
         req.user.user_id,
         id,
         req.user.user_id,
