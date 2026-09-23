@@ -84,6 +84,7 @@ const Dashboard = () => {
     const [recentTransfers, setRecentTransfers] = useState([]);
     const [recentMemories,  setRecentMemories]  = useState([]);
     const [recentDiary,     setRecentDiary]     = useState([]);
+    const [recentEvents,    setRecentEvents]    = useState([]);
     const [activityLoading, setActivityLoading] = useState(true);
 
     useEffect(() => {
@@ -113,7 +114,8 @@ const Dashboard = () => {
     const getTodayItems = (items, dateFields = []) => {
         const list = Array.isArray(items) ? items : [];
         const todayKey = getLocalDateKey(new Date());
-        const filtered = list.filter((item) => {
+
+        return list.filter((item) => {
             if (!item) return false;
             return dateFields.some((field) => {
                 const val = item[field];
@@ -121,18 +123,17 @@ const Dashboard = () => {
                 return getLocalDateKey(val) === todayKey;
             });
         });
-
-        return filtered.length ? filtered : list;
     };
 
     const fetchRecentActivity = async () => {
         setActivityLoading(true);
         try {
-            const [expRes, trfRes, memRes, diaRes] = await Promise.allSettled([
+            const [expRes, trfRes, memRes, diaRes, eveRes] = await Promise.allSettled([
                 api.get("/expenses"),
                 api.get("/transfers"),
                 api.get("/memories"),
                 api.get("/diary"),
+                api.get("/calendar/events"),
             ]);
 
             if (expRes.status === "fulfilled") {
@@ -151,6 +152,17 @@ const Dashboard = () => {
                 const raw = diaRes.value.data;
                 const all = Array.isArray(raw) ? raw : (raw?.entries || raw?.data || []);
                 setRecentDiary(getTodayItems(all, ["entry_date", "created_at", "date"]).slice(0, 4));
+            }
+            if (eveRes.status === "fulfilled") {
+                const payload = eveRes.value?.data || [];
+                const all = Array.isArray(payload)
+                    ? payload
+                    : Array.isArray(payload?.data)
+                        ? payload.data
+                        : Array.isArray(payload?.events)
+                            ? payload.events
+                            : [];
+                setRecentEvents(getTodayItems(all, ["startDate", "start_date", "createdAt", "created_at"]).slice(0, 5));
             }
         } catch (err) {
             console.error("Fetch Recent Activity Error:", err);
@@ -438,7 +450,41 @@ const Dashboard = () => {
                         <div className="w-8 h-8 border-4 border-[#7b2cbf]/20 border-t-[#7b2cbf] rounded-full animate-spin" />
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+
+                        {/* ── Recent Events ── */}
+                        <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4 flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white shadow-sm">
+                                        <FiCalendar size={14} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-800">Events</p>
+                                        <p className="text-[10px] text-gray-400">{recentEvents.length} record{recentEvents.length !== 1 ? "s" : ""}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => navigate("/admin/planner/calendar")} className="text-[10px] text-violet-500 font-bold hover:underline flex items-center gap-1">
+                                    View All <FiArrowRight size={10} />
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {recentEvents.length === 0 ? (
+                                    <p className="text-center text-gray-300 text-xs py-4 font-semibold">No events today</p>
+                                ) : recentEvents.map((event) => (
+                                    <div key={event.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 shadow-sm border border-violet-100/60">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-slate-700 truncate">{event.title}</p>
+                                            <p className="text-[10px] text-gray-400 truncate">{event.category || "General"}</p>
+                                        </div>
+                                        <div className="text-right shrink-0 ml-2">
+                                            <p className="text-[10px] font-bold text-violet-600">{event.startTime || "All day"}</p>
+                                            <p className="text-[10px] text-gray-400">{event.location || "No place"}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
 
                         {/* ── Recent Expenses ── */}
                         <div className="rounded-xl border border-rose-100 bg-rose-50/40 p-4 flex flex-col gap-3">
