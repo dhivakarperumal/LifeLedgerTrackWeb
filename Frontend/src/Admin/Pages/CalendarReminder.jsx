@@ -99,12 +99,33 @@ const defaultReminderForm = {
   repeat: "",
 };
 
+const CALENDAR_CATEGORY_FALLBACK = [
+  "Birthday",
+  "Anniversary",
+  "Family",
+  "Personal",
+  "Work",
+  "Meeting",
+  "Appointment",
+  "Payment",
+  "Bill Due",
+  "Travel",
+  "Shopping",
+  "Education",
+  "Health",
+  "Festival",
+  "Holiday",
+  "Important",
+  "Other",
+];
+
 const CalendarReminder = () => {
   const [viewMode, setViewMode] = useState("month");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarMonth, setCalendarMonth] = useState(startOfMonth(new Date()));
   const [events, setEvents] = useState([]);
   const [reminders, setReminders] = useState([]);
+  const [calendarCategoryOptions, setCalendarCategoryOptions] = useState(CALENDAR_CATEGORY_FALLBACK);
   const [summary, setSummary] = useState({
     todayEvents: 0,
     todayReminders: 0,
@@ -124,16 +145,39 @@ const CalendarReminder = () => {
   const fetchCalendar = async () => {
     setLoading(true);
     try {
-      const [eventsRes] = await Promise.all([
+      const [eventsRes, categoriesRes] = await Promise.all([
         api.get("/calendar/events"),
+        api.get("/categories").catch(() => ({ data: [] })),
       ]);
 
       const eventList = Array.isArray(eventsRes?.data?.data) ? eventsRes.data.data : [];
+      const categoryList = Array.isArray(categoriesRes?.data)
+        ? categoriesRes.data
+        : Array.isArray(categoriesRes?.data?.data)
+          ? categoriesRes.data.data
+          : [];
+
+      const mappedCategories = categoryList
+        .filter((category) => {
+          const typeValue = String(category?.catType || category?.type || category?.category_type || "")
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "");
+
+          return ["calendarevent", "calendar", "event", "events", "reminder", "reminders"].includes(typeValue)
+            || typeValue.includes("calendarevent")
+            || typeValue.includes("calendar");
+        })
+        .map((category) => category.name)
+        .filter(Boolean);
+
       setEvents(eventList);
       setReminders([]);
+      setCalendarCategoryOptions(mappedCategories.length ? mappedCategories : CALENDAR_CATEGORY_FALLBACK);
       setSummary({});
     } catch (error) {
       console.error("Calendar fetch failed", error);
+      setCalendarCategoryOptions(CALENDAR_CATEGORY_FALLBACK);
       toast.error(error?.response?.data?.message || "Failed to load calendar data.");
     } finally {
       setLoading(false);
@@ -685,23 +729,9 @@ const CalendarReminder = () => {
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">Category</label>
                     <select value={eventForm.category} onChange={(e) => onChangeEventForm('category', e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white">
-                      <option>Birthday</option>
-                      <option>Anniversary</option>
-                      <option>Family</option>
-                      <option>Personal</option>
-                      <option>Work</option>
-                      <option>Meeting</option>
-                      <option>Appointment</option>
-                      <option>Payment</option>
-                      <option>Bill Due</option>
-                      <option>Travel</option>
-                      <option>Shopping</option>
-                      <option>Education</option>
-                      <option>Health</option>
-                      <option>Festival</option>
-                      <option>Holiday</option>
-                      <option>Important</option>
-                      <option>Other</option>
+                      {calendarCategoryOptions.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -761,23 +791,9 @@ const CalendarReminder = () => {
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">Category</label>
                     <select value={reminderForm.category} onChange={(e) => onChangeReminderForm('category', e.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white">
-                      <option>Birthday</option>
-                      <option>Anniversary</option>
-                      <option>Family</option>
-                      <option>Personal</option>
-                      <option>Work</option>
-                      <option>Meeting</option>
-                      <option>Appointment</option>
-                      <option>Payment</option>
-                      <option>Bill Due</option>
-                      <option>Travel</option>
-                      <option>Shopping</option>
-                      <option>Education</option>
-                      <option>Health</option>
-                      <option>Festival</option>
-                      <option>Holiday</option>
-                      <option>Important</option>
-                      <option>Other</option>
+                      {calendarCategoryOptions.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
                     </select>
                   </div>
                   <div>

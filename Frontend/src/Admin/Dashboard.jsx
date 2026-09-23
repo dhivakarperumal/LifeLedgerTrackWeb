@@ -749,66 +749,9 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Bottom Section: Recent Orders & Top Selling */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                {/* Recent Orders */}
-                <div className="lg:col-span-8 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-                    <div className="flex justify-between items-center mb-5">
-                        <h3 className="text-base font-black text-slate-800">Recent Orders</h3>
-                        <button onClick={() => navigate('/admin/orders/all')} className="text-xs font-bold text-purple-600 hover:underline">View All →</button>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr className="text-[11px] text-gray-400 uppercase tracking-wider border-b border-gray-100">
-                                    <th className="pb-3 font-bold">Order ID</th>
-                                    <th className="pb-3 font-bold">Customer</th>
-                                    <th className="pb-3 font-bold">Date</th>
-                                    <th className="pb-3 font-bold">Amount</th>
-                                    <th className="pb-3 font-bold">Status</th>
-                                    <th className="pb-3 font-bold text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {recentOrders && recentOrders.length > 0 ? recentOrders.map((order, i) => (
-                                    <tr key={i} className="hover:bg-slate-50/60 transition-colors group">
-                                        <td className="py-3 font-bold text-purple-600 text-xs">{order.id}</td>
-                                        <td className="py-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-black shrink-0">
-                                                    {(order.customer || 'G').charAt(0).toUpperCase()}
-                                                </div>
-                                                <span className="font-semibold text-slate-800 text-xs truncate max-w-[100px]">{order.customer}</span>
-                                            </div>
-                                        </td>
-                                        <td className="py-3 text-gray-400 text-xs">{formatOrderDate(order.date)}</td>
-                                        <td className="py-3 font-bold text-slate-800 text-xs">{order.amount}</td>
-                                        <td className="py-3">
-                                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${getStatusStyle(order.status)}`}>
-                                                {order.status}
-                                            </span>
-                                        </td>
-                                        <td className="py-3 text-center">
-                                            <button
-                                                onClick={() => navigate(`/admin/orders/${order.id.replace('#ORD-0', '')}`)}
-                                                className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mx-auto hover:bg-purple-600 hover:text-white transition-all"
-                                            >
-                                                <FiEye size={13} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={6} className="py-10 text-center text-gray-400 text-sm font-semibold">No recent orders found</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* Top Expense Categories */}
-                <div className="lg:col-span-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+            {/* Top Expense Categories */}
+            <div className="grid grid-cols-1 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex justify-between items-center mb-5">
                         <h3 className="text-base font-black text-slate-800">Top Expense Categories</h3>
                         <button onClick={() => navigate('/admin/expensive/category')} className="text-xs font-bold text-purple-600 hover:underline">View All →</button>

@@ -20,6 +20,22 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+app.get("/api/products", (req, res) => {
+  res.json({ success: true, data: [] });
+});
+
+app.get("/api/products/:id", (req, res) => {
+  res.status(404).json({ success: false, message: "Product not available." });
+});
+
+app.get("/api/orders", (req, res) => {
+  res.json({ success: true, data: [] });
+});
+
+app.get("/api/orders/:id", (req, res) => {
+  res.status(404).json({ success: false, message: "Order not available." });
+});
+
 app.use("/api/auth", require("./src/routes/authRoutes"));
 app.use("/api/categories", require("./src/routes/categoryRoutes"));
 app.use("/api/dashboard", require("./src/routes/dashboardRoutes"));

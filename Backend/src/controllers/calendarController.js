@@ -22,6 +22,9 @@ const safeNumber = (value) => Number(value || 0);
 
 const rowToEvent = (row) => ({
   id: row.id,
+  userId: row.user_id || null,
+  createdBy: row.created_by || null,
+  updatedBy: row.updated_by || null,
   title: row.title,
   category: row.category,
   startDate: formatLocalDate(row.start_date),
@@ -43,6 +46,9 @@ const rowToEvent = (row) => ({
 
 const rowToReminder = (row) => ({
   id: row.id,
+  userId: row.user_id || null,
+  createdBy: row.created_by || null,
+  updatedBy: row.updated_by || null,
   title: row.title,
   category: row.category,
   reminderDate: formatLocalDate(row.reminder_date),
@@ -73,17 +79,30 @@ const getUpcomingEvents = (events) => events.filter((event) => event.status !== 
 
 exports.getEvents = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM calendar_events ORDER BY start_date ASC, start_time ASC");
-    res.json({ success: true, data: rows.map(rowToEvent) });
+    const currentUserId = req.user?.user_id || null;
+    if (!currentUserId) {
+      return res.status(401).json({ success: false, message: "Authentication required." });
+    }
+
+    const [rows] = await db.query(
+      "SELECT * FROM calendar_events WHERE user_id = ? ORDER BY start_date ASC, start_time ASC",
+      [currentUserId]
+    );
+    return res.json({ success: true, data: rows.map(rowToEvent) });
   } catch (error) {
     console.error("Get events error:", error);
-    res.status(500).json({ success: false, message: "Unable to fetch events.", error: error.message });
+    return res.status(500).json({ success: false, message: "Unable to fetch events.", error: error.message });
   }
 };
 
 exports.getEventById = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM calendar_events WHERE id = ?", [req.params.id]);
+    const currentUserId = req.user?.user_id || null;
+    if (!currentUserId) {
+      return res.status(401).json({ success: false, message: "Authentication required." });
+    }
+
+    const [rows] = await db.query("SELECT * FROM calendar_events WHERE id = ? AND user_id = ?", [req.params.id, currentUserId]);
     if (!rows[0]) return res.status(404).json({ success: false, message: "Event not found." });
     return res.json({ success: true, data: rowToEvent(rows[0]) });
   } catch (error) {
@@ -97,6 +116,7 @@ exports.createEvent = async (req, res) => {
   const title = String(payload.title || "").trim();
   const category = String(payload.category || "").trim();
   const startDate = String(payload.startDate || "").trim();
+  const currentUserId = req.user?.user_id || payload.user_id || null;
 
   if (!title || !category || !startDate) {
     return res.status(400).json({ success: false, message: "Title, category and start date are required." });
@@ -107,6 +127,7 @@ exports.createEvent = async (req, res) => {
     const endDate = payload.endDate || startDate;
     const insertValues = [
       eventId,
+      currentUserId,
       title,
       category,
       startDate,
@@ -122,12 +143,14 @@ exports.createEvent = async (req, res) => {
       payload.repeat || "None",
       payload.attachment || "",
       payload.status || "Upcoming",
+      currentUserId,
+      currentUserId,
     ];
 
     await db.query(
       `INSERT INTO calendar_events
-        (id, title, category, start_date, start_time, end_date, end_time, all_day, location, description, priority, color, reminder, repeat_option, attachment, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, user_id, title, category, start_date, start_time, end_date, end_time, all_day, location, description, priority, color, reminder, repeat_option, attachment, status, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       insertValues
     );
 
@@ -141,12 +164,14 @@ exports.createEvent = async (req, res) => {
 
 exports.updateEvent = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM calendar_events WHERE id = ?", [req.params.id]);
+    const currentUserId = req.user?.user_id || null;
+    const [rows] = await db.query("SELECT * FROM calendar_events WHERE id = ? AND user_id = ?", [req.params.id, currentUserId]);
     const existing = rows[0];
     if (!existing) return res.status(404).json({ success: false, message: "Event not found." });
 
     const payload = req.body || {};
     const updated = {
+      user_id: currentUserId || payload.user_id || existing.user_id,
       title: String(payload.title || existing.title).trim(),
       category: String(payload.category || existing.category).trim(),
       start_date: payload.startDate || existing.start_date,
@@ -166,9 +191,10 @@ exports.updateEvent = async (req, res) => {
 
     await db.query(
       `UPDATE calendar_events
-       SET title = ?, category = ?, start_date = ?, start_time = ?, end_date = ?, end_time = ?, all_day = ?, location = ?, description = ?, priority = ?, color = ?, reminder = ?, repeat_option = ?, attachment = ?, status = ?, updated_at = NOW()
-       WHERE id = ?`,
+       SET user_id = ?, title = ?, category = ?, start_date = ?, start_time = ?, end_date = ?, end_time = ?, all_day = ?, location = ?, description = ?, priority = ?, color = ?, reminder = ?, repeat_option = ?, attachment = ?, status = ?, updated_by = ?, updated_at = NOW()
+       WHERE id = ? AND user_id = ?`,
       [
+        updated.user_id,
         updated.title,
         updated.category,
         updated.start_date,
@@ -184,7 +210,9 @@ exports.updateEvent = async (req, res) => {
         updated.repeat_option,
         updated.attachment,
         updated.status,
+        currentUserId || updated.user_id,
         req.params.id,
+        existing.user_id,
       ]
     );
 
@@ -198,7 +226,8 @@ exports.updateEvent = async (req, res) => {
 
 exports.deleteEvent = async (req, res) => {
   try {
-    const [result] = await db.query("DELETE FROM calendar_events WHERE id = ?", [req.params.id]);
+    const currentUserId = req.user?.user_id || null;
+    const [result] = await db.query("DELETE FROM calendar_events WHERE id = ? AND user_id = ?", [req.params.id, currentUserId]);
     if (!result.affectedRows) {
       return res.status(404).json({ success: false, message: "Event not found." });
     }
@@ -211,17 +240,30 @@ exports.deleteEvent = async (req, res) => {
 
 exports.getReminders = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM calendar_reminders ORDER BY reminder_date ASC, reminder_time ASC");
-    res.json({ success: true, data: rows.map(rowToReminder) });
+    const currentUserId = req.user?.user_id || null;
+    if (!currentUserId) {
+      return res.status(401).json({ success: false, message: "Authentication required." });
+    }
+
+    const [rows] = await db.query(
+      "SELECT * FROM calendar_reminders WHERE user_id = ? ORDER BY reminder_date ASC, reminder_time ASC",
+      [currentUserId]
+    );
+    return res.json({ success: true, data: rows.map(rowToReminder) });
   } catch (error) {
     console.error("Get reminders error:", error);
-    res.status(500).json({ success: false, message: "Unable to fetch reminders.", error: error.message });
+    return res.status(500).json({ success: false, message: "Unable to fetch reminders.", error: error.message });
   }
 };
 
 exports.getReminderById = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ?", [req.params.id]);
+    const currentUserId = req.user?.user_id || null;
+    if (!currentUserId) {
+      return res.status(401).json({ success: false, message: "Authentication required." });
+    }
+
+    const [rows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ? AND user_id = ?", [req.params.id, currentUserId]);
     if (!rows[0]) return res.status(404).json({ success: false, message: "Reminder not found." });
     return res.json({ success: true, data: rowToReminder(rows[0]) });
   } catch (error) {
@@ -235,6 +277,7 @@ exports.createReminder = async (req, res) => {
   const title = String(payload.title || "").trim();
   const category = String(payload.category || "").trim();
   const reminderDate = String(payload.reminderDate || "").trim();
+  const currentUserId = req.user?.user_id || payload.user_id || null;
 
   if (!title || !category || !reminderDate) {
     return res.status(400).json({ success: false, message: "Title, category and reminder date are required." });
@@ -244,10 +287,11 @@ exports.createReminder = async (req, res) => {
     const reminderId = makeId("rem");
     await db.query(
       `INSERT INTO calendar_reminders
-        (id, title, category, reminder_date, reminder_time, priority, notes, related_event, notification_enabled, repeat_option, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, user_id, title, category, reminder_date, reminder_time, priority, notes, related_event, notification_enabled, repeat_option, status, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         reminderId,
+        currentUserId,
         title,
         category,
         reminderDate,
@@ -258,6 +302,8 @@ exports.createReminder = async (req, res) => {
         payload.notificationEnabled !== false ? 1 : 0,
         payload.repeat || "None",
         payload.status || "Pending",
+        currentUserId,
+        currentUserId,
       ]
     );
 
@@ -271,12 +317,14 @@ exports.createReminder = async (req, res) => {
 
 exports.updateReminder = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ?", [req.params.id]);
+    const currentUserId = req.user?.user_id || null;
+    const [rows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ? AND user_id = ?", [req.params.id, currentUserId]);
     const existing = rows[0];
     if (!existing) return res.status(404).json({ success: false, message: "Reminder not found." });
 
     const payload = req.body || {};
     const updated = {
+      user_id: currentUserId || payload.user_id || existing.user_id,
       title: String(payload.title || existing.title).trim(),
       category: String(payload.category || existing.category).trim(),
       reminder_date: payload.reminderDate || existing.reminder_date,
@@ -291,9 +339,10 @@ exports.updateReminder = async (req, res) => {
 
     await db.query(
       `UPDATE calendar_reminders
-       SET title = ?, category = ?, reminder_date = ?, reminder_time = ?, priority = ?, notes = ?, related_event = ?, notification_enabled = ?, repeat_option = ?, status = ?, updated_at = NOW()
-       WHERE id = ?`,
+       SET user_id = ?, title = ?, category = ?, reminder_date = ?, reminder_time = ?, priority = ?, notes = ?, related_event = ?, notification_enabled = ?, repeat_option = ?, status = ?, updated_by = ?, updated_at = NOW()
+       WHERE id = ? AND user_id = ?`,
       [
+        updated.user_id,
         updated.title,
         updated.category,
         updated.reminder_date,
@@ -304,7 +353,9 @@ exports.updateReminder = async (req, res) => {
         updated.notification_enabled ? 1 : 0,
         updated.repeat_option,
         updated.status,
+        currentUserId || updated.user_id,
         req.params.id,
+        existing.user_id,
       ]
     );
 
@@ -318,7 +369,8 @@ exports.updateReminder = async (req, res) => {
 
 exports.deleteReminder = async (req, res) => {
   try {
-    const [result] = await db.query("DELETE FROM calendar_reminders WHERE id = ?", [req.params.id]);
+    const currentUserId = req.user?.user_id || null;
+    const [result] = await db.query("DELETE FROM calendar_reminders WHERE id = ? AND user_id = ?", [req.params.id, currentUserId]);
     if (!result.affectedRows) {
       return res.status(404).json({ success: false, message: "Reminder not found." });
     }
@@ -331,15 +383,16 @@ exports.deleteReminder = async (req, res) => {
 
 exports.markReminderCompleted = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ?", [req.params.id]);
+    const currentUserId = req.user?.user_id || null;
+    const [rows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ? AND user_id = ?", [req.params.id, currentUserId]);
     if (!rows[0]) return res.status(404).json({ success: false, message: "Reminder not found." });
 
     await db.query(
-      "UPDATE calendar_reminders SET status = ?, completed_at = NOW(), updated_at = NOW() WHERE id = ?",
-      ["Completed", req.params.id]
+      "UPDATE calendar_reminders SET status = ?, completed_at = NOW(), updated_by = ?, updated_at = NOW() WHERE id = ? AND user_id = ?",
+      ["Completed", currentUserId, req.params.id, currentUserId]
     );
 
-    const [updatedRows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ?", [req.params.id]);
+    const [updatedRows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ? AND user_id = ?", [req.params.id, currentUserId]);
     return res.json({ success: true, data: rowToReminder(updatedRows[0]), message: "Reminder marked as completed." });
   } catch (error) {
     console.error("Mark reminder complete error:", error);
@@ -349,7 +402,8 @@ exports.markReminderCompleted = async (req, res) => {
 
 exports.snoozeReminder = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ?", [req.params.id]);
+    const currentUserId = req.user?.user_id || null;
+    const [rows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ? AND user_id = ?", [req.params.id, currentUserId]);
     const reminder = rows[0];
     if (!reminder) return res.status(404).json({ success: false, message: "Reminder not found." });
 
@@ -360,11 +414,11 @@ exports.snoozeReminder = async (req, res) => {
     const nextTime = formatLocalTime(snoozed);
 
     await db.query(
-      "UPDATE calendar_reminders SET status = ?, reminder_date = ?, reminder_time = ?, snoozed_at = NOW(), updated_at = NOW() WHERE id = ?",
-      ["Snoozed", nextDate, nextTime, req.params.id]
+      "UPDATE calendar_reminders SET status = ?, reminder_date = ?, reminder_time = ?, snoozed_at = NOW(), updated_by = ?, updated_at = NOW() WHERE id = ? AND user_id = ?",
+      ["Snoozed", nextDate, nextTime, currentUserId, req.params.id, currentUserId]
     );
 
-    const [updatedRows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ?", [req.params.id]);
+    const [updatedRows] = await db.query("SELECT * FROM calendar_reminders WHERE id = ? AND user_id = ?", [req.params.id, currentUserId]);
     return res.json({ success: true, data: rowToReminder(updatedRows[0]), message: "Reminder snoozed successfully." });
   } catch (error) {
     console.error("Snooze reminder error:", error);
@@ -374,50 +428,72 @@ exports.snoozeReminder = async (req, res) => {
 
 exports.getUpcomingReminders = async (req, res) => {
   try {
+    const currentUserId = req.user?.user_id || null;
+    if (!currentUserId) {
+      return res.status(401).json({ success: false, message: "Authentication required." });
+    }
+
     const [rows] = await db.query(
-      "SELECT * FROM calendar_reminders WHERE status NOT IN ('Completed', 'Cancelled') AND reminder_date >= CURDATE() ORDER BY reminder_date ASC, reminder_time ASC"
+      "SELECT * FROM calendar_reminders WHERE user_id = ? AND status NOT IN ('Completed', 'Cancelled') AND reminder_date >= CURDATE() ORDER BY reminder_date ASC, reminder_time ASC",
+      [currentUserId]
     );
-    res.json({ success: true, data: rows.map(rowToReminder) });
+    return res.json({ success: true, data: rows.map(rowToReminder) });
   } catch (error) {
     console.error("Get upcoming reminders error:", error);
-    res.status(500).json({ success: false, message: "Unable to fetch upcoming reminders.", error: error.message });
+    return res.status(500).json({ success: false, message: "Unable to fetch upcoming reminders.", error: error.message });
   }
 };
 
 exports.getOverdueReminders = async (req, res) => {
   try {
+    const currentUserId = req.user?.user_id || null;
+    if (!currentUserId) {
+      return res.status(401).json({ success: false, message: "Authentication required." });
+    }
+
     const [rows] = await db.query(
-      "SELECT * FROM calendar_reminders WHERE (status = 'Pending' OR status = 'Overdue') AND reminder_date < CURDATE() ORDER BY reminder_date ASC, reminder_time ASC"
+      "SELECT * FROM calendar_reminders WHERE user_id = ? AND (status = 'Pending' OR status = 'Overdue') AND reminder_date < CURDATE() ORDER BY reminder_date ASC, reminder_time ASC",
+      [currentUserId]
     );
-    res.json({ success: true, data: rows.map(rowToReminder) });
+    return res.json({ success: true, data: rows.map(rowToReminder) });
   } catch (error) {
     console.error("Get overdue reminders error:", error);
-    res.status(500).json({ success: false, message: "Unable to fetch overdue reminders.", error: error.message });
+    return res.status(500).json({ success: false, message: "Unable to fetch overdue reminders.", error: error.message });
   }
 };
 
 exports.getSummary = async (req, res) => {
   try {
-    const [todayEventRows] = await db.query("SELECT COUNT(*) AS total FROM calendar_events WHERE start_date = CURDATE() ");
-    const [todayReminderRows] = await db.query("SELECT COUNT(*) AS total FROM calendar_reminders WHERE reminder_date = CURDATE() ");
+    const currentUserId = req.user?.user_id || null;
+    if (!currentUserId) {
+      return res.status(401).json({ success: false, message: "Authentication required." });
+    }
+
+    const [todayEventRows] = await db.query("SELECT COUNT(*) AS total FROM calendar_events WHERE user_id = ? AND start_date = CURDATE() ", [currentUserId]);
+    const [todayReminderRows] = await db.query("SELECT COUNT(*) AS total FROM calendar_reminders WHERE user_id = ? AND reminder_date = CURDATE() ", [currentUserId]);
     const [upcomingEventRows] = await db.query(
-      "SELECT COUNT(*) AS total FROM calendar_events WHERE status NOT IN ('Completed', 'Cancelled') AND start_date >= CURDATE()"
+      "SELECT COUNT(*) AS total FROM calendar_events WHERE user_id = ? AND status NOT IN ('Completed', 'Cancelled') AND start_date >= CURDATE()",
+      [currentUserId]
     );
     const [upcomingReminderRows] = await db.query(
-      "SELECT COUNT(*) AS total FROM calendar_reminders WHERE status NOT IN ('Completed', 'Cancelled') AND reminder_date >= CURDATE()"
+      "SELECT COUNT(*) AS total FROM calendar_reminders WHERE user_id = ? AND status NOT IN ('Completed', 'Cancelled') AND reminder_date >= CURDATE()",
+      [currentUserId]
     );
     const [overdueReminderRows] = await db.query(
-      "SELECT COUNT(*) AS total FROM calendar_reminders WHERE (status = 'Pending' OR status = 'Overdue') AND reminder_date < CURDATE()"
+      "SELECT COUNT(*) AS total FROM calendar_reminders WHERE user_id = ? AND (status = 'Pending' OR status = 'Overdue') AND reminder_date < CURDATE()",
+      [currentUserId]
     );
-    const [completedEventRows] = await db.query("SELECT COUNT(*) AS total FROM calendar_events WHERE status = 'Completed' ");
+    const [completedEventRows] = await db.query("SELECT COUNT(*) AS total FROM calendar_events WHERE user_id = ? AND status = 'Completed' ", [currentUserId]);
     const [monthEventRows] = await db.query(
-      "SELECT COUNT(*) AS total FROM calendar_events WHERE MONTH(start_date) = MONTH(CURDATE()) AND YEAR(start_date) = YEAR(CURDATE())"
+      "SELECT COUNT(*) AS total FROM calendar_events WHERE user_id = ? AND MONTH(start_date) = MONTH(CURDATE()) AND YEAR(start_date) = YEAR(CURDATE())",
+      [currentUserId]
     );
     const [importantEventRows] = await db.query(
-      "SELECT COUNT(*) AS total FROM calendar_events WHERE priority = 'High' OR category = 'Important'"
+      "SELECT COUNT(*) AS total FROM calendar_events WHERE user_id = ? AND (priority = 'High' OR category = 'Important')",
+      [currentUserId]
     );
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         todayEvents: Number(todayEventRows[0]?.total || 0),
@@ -432,6 +508,6 @@ exports.getSummary = async (req, res) => {
     });
   } catch (error) {
     console.error("Get summary error:", error);
-    res.status(500).json({ success: false, message: "Unable to fetch summary.", error: error.message });
+    return res.status(500).json({ success: false, message: "Unable to fetch summary.", error: error.message });
   }
 };

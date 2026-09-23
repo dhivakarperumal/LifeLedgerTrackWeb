@@ -166,6 +166,7 @@ const initializeDatabase = async () => {
     )`,
     `CREATE TABLE IF NOT EXISTS calendar_events (
       id VARCHAR(64) PRIMARY KEY,
+      user_id VARCHAR(50) NULL,
       title VARCHAR(255) NOT NULL,
       category VARCHAR(100) NOT NULL,
       start_date DATE NOT NULL,
@@ -181,11 +182,15 @@ const initializeDatabase = async () => {
       repeat_option VARCHAR(20) DEFAULT 'None',
       attachment VARCHAR(500) NULL,
       status VARCHAR(30) DEFAULT 'Upcoming',
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_calendar_event_user (user_id)
     )`,
     `CREATE TABLE IF NOT EXISTS calendar_reminders (
       id VARCHAR(64) PRIMARY KEY,
+      user_id VARCHAR(50) NULL,
       title VARCHAR(255) NOT NULL,
       category VARCHAR(100) NOT NULL,
       reminder_date DATE NOT NULL,
@@ -198,8 +203,11 @@ const initializeDatabase = async () => {
       status VARCHAR(30) DEFAULT 'Pending',
       completed_at TIMESTAMP NULL,
       snoozed_at TIMESTAMP NULL,
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_calendar_reminder_user (user_id)
     )`,
     `CREATE TABLE IF NOT EXISTS diary_entries (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -303,6 +311,16 @@ const initializeDatabase = async () => {
   await ensureColumn("transfers", "updated_at", "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
   await ensureColumn("transfers", "remaining_amount", "DECIMAL(12,2) DEFAULT NULL");
   await ensureColumn("transfers", "receipt", "VARCHAR(500) NULL");
+  await ensureColumn("calendar_events", "user_id", "VARCHAR(50) NULL");
+  await ensureColumn("calendar_events", "created_by", "VARCHAR(50) NULL");
+  await ensureColumn("calendar_events", "updated_by", "VARCHAR(50) NULL");
+  await ensureColumn("calendar_events", "created_at", "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP");
+  await ensureColumn("calendar_events", "updated_at", "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+  await ensureColumn("calendar_reminders", "user_id", "VARCHAR(50) NULL");
+  await ensureColumn("calendar_reminders", "created_by", "VARCHAR(50) NULL");
+  await ensureColumn("calendar_reminders", "updated_by", "VARCHAR(50) NULL");
+  await ensureColumn("calendar_reminders", "created_at", "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP");
+  await ensureColumn("calendar_reminders", "updated_at", "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
 
   await pool.query(
     "UPDATE income SET created_by = user_id WHERE created_by IS NULL AND user_id IS NOT NULL"
@@ -324,6 +342,18 @@ const initializeDatabase = async () => {
   );
   await pool.query(
     "UPDATE transfers SET updated_by = user_id WHERE updated_by IS NULL AND user_id IS NOT NULL"
+  );
+  await pool.query(
+    "UPDATE calendar_events SET created_by = user_id WHERE created_by IS NULL AND user_id IS NOT NULL"
+  );
+  await pool.query(
+    "UPDATE calendar_events SET updated_by = user_id WHERE updated_by IS NULL AND user_id IS NOT NULL"
+  );
+  await pool.query(
+    "UPDATE calendar_reminders SET created_by = user_id WHERE created_by IS NULL AND user_id IS NOT NULL"
+  );
+  await pool.query(
+    "UPDATE calendar_reminders SET updated_by = user_id WHERE updated_by IS NULL AND user_id IS NOT NULL"
   );
 
   const [incomeBalanceColumn] = await pool.query(

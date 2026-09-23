@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
+const { requireAuth } = require("../middleware/auth");
 const calendarController = require("../controllers/calendarController");
+
+router.use(requireAuth);
 
 router.get("/events", calendarController.getEvents);
 router.get("/events/:id", calendarController.getEventById);
