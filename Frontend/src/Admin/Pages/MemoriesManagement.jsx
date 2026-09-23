@@ -33,9 +33,33 @@ const formatDate = (value) => {
 
 const getMediaUrl = (value) => {
   if (!value) return "";
-  if (value.startsWith("http")) return value;
+  if (typeof value !== "string") return "";
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
   const base = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "");
   return `${base}${value.startsWith("/") ? value : `/${value}`}`;
+};
+
+const getFileTypeFromName = (fileName = "", fallbackType = "application/octet-stream") => {
+  const name = String(fileName || "").toLowerCase();
+  const extension = name.split(".").pop();
+
+  if (["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"].includes(extension)) {
+    return `image/${extension === "jpg" ? "jpeg" : extension}`;
+  }
+
+  if (["mp4", "webm", "ogg", "mov", "m4v"].includes(extension)) {
+    return `video/${extension === "m4v" ? "mp4" : extension}`;
+  }
+
+  if (["mp3", "wav", "m4a", "aac", "ogg"].includes(extension)) {
+    return `audio/${extension === "m4a" ? "mp4" : extension}`;
+  }
+
+  if (name.endsWith(".pdf")) return "application/pdf";
+  if (name.endsWith(".doc") || name.endsWith(".docx")) return "application/msword";
+  if (name.endsWith(".xls") || name.endsWith(".xlsx")) return "application/vnd.ms-excel";
+
+  return fallbackType || "application/octet-stream";
 };
 
 const initialForm = {
@@ -94,18 +118,9 @@ const MemoriesManagement = () => {
     return gallery
       .filter(Boolean)
       .map((item, index) => {
-        const value = String(item);
-        const fileName = value.split("/").pop() || `media-${index + 1}`;
-        const extension = fileName.split(".").pop()?.toLowerCase();
-
-        let type = "application/octet-stream";
-        if (["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"].includes(extension)) {
-          type = `image/${extension === "jpg" ? "jpeg" : extension}`;
-        } else if (["mp4", "webm", "ogg", "mov", "m4v"].includes(extension)) {
-          type = `video/${extension === "m4v" ? "mp4" : extension}`;
-        } else if (["mp3", "wav", "m4a", "aac", "ogg"].includes(extension)) {
-          type = `audio/${extension === "m4a" ? "mp4" : extension}`;
-        }
+        const value = typeof item === "string" ? item : item?.file_url || item?.url || item?.path || item?.src || "";
+        const fileName = String(item?.file_name || item?.name || value.split("/").pop() || `media-${index + 1}`);
+        const type = getFileTypeFromName(fileName, item?.file_type || item?.type || "application/octet-stream");
 
         return {
           id: `existing-${index}-${fileName}`,
@@ -342,22 +357,31 @@ const MemoriesManagement = () => {
   };
 
   const renderMediaPreviewCard = (item, index, onRemove) => {
-    const fileType = item?.type || "application/octet-stream";
+    const fileType = item?.type || item?.mimeType || "application/octet-stream";
     const previewUrl = item?.previewUrl || getFilePreviewUrl(item);
+    const isImage = fileType.startsWith("image/");
+    const isVideo = fileType.startsWith("video/");
+    const isAudio = fileType.startsWith("audio/");
+    const isPdf = fileType === "application/pdf" || String(item?.name || "").toLowerCase().endsWith(".pdf");
 
     return (
       <div key={item?.id || `${item?.name || "media"}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
         <div className="max-h-44 overflow-hidden bg-slate-100">
-          {fileType.startsWith("image/") ? (
+          {isImage ? (
             <img src={previewUrl} alt={item?.name || "Preview"} className="h-44 w-full object-cover" />
-          ) : fileType.startsWith("video/") ? (
+          ) : isVideo ? (
             <video src={previewUrl} className="h-44 w-full object-cover" controls />
-          ) : fileType.startsWith("audio/") ? (
+          ) : isAudio ? (
             <div className="flex h-44 items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 p-3 text-white">
               <audio src={previewUrl} controls className="w-full" />
             </div>
+          ) : isPdf ? (
+            <iframe src={previewUrl} title={item?.name || "PDF preview"} className="h-44 w-full border-0 bg-white" />
           ) : (
-            <div className="flex h-44 items-center justify-center bg-slate-200 text-sm font-medium text-slate-700">{item?.name || "Media file"}</div>
+            <div className="flex h-44 flex-col items-center justify-center bg-slate-200 px-3 text-center text-sm font-medium text-slate-700">
+              <span className="mb-1 text-xl">📄</span>
+              <span className="line-clamp-2">{item?.name || "Document file"}</span>
+            </div>
           )}
         </div>
 

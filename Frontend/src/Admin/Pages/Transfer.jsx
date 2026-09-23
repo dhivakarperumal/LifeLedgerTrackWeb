@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     FiDollarSign, FiSend, FiX, FiPlus, FiSearch,
     FiGrid, FiList, FiArrowRight, FiTrash2, FiRefreshCw,
-    FiUpload, FiPaperclip, FiEye,
+    FiUpload, FiPaperclip, FiEye, FiEdit2,
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -28,19 +28,21 @@ const emptyForm = () => ({
 const Transfer = () => {
     const navigate = useNavigate();
 
-    const [transfers, setTransfers]           = useState([]);
-    const [incomes, setIncomes]               = useState([]);
+    const [transfers, setTransfers] = useState([]);
+    const [incomes, setIncomes] = useState([]);
     const [selectedIncomeId, setSelectedIncomeId] = useState("");
-    const [formData, setFormData]             = useState(emptyForm());
-    const [receiptFile, setReceiptFile]       = useState(null);   // ← new
-    const fileInputRef                        = useRef(null);      // ← new
-    const [isModalOpen, setIsModalOpen]       = useState(false);
-    const [isSubmitting, setIsSubmitting]     = useState(false);
-    const [loading, setLoading]               = useState(true);
-    const [searchTerm, setSearchTerm]         = useState("");
+    const [selectedTransfer, setSelectedTransfer] = useState(null);
+    const [editingTransferId, setEditingTransferId] = useState(null);
+    const [formData, setFormData] = useState(emptyForm());
+    const [receiptFile, setReceiptFile] = useState(null);
+    const fileInputRef = useRef(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("All Transfers");
-    const [viewMode, setViewMode]             = useState("table");
-    const [deletingId, setDeletingId]         = useState(null);
+    const [viewMode, setViewMode] = useState("table");
+    const [deletingId, setDeletingId] = useState(null);
 
     /* ── data loaders ─────────────────────────────────────────────────── */
     const loadTransfers = async () => {
@@ -92,10 +94,39 @@ const Transfer = () => {
     const closeModal = () => {
         setIsModalOpen(false);
         setSelectedIncomeId("");
+        setSelectedTransfer(null);
+        setEditingTransferId(null);
         setFormData(emptyForm());
         setReceiptFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
+
+    const openAddTransfer = () => {
+        setSelectedTransfer(null);
+        setEditingTransferId(null);
+        setSelectedIncomeId("");
+        setFormData(emptyForm());
+        setReceiptFile(null);
+        setIsModalOpen(true);
+    };
+
+    const openEditTransfer = (transfer) => {
+        setSelectedTransfer(transfer);
+        setEditingTransferId(transfer.id);
+        setSelectedIncomeId(transfer.source_income_id ? String(transfer.source_income_id) : "");
+        setFormData({
+            title: transfer.title || "",
+            amount: transfer.amount ?? "",
+            category: transfer.category || "",
+            paymentMethod: transfer.payment_method || "Cash",
+            date: transfer.transfer_date ? String(transfer.transfer_date).split("T")[0] : new Date().toISOString().split("T")[0],
+            notes: transfer.notes || "",
+        });
+        setReceiptFile(null);
+        setIsModalOpen(true);
+    };
+
+    const openViewTransfer = (transfer) => setSelectedTransfer(transfer);
 
     /* ── submit ───────────────────────────────────────────────────────── */
     const handleSubmit = async (e) => {
@@ -117,19 +148,29 @@ const Transfer = () => {
         setIsSubmitting(true);
         try {
             const payload = new FormData();
-            payload.append("title",          formData.title);
-            payload.append("amount",         numericAmount);
-            payload.append("category",       formData.category);
-            payload.append("paymentMethod",  formData.paymentMethod);
-            payload.append("date",           formData.date);
-            payload.append("notes",          formData.notes);
+            payload.append("title", formData.title);
+            payload.append("amount", numericAmount);
+            payload.append("category", formData.category);
+            payload.append("paymentMethod", formData.paymentMethod);
+            payload.append("date", formData.date);
+            payload.append("notes", formData.notes);
             payload.append("sourceIncomeId", selectedIncome ? selectedIncome.id : "");
             if (receiptFile) payload.append("receipt", receiptFile);
 
-            await api.post("/transfers", payload, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
-            toast.success("Transfer saved successfully!");
+            let response;
+            if (editingTransferId) {
+                response = await api.put(`/transfers/${editingTransferId}`, payload, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+                setTransfers((current) => current.map((item) => item.id === editingTransferId ? response.data.transfer : item));
+                toast.success("Transfer updated successfully!");
+            } else {
+                response = await api.post("/transfers", payload, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+                setTransfers((current) => [response.data.transfer, ...current]);
+                toast.success("Transfer saved successfully!");
+            }
             closeModal();
             await loadAll();
         } catch (err) {
@@ -214,7 +255,7 @@ const Transfer = () => {
                 <button type="button" onClick={loadAll} title="Refresh"
                     className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-slate-500 hover:border-[#7b2cbf] hover:text-[#7b2cbf]"
                 ><FiRefreshCw size={16} /></button>
-                <button type="button" onClick={() => setIsModalOpen(true)}
+                <button type="button" onClick={openAddTransfer}
                     className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/30 transition-all hover:from-[#10002b] hover:to-[#5a189a] active:scale-95"
                 >
                     <FiPlus size={16} /> Add New Transfer
@@ -230,6 +271,7 @@ const Transfer = () => {
                         <table className="w-full text-left text-sm">
                             <thead className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] text-xs uppercase tracking-wider text-[#FCD34D]">
                                 <tr>
+                                    <th className="px-4 py-4">S No</th>
                                     <th className="px-6 py-4">Title</th>
                                     <th className="px-6 py-4">Category</th>
                                     <th className="px-5 py-4 text-right">Transfer Amt</th>
@@ -249,12 +291,13 @@ const Transfer = () => {
                                         </td>
                                     </tr>
                                 )}
-                                {visible.map((t) => {
+                                {visible.map((t, index) => {
                                     const trAmt  = Number(t.amount || 0);
                                     const expAmt = Number(t.total_expense || 0);
                                     const remAmt = Math.max(trAmt - expAmt, 0);
                                     return (
                                         <tr key={t.id} className="text-slate-700 hover:bg-purple-50/40">
+                                            <td className="px-4 py-4 font-bold text-slate-500">{index + 1}</td>
                                             <td className="px-6 py-4 font-bold">{t.title}</td>
                                             <td className="px-6 py-4 text-slate-500">{t.category || "—"}</td>
                                             <td className="px-5 py-4 text-right font-bold text-slate-800">{fmt(trAmt)}</td>
@@ -280,14 +323,34 @@ const Transfer = () => {
                                                 )}
                                             </td>
                                             <td className="px-4 py-4 text-center">
-                                                <button
-                                                    onClick={() => handleDelete(t.id)}
-                                                    disabled={deletingId === t.id}
-                                                    className="rounded-lg p-2 text-red-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
-                                                    title="Delete transfer"
-                                                >
-                                                    <FiTrash2 size={15} />
-                                                </button>
+                                                <div className="flex items-center justify-center gap-2">
+                                                    {t.receipt && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openViewTransfer(t)}
+                                                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
+                                                            title="View transfer"
+                                                        >
+                                                            <FiEye size={14} />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openEditTransfer(t)}
+                                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600 transition-all hover:bg-violet-500 hover:text-white"
+                                                        title="Edit transfer"
+                                                    >
+                                                        <FiEdit2 size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(t.id)}
+                                                        disabled={deletingId === t.id}
+                                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-400 transition-all hover:bg-red-500 hover:text-white disabled:opacity-40"
+                                                        title="Delete transfer"
+                                                    >
+                                                        <FiTrash2 size={14} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -303,28 +366,52 @@ const Transfer = () => {
                                 No transfer records found.
                             </p>
                         )}
-                        {visible.map((t) => {
+                        {visible.map((t, index) => {
                             const trAmt  = Number(t.amount || 0);
                             const expAmt = Number(t.total_expense || 0);
                             const remAmt = Math.max(trAmt - expAmt, 0);
                             const pct    = trAmt > 0 ? Math.min((expAmt / trAmt) * 100, 100) : 0;
                             return (
                                 <div key={t.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                        <span>S No {index + 1}</span>
+                                        <div className="flex items-center gap-2">
+                                            {t.receipt && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openViewTransfer(t)}
+                                                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
+                                                    title="View transfer"
+                                                >
+                                                    <FiEye size={12} />
+                                                </button>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => openEditTransfer(t)}
+                                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-50 text-violet-600 transition-all hover:bg-violet-500 hover:text-white"
+                                                title="Edit transfer"
+                                            >
+                                                <FiEdit2 size={12} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(t.id)}
+                                                disabled={deletingId === t.id}
+                                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-400 transition-all hover:bg-red-500 hover:text-white disabled:opacity-40 shrink-0"
+                                                title="Delete transfer"
+                                            >
+                                                <FiTrash2 size={12} />
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     <div className="flex items-start justify-between gap-2 mb-3">
                                         <div>
                                             <p className="font-black text-slate-800">{t.title}</p>
                                             <p className="text-xs text-slate-400 mt-0.5">{t.category || "—"} · {t.transfer_date ? String(t.transfer_date).split("T")[0] : "—"}</p>
                                         </div>
-                                        <button
-                                            onClick={() => handleDelete(t.id)}
-                                            disabled={deletingId === t.id}
-                                            className="rounded-lg p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-40 shrink-0"
-                                        >
-                                            <FiTrash2 size={14} />
-                                        </button>
                                     </div>
 
-                                    {/* progress bar */}
                                     <div className="w-full h-2 rounded-full bg-slate-100 mb-3">
                                         <div
                                             className="h-2 rounded-full bg-red-400 transition-all"
@@ -365,6 +452,57 @@ const Transfer = () => {
                 )}
             </div>
 
+            {selectedTransfer && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                    <div className="absolute inset-0" onClick={() => setSelectedTransfer(null)} />
+                    <div className="relative z-10 w-full max-w-xl rounded-[1.8rem] bg-white shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600">Transfer Details</p>
+                                <h2 className="mt-1 text-2xl font-black text-slate-800">{selectedTransfer.title}</h2>
+                            </div>
+                            <button type="button" onClick={() => setSelectedTransfer(null)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close transfer details">
+                                <FiX size={22} />
+                            </button>
+                        </div>
+                        <div className="space-y-4 p-6 text-sm text-slate-700">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Amount</p>
+                                    <p className="mt-2 font-black text-slate-800">{fmt(selectedTransfer.amount)}</p>
+                                </div>
+                                <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Category</p>
+                                    <p className="mt-2 font-bold text-slate-800">{selectedTransfer.category || "—"}</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Date</p>
+                                    <p className="mt-2 font-bold text-slate-800">{selectedTransfer.transfer_date ? String(selectedTransfer.transfer_date).split("T")[0] : "—"}</p>
+                                </div>
+                                <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Payment</p>
+                                    <p className="mt-2 font-bold text-slate-800">{selectedTransfer.payment_method || "—"}</p>
+                                </div>
+                            </div>
+                            {selectedTransfer.notes && (
+                                <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Notes</p>
+                                    <p className="mt-2 leading-6 text-slate-700">{selectedTransfer.notes}</p>
+                                </div>
+                            )}
+                            {selectedTransfer.receipt && (
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Receipt</p>
+                                    <a href={`${(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "")}${selectedTransfer.receipt}`} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-lg bg-violet-100 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-200">Open receipt</a>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── ADD TRANSFER MODAL ───────────────────────────────────── */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
@@ -372,7 +510,7 @@ const Transfer = () => {
                         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
                             <div>
                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600">Finance Management</p>
-                                <h2 className="mt-1 text-2xl font-black text-slate-800">Add New Transfer</h2>
+                                <h2 className="mt-1 text-2xl font-black text-slate-800">{editingTransferId ? "Edit Transfer" : "Add New Transfer"}</h2>
                             </div>
                             <button type="button" onClick={closeModal}
                                 className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"

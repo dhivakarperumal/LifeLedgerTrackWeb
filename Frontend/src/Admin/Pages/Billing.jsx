@@ -7,6 +7,9 @@ import {
   FiSearch,
   FiGrid,
   FiList,
+  FiEye,
+  FiEdit2,
+  FiTrash2,
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import api from "../../api";
@@ -37,6 +40,8 @@ const Billing = () => {
     return Number.isFinite(savedBudget) ? savedBudget : 0;
   });
   const [incomes, setIncomes] = useState([]);
+  const [selectedIncome, setSelectedIncome] = useState(null);
+  const [editingIncomeId, setEditingIncomeId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [incomeFilter, setIncomeFilter] = useState("All Income");
@@ -73,7 +78,48 @@ const Billing = () => {
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setSelectedIncome(null);
+    setEditingIncomeId(null);
     setForm(initialForm);
+  };
+
+  const openAddIncome = () => {
+    setSelectedIncome(null);
+    setEditingIncomeId(null);
+    setForm(initialForm);
+    setIsModalOpen(true);
+  };
+
+  const openEditIncome = (income) => {
+    setSelectedIncome(income);
+    setEditingIncomeId(income.id);
+    setForm({
+      title: income.title || "",
+      amount: income.amount ?? "",
+      category: income.category || "",
+      date: income.income_date ? String(income.income_date).split("T")[0] : new Date().toISOString().split("T")[0],
+      paymentMethod: income.payment_method || "Cash",
+      notes: income.notes || "",
+      recurring: income.recurring || "No",
+      attachment: null,
+    });
+    setIsModalOpen(true);
+  };
+
+  const openViewIncome = (income) => setSelectedIncome(income);
+
+  const handleDeleteIncome = async (id) => {
+    if (!window.confirm("Delete this income record?")) return;
+
+    try {
+      await api.delete(`/incomes/${id}`);
+      setIncomes((current) => current.filter((item) => item.id !== id));
+      if (selectedIncome?.id === id) setSelectedIncome(null);
+      toast.success("Income deleted successfully!");
+    } catch (error) {
+      console.error("Delete Income Error:", error);
+      toast.error(error.response?.data?.message || "Failed to delete income");
+    }
   };
 
   const submitIncome = async (event) => {
@@ -90,13 +136,24 @@ const Billing = () => {
       payload.append("recurring", form.recurring);
       if (form.attachment) payload.append("attachment", form.attachment);
 
-      const response = await api.post("/incomes", payload);
-      setIncomes((current) => [response.data.income, ...current]);
-      toast.success("Income added successfully!");
+      let response;
+      if (editingIncomeId) {
+        response = await api.put(`/incomes/${editingIncomeId}`, payload, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setIncomes((current) => current.map((item) => item.id === editingIncomeId ? response.data.income : item));
+        toast.success("Income updated successfully!");
+      } else {
+        response = await api.post("/incomes", payload, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setIncomes((current) => [response.data.income, ...current]);
+        toast.success("Income added successfully!");
+      }
       closeModal();
     } catch (error) {
-      console.error("Create Income Error:", error);
-      toast.error(error.response?.data?.message || "Failed to add income");
+      console.error("Create/Update Income Error:", error);
+      toast.error(error.response?.data?.message || "Failed to save income");
     } finally {
       setIsSaving(false);
     }
@@ -249,7 +306,7 @@ const Billing = () => {
             </button>
             <button
               type="button"
-              onClick={() => setIsModalOpen(true)}
+              onClick={openAddIncome}
               className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/30 transition-all hover:from-[#10002b] hover:to-[#5a189a] active:scale-95"
             >
               <FiPlus size={16} /> Add New Income
@@ -261,17 +318,20 @@ const Billing = () => {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-[#350866] text-xs uppercase tracking-wider text-[#FCD34D]">
                     <tr>
+                      <th className="px-4 py-4">S No</th>
                       <th className="px-6 py-4">Title</th>
                       <th className="px-6 py-4">Category</th>
                       <th className="px-6 py-4">Amount</th>
                       <th className="px-6 py-4">Remaining</th>
                       <th className="px-6 py-4">Date</th>
                       <th className="px-6 py-4">Payment</th>
+                      <th className="px-6 py-4 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {visibleIncomes.map((income) => (
+                    {visibleIncomes.map((income, index) => (
                       <tr key={income.id} className="text-slate-700">
+                        <td className="px-4 py-4 font-bold text-slate-500">{index + 1}</td>
                         <td className="px-6 py-4 font-bold">{income.title}</td>
                         <td className="px-6 py-4">{income.category}</td>
                         <td className="px-6 py-4 font-bold">
@@ -291,6 +351,36 @@ const Billing = () => {
                         <td className="px-6 py-4">{income.income_date}</td>
                         <td className="px-6 py-4">
                           {income.payment_method || "-"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            {income.attachment && (
+                              <button
+                                type="button"
+                                onClick={() => openViewIncome(income)}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
+                                title="View income"
+                              >
+                                <FiEye size={14} />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => openEditIncome(income)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600 transition-all hover:bg-violet-500 hover:text-white"
+                              title="Edit income"
+                            >
+                              <FiEdit2 size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteIncome(income.id)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600 transition-all hover:bg-red-500 hover:text-white"
+                              title="Delete income"
+                            >
+                              <FiTrash2 size={14} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -333,6 +423,34 @@ const Billing = () => {
                     <p className="mt-4 text-xs text-slate-500">
                       {income.income_date} · {income.payment_method || "-"}
                     </p>
+                    <div className="mt-4 flex items-center justify-end gap-2">
+                      {income.attachment && (
+                        <button
+                          type="button"
+                          onClick={() => openViewIncome(income)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
+                          title="View income"
+                        >
+                          <FiEye size={14} />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openEditIncome(income)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600 transition-all hover:bg-violet-500 hover:text-white"
+                        title="Edit income"
+                      >
+                        <FiEdit2 size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteIncome(income.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600 transition-all hover:bg-red-500 hover:text-white"
+                        title="Delete income"
+                      >
+                        <FiTrash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -349,6 +467,77 @@ const Billing = () => {
           <p className="text-sm font-semibold text-slate-400">
             No billing records found.
           </p>
+        </div>
+      )}
+
+      {selectedIncome && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="absolute inset-0" onClick={() => setSelectedIncome(null)} />
+          <div className="relative z-10 w-full max-w-xl rounded-[1.8rem] bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600">
+                  Income Details
+                </p>
+                <h2 className="mt-1 text-2xl font-black text-slate-800">
+                  {selectedIncome.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedIncome(null)}
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close income details"
+              >
+                <FiX size={22} />
+              </button>
+            </div>
+
+            <div className="space-y-4 p-6 text-sm text-slate-700">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Category</p>
+                  <p className="mt-2 font-bold text-slate-800">{selectedIncome.category || "-"}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Amount</p>
+                  <p className="mt-2 font-black text-emerald-600">₹{Number(selectedIncome.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Date</p>
+                  <p className="mt-2 font-bold text-slate-800">{selectedIncome.income_date || "-"}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Payment</p>
+                  <p className="mt-2 font-bold text-slate-800">{selectedIncome.payment_method || "-"}</p>
+                </div>
+              </div>
+
+              {selectedIncome.notes && (
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Notes</p>
+                  <p className="mt-2 leading-6 text-slate-700">{selectedIncome.notes}</p>
+                </div>
+              )}
+
+              {selectedIncome.attachment && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Attachment</p>
+                  <a
+                    href={`${import.meta.env.VITE_API_URL.replace("/api", "")}${selectedIncome.attachment}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex rounded-lg bg-violet-100 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-200"
+                  >
+                    Open attachment
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -433,7 +622,7 @@ const Billing = () => {
                   Income Management
                 </p>
                 <h2 className="mt-1 text-2xl font-black text-slate-800">
-                  Add Income
+                  {editingIncomeId ? "Edit Income" : "Add Income"}
                 </h2>
               </div>
               <button
@@ -597,7 +786,7 @@ const Billing = () => {
                   disabled={isSaving}
                   className="rounded-lg bg-[#4b0b78] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-200 hover:bg-[#260642] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSaving ? "Saving..." : "Save Income"}
+                  {isSaving ? "Saving..." : editingIncomeId ? "Update Income" : "Save Income"}
                 </button>
               </div>
             </form>
