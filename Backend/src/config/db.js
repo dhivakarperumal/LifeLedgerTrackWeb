@@ -86,6 +86,7 @@ const initializeDatabase = async () => {
     )`,
     `CREATE TABLE IF NOT EXISTS income (
       id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NULL,
       title VARCHAR(255) NOT NULL,
       amount DECIMAL(12,2) NOT NULL,
       remaining_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -101,6 +102,7 @@ const initializeDatabase = async () => {
       id INT AUTO_INCREMENT PRIMARY KEY,
       title VARCHAR(255) NOT NULL,
       amount DECIMAL(12,2) NOT NULL,
+      remaining_amount DECIMAL(12,2) DEFAULT NULL,
       source_income_id INT NULL,
       category VARCHAR(100) NOT NULL,
       transfer_from VARCHAR(100) NOT NULL,
@@ -108,6 +110,7 @@ const initializeDatabase = async () => {
       transfer_date DATE NOT NULL,
       payment_method VARCHAR(100),
       notes TEXT,
+      receipt VARCHAR(500) NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS expenses (
@@ -116,6 +119,7 @@ const initializeDatabase = async () => {
       title VARCHAR(255) NOT NULL,
       expense_amount DECIMAL(12,2) NOT NULL,
       transfer_amount DECIMAL(12,2) DEFAULT NULL,
+      transfer_id INT NULL,
       remaining_amount DECIMAL(12,2) DEFAULT NULL,
       category VARCHAR(100) NOT NULL,
       payment_method VARCHAR(100) DEFAULT 'Cash',
@@ -190,6 +194,7 @@ const initializeDatabase = async () => {
       is_locked BOOLEAN DEFAULT FALSE,
       image_path VARCHAR(500) NULL,
       video_path VARCHAR(500) NULL,
+      audio_path VARCHAR(500) NULL,
       file_path VARCHAR(500) NULL,
       media_files JSON NULL,
       created_by VARCHAR(50) NULL,
@@ -205,6 +210,33 @@ const initializeDatabase = async () => {
 
   for (const statement of schemaStatements) {
     await pool.query(statement);
+  }
+
+  try {
+    const [memoryTable] = await pool.query("SHOW CREATE TABLE memories");
+    const createSql = memoryTable[0]?.["Create Table"] || "";
+
+    if (createSql && createSql.includes("REFERENCES `memory_categories`")) {
+      await pool.query("SET FOREIGN_KEY_CHECKS = 0");
+      try {
+        await pool.query("ALTER TABLE memories DROP FOREIGN KEY fk_memory_category");
+      } catch (error) {
+        // Ignore missing foreign key during migration.
+      }
+
+      try {
+        await pool.query("ALTER TABLE memories DROP INDEX idx_memory_category");
+      } catch (error) {
+        // Ignore missing index during migration.
+      }
+
+      await pool.query("ALTER TABLE memories MODIFY COLUMN category_id INT NULL");
+      await pool.query("ALTER TABLE memories ADD CONSTRAINT fk_memory_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL");
+      await pool.query("ALTER TABLE memories ADD INDEX idx_memory_category (category_id)");
+      await pool.query("SET FOREIGN_KEY_CHECKS = 1");
+    }
+  } catch (error) {
+    // Ignore if the table does not exist yet.
   }
 
   const staleTables = [
@@ -232,7 +264,28 @@ const initializeDatabase = async () => {
   await ensureColumn("memories", "voice_note", "TEXT NULL");
   await ensureColumn("memories", "category_name", "VARCHAR(120) NULL");
   await ensureColumn("memories", "category_color", "VARCHAR(30) DEFAULT '#8B5CF6'");
+  await ensureColumn("income", "user_id", "VARCHAR(50) NULL");
+  await ensureColumn("income", "created_by", "VARCHAR(50) NULL");
+  await ensureColumn("income", "updated_by", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "user_id", "VARCHAR(50) NULL");
+  await ensureColumn("expenses", "transfer_id", "INT NULL");
+  await ensureColumn("expenses", "created_by", "VARCHAR(50) NULL");
+  await ensureColumn("expenses", "updated_by", "VARCHAR(50) NULL");
+  await ensureColumn("transfers", "remaining_amount", "DECIMAL(12,2) DEFAULT NULL");
+  await ensureColumn("transfers", "receipt", "VARCHAR(500) NULL");
+
+  await pool.query(
+    "UPDATE income SET created_by = user_id WHERE created_by IS NULL AND user_id IS NOT NULL"
+  );
+  await pool.query(
+    "UPDATE income SET updated_by = user_id WHERE updated_by IS NULL AND user_id IS NOT NULL"
+  );
+  await pool.query(
+    "UPDATE expenses SET created_by = user_id WHERE created_by IS NULL AND user_id IS NOT NULL"
+  );
+  await pool.query(
+    "UPDATE expenses SET updated_by = user_id WHERE updated_by IS NULL AND user_id IS NOT NULL"
+  );
 
   const [incomeBalanceColumn] = await pool.query(
     `SELECT COUNT(*) AS columnCount
@@ -323,6 +376,7 @@ const initializeDatabase = async () => {
     await ensureColumn("diary_entries", "category_name", "VARCHAR(120) NULL");
     await ensureColumn("diary_entries", "image_path", "VARCHAR(500) NULL");
     await ensureColumn("diary_entries", "video_path", "VARCHAR(500) NULL");
+    await ensureColumn("diary_entries", "audio_path", "VARCHAR(500) NULL");
     await ensureColumn("diary_entries", "file_path", "VARCHAR(500) NULL");
     await ensureColumn("diary_entries", "media_files", "JSON NULL");
   } catch (error) {

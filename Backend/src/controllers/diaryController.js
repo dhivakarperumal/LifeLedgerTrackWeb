@@ -31,6 +31,7 @@ const normalizeDiaryEntry = (req, row = {}) => {
   const derivedAttachments = [
     ...(row.image_path ? [{ id: `image-${row.id || Date.now()}`, file_name: path.basename(row.image_path), file_url: buildPublicUrl(req, row.image_path), file_type: "image" }] : []),
     ...(row.video_path ? [{ id: `video-${row.id || Date.now()}`, file_name: path.basename(row.video_path), file_url: buildPublicUrl(req, row.video_path), file_type: "video" }] : []),
+    ...(row.audio_path ? [{ id: `audio-${row.id || Date.now()}`, file_name: path.basename(row.audio_path), file_url: buildPublicUrl(req, row.audio_path), file_type: "audio" }] : []),
     ...(row.file_path ? [{ id: `file-${row.id || Date.now()}`, file_name: path.basename(row.file_path), file_url: buildPublicUrl(req, row.file_path), file_type: "file" }] : []),
     ...attachments.map(normalizeAttachment),
   ];
@@ -39,6 +40,7 @@ const normalizeDiaryEntry = (req, row = {}) => {
     ...row,
     image_path: row.image_path ? buildPublicUrl(req, row.image_path) : row.image_path,
     video_path: row.video_path ? buildPublicUrl(req, row.video_path) : row.video_path,
+    audio_path: row.audio_path ? buildPublicUrl(req, row.audio_path) : row.audio_path,
     file_path: row.file_path ? buildPublicUrl(req, row.file_path) : row.file_path,
     tags: parseJsonField(row.tags),
     attachment_count: Number(row.attachment_count || derivedAttachments.length || 0),
@@ -59,9 +61,10 @@ const ensureDiaryFolders = () => {
   const base = path.join(__dirname, "..", "..", "uploads", "diary");
   const images = path.join(base, "images");
   const videos = path.join(base, "videos");
+  const audio = path.join(base, "audio");
   const files = path.join(base, "files");
 
-  [base, images, videos, files].forEach((dir) => fs.mkdirSync(dir, { recursive: true }));
+  [base, images, videos, audio, files].forEach((dir) => fs.mkdirSync(dir, { recursive: true }));
 };
 
 const parseJsonField = (value) => {
@@ -83,7 +86,7 @@ const diarySelectBase = `
   COALESCE(d.category_name, dc.name) AS category_name,
   dc.catType AS category_type,
   d.mood, d.tags, d.location, d.entry_date, d.entry_time, d.status,
-  d.is_favorite, d.is_private, d.is_locked, d.image_path, d.video_path, d.file_path, d.media_files,
+  d.is_favorite, d.is_private, d.is_locked, d.image_path, d.video_path, d.audio_path, d.file_path, d.media_files,
   d.created_at, d.updated_at, d.created_by, d.updated_by
 `;
 
@@ -262,6 +265,7 @@ const createDiaryEntry = async (req, res) => {
       is_locked,
       image_path,
       video_path,
+      audio_path,
       file_path,
       media_files,
     } = req.body;
@@ -286,9 +290,9 @@ const createDiaryEntry = async (req, res) => {
     const [result] = await db.query(
       `INSERT INTO diary_entries (
         user_id, title, content, category_id, category_name, mood, tags, location, entry_date, entry_time,
-        status, is_favorite, is_private, is_locked, image_path, video_path, file_path, media_files,
+        status, is_favorite, is_private, is_locked, image_path, video_path, audio_path, file_path, media_files,
         created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
       [
         req.user.user_id,
         String(title).trim(),
@@ -306,6 +310,7 @@ const createDiaryEntry = async (req, res) => {
         is_locked ? 1 : 0,
         image_path || null,
         video_path || null,
+        audio_path || null,
         file_path || null,
         attachmentsValue,
         req.user.user_id,
@@ -344,6 +349,7 @@ const updateDiaryEntry = async (req, res) => {
       is_locked,
       image_path,
       video_path,
+      audio_path,
       file_path,
       media_files,
     } = req.body;
@@ -354,7 +360,7 @@ const updateDiaryEntry = async (req, res) => {
       `UPDATE diary_entries SET
         title = ?, content = ?, category_id = ?, category_name = ?, mood = ?, tags = ?, location = ?,
         entry_date = ?, entry_time = ?, status = ?, is_favorite = ?, is_private = ?, is_locked = ?,
-        image_path = ?, video_path = ?, file_path = ?, media_files = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+        image_path = ?, video_path = ?, audio_path = ?, file_path = ?, media_files = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ? AND user_id = ?`,
       [
         title || existing[0][0].title,
@@ -372,6 +378,7 @@ const updateDiaryEntry = async (req, res) => {
         is_locked ? 1 : 0,
         image_path ?? existing[0][0].image_path,
         video_path ?? existing[0][0].video_path,
+        audio_path ?? existing[0][0].audio_path,
         file_path ?? existing[0][0].file_path,
         JSON.stringify(nextMediaFiles),
         req.user.user_id,
@@ -439,7 +446,14 @@ const addAttachment = async (req, res) => {
       file_size: file.size,
     });
 
-    const fieldName = fileType.startsWith("image/") ? "image_path" : fileType.startsWith("video/") ? "video_path" : "file_path";
+    const fieldName = fileType.startsWith("image/")
+      ? "image_path"
+      : fileType.startsWith("video/")
+        ? "video_path"
+        : fileType.startsWith("audio/")
+          ? "audio_path"
+          : "file_path";
+
     await db.query(
       `UPDATE diary_entries SET ${fieldName} = ?, media_files = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
       [publicFileUrl, JSON.stringify(nextMediaFiles), req.user.user_id, id, req.user.user_id]
@@ -460,11 +474,24 @@ const deleteAttachment = async (req, res) => {
     }
 
     const mediaFiles = parseJsonField(rows[0].media_files);
-    const remaining = mediaFiles.filter((file) => String(file.id) !== String(req.body?.attachment_id || req.query?.attachment_id));
+    const attachmentId = String(req.body?.attachment_id || req.query?.attachment_id || "");
+    const remaining = mediaFiles.filter((file) => String(file.id) !== attachmentId);
+    const resolvePrimary = (files, type) => files.find((file) => {
+      const fileType = String(file.file_type || "");
+      return fileType.startsWith(`${type}/`) || fileType === type;
+    });
 
     await db.query(
-      "UPDATE diary_entries SET media_files = ?, image_path = ?, video_path = ?, file_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?",
-      [JSON.stringify(remaining), remaining.find((file) => file.file_type === "image")?.file_url || null, remaining.find((file) => file.file_type === "video")?.file_url || null, remaining.find((file) => file.file_type === "file")?.file_url || null, id, req.user.user_id]
+      "UPDATE diary_entries SET media_files = ?, image_path = ?, video_path = ?, audio_path = ?, file_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?",
+      [
+        JSON.stringify(remaining),
+        resolvePrimary(remaining, "image")?.file_url || null,
+        resolvePrimary(remaining, "video")?.file_url || null,
+        resolvePrimary(remaining, "audio")?.file_url || null,
+        resolvePrimary(remaining, "file")?.file_url || null,
+        id,
+        req.user.user_id,
+      ]
     );
 
     res.json({ message: "Attachment deleted successfully." });

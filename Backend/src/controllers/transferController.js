@@ -90,11 +90,15 @@ exports.createTransfer = async (req, res) => {
             }
         }
 
+        const receiptPath = req.file
+            ? `/uploads/transfer-receipts/${req.file.filename}`
+            : null;
+
         const [result] = await db.query(
             `INSERT INTO transfers
-                (title, amount, remaining_amount, source_income_id, category, transfer_from, transfer_to, transfer_date, payment_method, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [title.trim(), numericAmount, numericAmount, sourceIncomeId ? Number(sourceIncomeId) : null, category, "Account", "Account", date, paymentMethod || "Cash", notes || null]
+                (title, amount, remaining_amount, source_income_id, category, transfer_from, transfer_to, transfer_date, payment_method, notes, receipt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [title.trim(), numericAmount, numericAmount, sourceIncomeId ? Number(sourceIncomeId) : null, category, "Account", "Account", date, paymentMethod || "Cash", notes || null, receiptPath]
         );
 
         if (selectedIncome) {
@@ -154,7 +158,7 @@ exports.updateTransfer = async (req, res) => {
 
         await db.query(
             `UPDATE transfers
-             SET title = ?, amount = ?, source_income_id = ?, category = ?, transfer_from = ?, transfer_to = ?, transfer_date = ?, payment_method = ?, notes = ?
+             SET title = ?, amount = ?, source_income_id = ?, category = ?, transfer_from = ?, transfer_to = ?, transfer_date = ?, payment_method = ?, notes = ?, receipt = ?
              WHERE id = ?`,
             [
                 (title || existingTransfer.title).trim(),
@@ -166,6 +170,7 @@ exports.updateTransfer = async (req, res) => {
                 date || existingTransfer.transfer_date,
                 paymentMethod || existingTransfer.payment_method || "Cash",
                 notes ?? existingTransfer.notes,
+                req.file ? `/uploads/transfer-receipts/${req.file.filename}` : (existingTransfer.receipt || null),
                 id,
             ]
         );

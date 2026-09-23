@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     FiDollarSign, FiSend, FiX, FiPlus, FiSearch,
     FiGrid, FiList, FiArrowRight, FiTrash2, FiRefreshCw,
+    FiUpload, FiPaperclip, FiEye,
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -31,6 +32,8 @@ const Transfer = () => {
     const [incomes, setIncomes]               = useState([]);
     const [selectedIncomeId, setSelectedIncomeId] = useState("");
     const [formData, setFormData]             = useState(emptyForm());
+    const [receiptFile, setReceiptFile]       = useState(null);   // ← new
+    const fileInputRef                        = useRef(null);      // ← new
     const [isModalOpen, setIsModalOpen]       = useState(false);
     const [isSubmitting, setIsSubmitting]     = useState(false);
     const [loading, setLoading]               = useState(true);
@@ -90,6 +93,8 @@ const Transfer = () => {
         setIsModalOpen(false);
         setSelectedIncomeId("");
         setFormData(emptyForm());
+        setReceiptFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     /* ── submit ───────────────────────────────────────────────────────── */
@@ -111,18 +116,22 @@ const Transfer = () => {
 
         setIsSubmitting(true);
         try {
-            await api.post("/transfers", {
-                title:          formData.title,
-                amount:         numericAmount,
-                category:       formData.category,
-                paymentMethod:  formData.paymentMethod,
-                date:           formData.date,
-                notes:          formData.notes,
-                sourceIncomeId: selectedIncome ? selectedIncome.id : null,
+            const payload = new FormData();
+            payload.append("title",          formData.title);
+            payload.append("amount",         numericAmount);
+            payload.append("category",       formData.category);
+            payload.append("paymentMethod",  formData.paymentMethod);
+            payload.append("date",           formData.date);
+            payload.append("notes",          formData.notes);
+            payload.append("sourceIncomeId", selectedIncome ? selectedIncome.id : "");
+            if (receiptFile) payload.append("receipt", receiptFile);
+
+            await api.post("/transfers", payload, {
+                headers: { "Content-Type": "multipart/form-data" },
             });
             toast.success("Transfer saved successfully!");
             closeModal();
-            await loadAll();          // full refresh so amounts are accurate
+            await loadAll();
         } catch (err) {
             toast.error(err.response?.data?.message || "Transfer failed.");
         } finally {
@@ -228,6 +237,7 @@ const Transfer = () => {
                                     <th className="px-5 py-4 text-right">Remaining</th>
                                     <th className="px-6 py-4">Payment</th>
                                     <th className="px-6 py-4">Date</th>
+                                    <th className="px-4 py-4 text-center">Receipt</th>
                                     <th className="px-4 py-4 text-center">Action</th>
                                 </tr>
                             </thead>
@@ -253,6 +263,21 @@ const Transfer = () => {
                                             <td className="px-6 py-4 text-slate-500">{t.payment_method || "—"}</td>
                                             <td className="px-6 py-4 text-slate-500">
                                                 {t.transfer_date ? String(t.transfer_date).split("T")[0] : "—"}
+                                            </td>
+                                            <td className="px-4 py-4 text-center">
+                                                {t.receipt ? (
+                                                    <a
+                                                        href={`${(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "")}${t.receipt}`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-2.5 py-1.5 text-[11px] font-bold text-purple-700 hover:bg-purple-100"
+                                                        title="View Receipt"
+                                                    >
+                                                        <FiPaperclip size={12} /> View
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-xs text-slate-300">—</span>
+                                                )}
                                             </td>
                                             <td className="px-4 py-4 text-center">
                                                 <button
@@ -321,6 +346,18 @@ const Transfer = () => {
                                             <p className="font-black text-[#00897b]">{fmt(remAmt)}</p>
                                         </div>
                                     </div>
+                                    {t.receipt && (
+                                        <a
+                                            href={`${(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "")}${t.receipt}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="mt-2 flex items-center gap-2 rounded-lg border border-purple-100 bg-purple-50 px-3 py-2 text-xs font-bold text-purple-700 hover:bg-purple-100 transition-all"
+                                        >
+                                            <FiPaperclip size={13} />
+                                            View Receipt
+                                            <FiEye size={12} className="ml-auto" />
+                                        </a>
+                                    )}
                                 </div>
                             );
                         })}
@@ -453,6 +490,53 @@ const Transfer = () => {
                                     className="w-full resize-none rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-purple-500"
                                 />
                             </label>
+
+                            {/* ── Receipt Upload ──────────────────────────── */}
+                            <div>
+                                <span className="mb-2 block text-sm font-bold text-slate-700">
+                                    Upload Receipt <small className="font-normal text-slate-400">(Optional — JPG, PNG, PDF · max 10 MB)</small>
+                                </span>
+                                <label
+                                    className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-4 transition-all ${
+                                        receiptFile
+                                            ? "border-purple-400 bg-purple-50"
+                                            : "border-slate-200 bg-slate-50 hover:border-purple-300 hover:bg-purple-50/40"
+                                    }`}
+                                >
+                                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${receiptFile ? "bg-purple-600" : "bg-slate-200"}`}>
+                                        <FiUpload size={18} className={receiptFile ? "text-white" : "text-slate-500"} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        {receiptFile ? (
+                                            <>
+                                                <p className="text-sm font-bold text-purple-700 truncate">{receiptFile.name}</p>
+                                                <p className="text-xs text-slate-400">{(receiptFile.size / 1024).toFixed(1)} KB</p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className="text-sm font-semibold text-slate-600">Click to browse or drag & drop</p>
+                                                <p className="text-xs text-slate-400">Supports: JPG, PNG, WEBP, PDF</p>
+                                            </>
+                                        )}
+                                    </div>
+                                    {receiptFile && (
+                                        <button
+                                            type="button"
+                                            onClick={(ev) => { ev.preventDefault(); setReceiptFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                                            className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                                        >
+                                            <FiX size={16} />
+                                        </button>
+                                    )}
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*,.pdf"
+                                        className="hidden"
+                                        onChange={(ev) => setReceiptFile(ev.target.files?.[0] || null)}
+                                    />
+                                </label>
+                            </div>
 
                             {/* actions */}
                             <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">

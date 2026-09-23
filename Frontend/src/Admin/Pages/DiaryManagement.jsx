@@ -261,6 +261,20 @@ const DiaryManagement = () => {
     setFormState((prev) => ({ ...prev, content: editorRef.current?.innerHTML || "" }));
   };
 
+  const uploadAttachmentFiles = async (entryId, pendingFiles = []) => {
+    if (!entryId || !pendingFiles.length) return;
+
+    await Promise.all(
+      pendingFiles.map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        await api.post(`/diary/${entryId}/attachments`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      })
+    );
+  };
+
   const handleSubmit = async (saveStatus = "published") => {
     if (!formState.title.trim() || !formState.content.trim()) {
       toast.error("Title and diary content are required.");
@@ -287,9 +301,15 @@ const DiaryManagement = () => {
         toast.success("Diary saved successfully.");
       }
 
+      const savedEntryId = response?.data?.id || editingId;
+      if (files.length) {
+        await uploadAttachmentFiles(savedEntryId, files);
+      }
+
       localStorage.removeItem("diary-draft-temp");
-      setEditingId(response?.data?.id || editingId);
+      setEditingId(savedEntryId);
       setSelectedEntry(response.data || selectedEntry);
+      setFiles([]);
       setDraftSaved(true);
       await fetchData();
       closeEditor();
@@ -358,13 +378,17 @@ const DiaryManagement = () => {
     }
   };
 
-  const uploadAttachment = async (entryId) => {
-    if (!files.length) return;
-    const file = files[0];
-    const formData = new FormData();
-    formData.append("file", file);
+  const uploadAttachment = async (entryId, pendingFiles = files) => {
+    if (!entryId || !pendingFiles.length) return;
+
     try {
-      await api.post(`/diary/${entryId}/attachments`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+      await Promise.all(
+        pendingFiles.map(async (file) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          await api.post(`/diary/${entryId}/attachments`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+        })
+      );
       toast.success("Attachment uploaded.");
       setFiles([]);
       await fetchData();
