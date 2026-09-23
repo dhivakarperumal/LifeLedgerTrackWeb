@@ -32,7 +32,7 @@ const navItems = [
       { path: "/admin/expensive/all", label: "All Expensive", icon: ReceiptText },
       {
         path: "/admin/expensive/category",
-        label: "Add Expensive Categories",
+        label: "Expensive Categories",
         icon: Layers,
       },
     ],
