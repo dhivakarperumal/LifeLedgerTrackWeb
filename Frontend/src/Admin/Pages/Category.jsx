@@ -546,8 +546,10 @@ const Category = () => {
                                         className="w-full bg-white border border-gray-200 text-slate-800 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-sm"
                                     >
                                         <option value="Expensive">Expensive</option>
+                                        <option value="Income">Income</option>
+                                        <option value="Transfer">Transfer</option>
                                         <option value="Memories">Memories</option>
-                                        <option value="Dairy">Dairy</option>
+                                        <option value="Diary">Diary</option>
                                     </select>
                                 </div>
 

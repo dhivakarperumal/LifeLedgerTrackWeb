@@ -523,6 +523,24 @@ const Transfer = () => {
 
                         <form onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
 
+                       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                         {/* income source */}
+                                <label className="sm:col-span-2 mb-3">
+                                    <span className="mb-2 block text-sm font-bold text-slate-700">Select Existing Income Record</span>
+                                    <select
+                                        value={selectedIncomeId} onChange={handleIncomeSelect}
+                                        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"
+                                    >
+                                        <option value="">Choose an income record (optional)</option>
+                                        {incomes.map((inc) => (
+                                            <option key={inc.id} value={inc.id}>
+                                                {inc.title} — {fmt(inc.remaining_amount ?? inc.amount ?? 0)} available
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                       </div>
+
                             {/* balance summary */}
                             <div className="grid grid-cols-3 gap-3">
                                 <SummaryBox label="Available Income" value={selectedIncome ? fmt(availableBalance) : "—"} />
@@ -579,21 +597,7 @@ const Transfer = () => {
                                     </select>
                                 </label>
 
-                                {/* income source */}
-                                <label className="sm:col-span-2">
-                                    <span className="mb-2 block text-sm font-bold text-slate-700">Select Existing Income Record</span>
-                                    <select
-                                        value={selectedIncomeId} onChange={handleIncomeSelect}
-                                        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"
-                                    >
-                                        <option value="">Choose an income record (optional)</option>
-                                        {incomes.map((inc) => (
-                                            <option key={inc.id} value={inc.id}>
-                                                {inc.title} — {fmt(inc.remaining_amount ?? inc.amount ?? 0)} available
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
+                                
 
                                 {/* category */}
                                 <label>

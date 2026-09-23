@@ -453,33 +453,36 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
 
                         {/* ── Recent Events ── */}
-                        <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4 flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white shadow-sm">
-                                        <FiCalendar size={14} />
+                        <div className="rounded-xl border border-violet-100 bg-white p-3 flex flex-col gap-3 shadow-sm">
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white shadow-sm shrink-0">
+                                        <FiCalendar size={16} />
                                     </div>
-                                    <div>
-                                        <p className="text-xs font-black text-slate-800">Events</p>
-                                        <p className="text-[10px] text-gray-400">{recentEvents.length} record{recentEvents.length !== 1 ? "s" : ""}</p>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-black text-slate-800 truncate">Events</p>
+                                        <p className="text-[10px] text-gray-500">{recentEvents.length} record{recentEvents.length !== 1 ? "s" : ""}</p>
                                     </div>
                                 </div>
-                                <button onClick={() => navigate("/admin/planner/calendar")} className="text-[10px] text-violet-500 font-bold hover:underline flex items-center gap-1">
+                                <button onClick={() => navigate("/admin/planner/calendar")} className="text-[11px] text-violet-600 font-bold hover:underline flex items-center gap-1 whitespace-nowrap">
                                     View All <FiArrowRight size={10} />
                                 </button>
                             </div>
+
                             <div className="space-y-2">
                                 {recentEvents.length === 0 ? (
-                                    <p className="text-center text-gray-300 text-xs py-4 font-semibold">No events today</p>
+                                    <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-4 text-center">
+                                        <p className="text-center text-gray-400 text-xs font-semibold">No events today</p>
+                                    </div>
                                 ) : recentEvents.map((event) => (
-                                    <div key={event.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 shadow-sm border border-violet-100/60">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-bold text-slate-700 truncate">{event.title}</p>
-                                            <p className="text-[10px] text-gray-400 truncate">{event.category || "General"}</p>
+                                    <div key={event.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-bold text-slate-700 truncate">{event.title}</p>
+                                            <p className="text-[10px] text-gray-500 truncate">{event.category || "General"}</p>
                                         </div>
-                                        <div className="text-right shrink-0 ml-2">
-                                            <p className="text-[10px] font-bold text-violet-600">{event.startTime || "All day"}</p>
-                                            <p className="text-[10px] text-gray-400">{event.location || "No place"}</p>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-xs font-black text-violet-600">{event.start_time || event.startTime || "09:00"}</p>
+                                            <p className="text-[10px] text-gray-400 truncate">{event.location || "No place"}</p>
                                         </div>
                                     </div>
                                 ))}
