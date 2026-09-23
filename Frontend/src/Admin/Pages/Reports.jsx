@@ -37,6 +37,7 @@ const Reports = () => {
     const [searchTerm, setSearchTerm]       = useState("");
     const [categoryFilter, setCategoryFilter] = useState("All");
     const [paymentFilter, setPaymentFilter] = useState("All");
+    const [datePreset, setDatePreset]       = useState("All");
     const [dateFrom, setDateFrom]           = useState("");
     const [dateTo, setDateTo]               = useState("");
     const [viewMode, setViewMode]           = useState("table"); // table | grid
@@ -85,6 +86,91 @@ const Reports = () => {
         return ["All", ...Array.from(set).sort()];
     }, [allRecords]);
 
+    const getDateRange = (preset, from, to) => {
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        if (preset === "Custom Range") {
+            return {
+                from: from ? new Date(from) : null,
+                to: to ? new Date(`${to}T23:59:59`) : null,
+            };
+        }
+
+        if (preset === "All") {
+            return { from: null, to: null };
+        }
+
+        if (preset === "Today") {
+            return {
+                from: startOfToday,
+                to: new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1),
+            };
+        }
+
+        if (preset === "Yesterday") {
+            const start = new Date(startOfToday);
+            start.setDate(start.getDate() - 1);
+            const end = new Date(start);
+            end.setHours(23, 59, 59, 999);
+            return { from: start, to: end };
+        }
+
+        if (preset === "This Week") {
+            const day = startOfToday.getDay();
+            const diffToMonday = (day === 0 ? -6 : 1) - day;
+            const from = new Date(startOfToday);
+            from.setDate(startOfToday.getDate() + diffToMonday);
+            const to = new Date(from);
+            to.setDate(from.getDate() + 6);
+            to.setHours(23, 59, 59, 999);
+            return { from, to };
+        }
+
+        if (preset === "Last Week") {
+            const todayDate = startOfToday.getDate();
+            const day = startOfToday.getDay();
+            const diffToMonday = (day === 0 ? -6 : 1) - day;
+            const currentWeekStart = new Date(startOfToday);
+            currentWeekStart.setDate(todayDate + diffToMonday);
+
+            const from = new Date(currentWeekStart);
+            from.setDate(currentWeekStart.getDate() - 7);
+            const to = new Date(from);
+            to.setDate(from.getDate() + 6);
+            to.setHours(23, 59, 59, 999);
+            return { from, to };
+        }
+
+        if (preset === "This Month") {
+            const from = new Date(today.getFullYear(), today.getMonth(), 1);
+            const to = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+            return { from, to };
+        }
+
+        if (preset === "Last Month") {
+            const from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const to = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+            return { from, to };
+        }
+
+        if (preset === "This Year") {
+            const from = new Date(today.getFullYear(), 0, 1);
+            const to = new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999);
+            return { from, to };
+        }
+
+        if (preset === "Last Year") {
+            const from = new Date(today.getFullYear() - 1, 0, 1);
+            const to = new Date(today.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+            return { from, to };
+        }
+
+        return { from: null, to: null };
+    };
+
+    const activeDateRange = useMemo(() => getDateRange(datePreset, dateFrom, dateTo), [datePreset, dateFrom, dateTo]);
+
     const visible = useMemo(() => {
         const q = searchTerm.toLowerCase();
         return allRecords.filter((r) => {
@@ -101,12 +187,12 @@ const Reports = () => {
             const matchPayment = paymentFilter  === "All" || payment === paymentFilter;
 
             const rDate = r._date ? new Date(r._date) : null;
-            const matchFrom = !dateFrom || (rDate && rDate >= new Date(dateFrom));
-            const matchTo   = !dateTo   || (rDate && rDate <= new Date(dateTo));
+            const matchFrom = !activeDateRange.from || (rDate && rDate >= activeDateRange.from);
+            const matchTo   = !activeDateRange.to || (rDate && rDate <= activeDateRange.to);
 
             return matchSearch && matchCat && matchPayment && matchFrom && matchTo;
         });
-    }, [allRecords, searchTerm, categoryFilter, paymentFilter, dateFrom, dateTo]);
+    }, [allRecords, searchTerm, categoryFilter, paymentFilter, activeDateRange]);
 
     /* ── summary stats (from visible rows) ───────────────────────────────── */
     const stats = useMemo(() => {
@@ -128,6 +214,7 @@ const Reports = () => {
         setSearchTerm("");
         setCategoryFilter("All");
         setPaymentFilter("All");
+        setDatePreset("All");
         setDateFrom("");
         setDateTo("");
         setReportType("all");
@@ -174,12 +261,7 @@ const Reports = () => {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button
-                        onClick={fetchAll}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-slate-700 transition-all text-sm font-semibold"
-                    >
-                        <FiRefreshCw size={15} /> Refresh
-                    </button>
+                    
                     <button
                         onClick={exportCSV}
                         className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-500/30 active:scale-95"
@@ -221,7 +303,7 @@ const Reports = () => {
                         <input
                             type="text"
                             placeholder="Search by title, category, notes..."
-                            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#7b2cbf] focus:bg-white transition-all text-sm font-medium text-slate-700"
+                            className="w-1/2 pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#7b2cbf] focus:bg-white transition-all text-sm font-medium text-slate-700"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -279,30 +361,66 @@ const Reports = () => {
                         {paymentMethods.map((m) => <option key={m} value={m}>{m === "All" ? "All Payment Methods" : m}</option>)}
                     </select>
 
-                    {/* Date From */}
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs text-gray-400 font-medium whitespace-nowrap">From</label>
-                        <input
-                            type="date"
-                            value={dateFrom}
-                            onChange={(e) => setDateFrom(e.target.value)}
-                            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#7b2cbf] transition-all"
-                        />
-                    </div>
+                    <select
+                        value={datePreset}
+                        onChange={(e) => {
+                            const nextPreset = e.target.value;
+                            setDatePreset(nextPreset);
+                            if (nextPreset !== "Custom Range") {
+                                setDateFrom("");
+                                setDateTo("");
+                            }
+                        }}
+                        className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none hover:border-[#7b2cbf] transition-all cursor-pointer"
+                    >
+                        {[
+                            "All",
+                            "Today",
+                            "Yesterday",
+                            "This Week",
+                            "Last Week",
+                            "This Month",
+                            "Last Month",
+                            "This Year",
+                            "Last Year",
+                            "Custom Range",
+                        ].map((preset) => (
+                            <option key={preset} value={preset}>{preset}</option>
+                        ))}
+                    </select>
 
-                    {/* Date To */}
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs text-gray-400 font-medium whitespace-nowrap">To</label>
-                        <input
-                            type="date"
-                            value={dateTo}
-                            onChange={(e) => setDateTo(e.target.value)}
-                            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#7b2cbf] transition-all"
-                        />
-                    </div>
+                    {datePreset === "Custom Range" && (
+                        <>
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs text-gray-400 font-medium whitespace-nowrap">From</label>
+                                <input
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={(e) => {
+                                        setDateFrom(e.target.value);
+                                        setDatePreset("Custom Range");
+                                    }}
+                                    className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#7b2cbf] transition-all"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs text-gray-400 font-medium whitespace-nowrap">To</label>
+                                <input
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={(e) => {
+                                        setDateTo(e.target.value);
+                                        setDatePreset("Custom Range");
+                                    }}
+                                    className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#7b2cbf] transition-all"
+                                />
+                            </div>
+                        </>
+                    )}
 
                     {/* Reset */}
-                    {(searchTerm || categoryFilter !== "All" || paymentFilter !== "All" || dateFrom || dateTo || reportType !== "all") && (
+                    {(searchTerm || categoryFilter !== "All" || paymentFilter !== "All" || datePreset !== "All" || dateFrom || dateTo || reportType !== "all") && (
                         <button
                             onClick={resetFilters}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 text-red-500 bg-red-50 hover:bg-red-100 text-xs font-bold transition-all"
@@ -337,7 +455,7 @@ const Reports = () => {
                         <table className="w-full text-left text-sm">
                             <thead>
                                 <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c]">
-                                    {["#", "Type", "Title", "Category", "Amount", "Payment", "Date", "Recurring / Remaining", "Notes"].map((h) => (
+                                    {["S No", "Type", "Title", "Category", "Amount", "Payment", "Date", "Recurring / Remaining", "Notes"].map((h) => (
                                         <th key={h} className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider whitespace-nowrap">{h}</th>
                                     ))}
                                 </tr>
