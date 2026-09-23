@@ -59,12 +59,20 @@ const getDaysInMonthGrid = (monthDate) => {
 
 const isSameDay = (a, b) => {
   if (!a || !b) return false;
-  const x = new Date(a);
-  const y = new Date(b);
-  return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate();
+  
+  const format = (val) => {
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    return toDateInput(val);
+  };
+  
+  return format(a) === format(b);
 };
 
-const sortItems = (items, key) => [...items].sort((a, b) => new Date(a[key]) - new Date(b[key]));
+const sortItems = (items, key) => [...items].sort((a, b) => {
+  const valA = typeof key === 'function' ? key(a) : a[key];
+  const valB = typeof key === 'function' ? key(b) : b[key];
+  return new Date(valA) - new Date(valB);
+});
 
 const defaultEventForm = {
   title: "",
@@ -114,17 +122,14 @@ const CalendarReminder = () => {
   const fetchCalendar = async () => {
     setLoading(true);
     try {
-      const [eventsRes, reminderRes, summaryRes] = await Promise.all([
+      const [eventsRes] = await Promise.all([
         api.get("/calendar/events"),
-        api.get("/calendar/reminders"),
-        api.get("/calendar/summary"),
       ]);
 
       const eventList = Array.isArray(eventsRes?.data?.data) ? eventsRes.data.data : [];
-      const reminderList = Array.isArray(reminderRes?.data?.data) ? reminderRes.data.data : [];
       setEvents(eventList);
-      setReminders(reminderList);
-      setSummary(summaryRes?.data?.data || {});
+      setReminders([]);
+      setSummary({});
     } catch (error) {
       console.error("Calendar fetch failed", error);
       toast.error(error?.response?.data?.message || "Failed to load calendar data.");

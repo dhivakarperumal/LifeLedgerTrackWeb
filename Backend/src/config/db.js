@@ -184,6 +184,23 @@ const initializeDatabase = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS calendar_reminders (
+      id VARCHAR(64) PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      category VARCHAR(100) NOT NULL,
+      reminder_date DATE NOT NULL,
+      reminder_time TIME NULL,
+      priority VARCHAR(20) DEFAULT 'Medium',
+      notes TEXT NULL,
+      related_event VARCHAR(64) NULL,
+      notification_enabled BOOLEAN DEFAULT TRUE,
+      repeat_option VARCHAR(20) DEFAULT 'None',
+      status VARCHAR(30) DEFAULT 'Pending',
+      completed_at TIMESTAMP NULL,
+      snoozed_at TIMESTAMP NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS diary_entries (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id VARCHAR(50) NOT NULL,
@@ -248,7 +265,6 @@ const initializeDatabase = async () => {
   }
 
   const staleTables = [
-    "calendar_reminders",
     "reviews",
     "order_items",
     "order_addresses",
