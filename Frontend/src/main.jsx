@@ -39,13 +39,18 @@ const Profile = React.lazy(() => import("./Admin/Pages/Profile.jsx"));
 const router = createBrowserRouter([
   {
     path: "/",
+    element: <Login />,
+    errorElement: <ErrorPage />,
+  },
+  { path: "/login", element: <Login /> },
+  {
+    path: "/home",
     element: <App />,
     errorElement: <ErrorPage />,
     children: [
-      { path: "/", element: <Home /> },
+      { path: "", element: <Home /> },
     ],
   },
-  { path: "/login", element: <Login /> },
   { path: "/register", element: <Register /> },
   {
     path: "/admin",

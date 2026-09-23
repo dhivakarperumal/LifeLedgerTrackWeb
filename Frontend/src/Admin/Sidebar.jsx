@@ -67,7 +67,7 @@ const navItems = [
     ],
   },
 
-  { path: "/", label: "Back Home", icon: Home },
+ 
 ];
 
 /* ================= SIDEBAR ================= */
@@ -171,7 +171,7 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
               <img
                 src="/logo.png"
                 alt="Logo"
-                className="w-8 h-8 object-contain"
+                className="w-10 h-10 object-contain"
                 onError={(e) => {
                   e.target.src =
                     "https://ui-avatars.com/api/?name=VR&background=1B4D22&color=fff";
@@ -181,10 +181,10 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
             {!collapsed && (
               <div className="overflow-hidden">
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#D4AF37] mb-1">
-                  Saree World
+                  Life Ledger
                 </p>
                 <p className="text-sm font-semibold tracking-wide text-white">
-                  Fashion Store Admin
+                  Life Ledger Admin
                 </p>
               </div>
             )}
