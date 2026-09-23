@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import { useAuth } from "../../PrivateRouter/AuthContext";
 import { toast } from "react-hot-toast";
@@ -48,6 +49,7 @@ const isDiaryCategory = (category) => {
 
 const DiaryManagement = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [entries, setEntries] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +69,19 @@ const DiaryManagement = () => {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+
+  const mergeUniqueFiles = (existingFiles, incomingFiles) => {
+    const seen = new Set(existingFiles.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
+    const uniqueFiles = incomingFiles.filter((file) => !seen.has(`${file.name}-${file.size}-${file.lastModified}`));
+    return [...existingFiles, ...uniqueFiles];
+  };
+
+  const getFilePreviewUrl = (file) => {
+    if (!file) return "";
+    if (typeof file === "string") return file;
+    return URL.createObjectURL(file);
+  };
+
   const [formState, setFormState] = useState({
     title: "",
     content: "",
@@ -338,7 +353,8 @@ const DiaryManagement = () => {
   };
 
   const handleFiles = (e) => {
-    setFiles(Array.from(e.target.files || []));
+    const selectedFiles = Array.from(e.target.files || []);
+    setFiles((prevFiles) => mergeUniqueFiles(prevFiles, selectedFiles));
   };
 
   const startVoiceRecording = async () => {
@@ -354,7 +370,7 @@ const DiaryManagement = () => {
       recorder.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: "audio/webm" });
-        setFiles((prev) => [...prev, file]);
+        setFiles((prevFiles) => mergeUniqueFiles(prevFiles, [file]));
         stream.getTracks().forEach((track) => track.stop());
       };
 
@@ -538,7 +554,7 @@ const DiaryManagement = () => {
                             <button onClick={() => favoriteEntry(entry.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${entry.is_favorite ? "bg-rose-50 text-rose-500" : "bg-slate-50 text-slate-400 hover:bg-slate-100"}`} title="Favorite">
                               <FiHeart size={13} className={entry.is_favorite ? "fill-current" : ""} />
                             </button>
-                            <button onClick={() => setSelectedEntry(entry)} className="w-8 h-8 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-all" title="View"><FiEye size={13} /></button>
+                            <button onClick={() => navigate(`/admin/users/diary/${entry.id}`)} className="w-8 h-8 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-all" title="View"><FiEye size={13} /></button>
                             <button onClick={() => openEditEntry(entry)} className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all" title="Edit"><FiEdit2 size={13} /></button>
                             <button onClick={() => deleteEntry(entry.id)} className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all" title="Delete"><FiTrash2 size={13} /></button>
                           </div>
@@ -584,7 +600,7 @@ const DiaryManagement = () => {
                     </div>
 
                     <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                      <button onClick={() => setSelectedEntry(entry)} className="rounded-lg bg-slate-100 px-2 py-1.5 hover:bg-slate-200">View</button>
+                      <button onClick={() => navigate(`/admin/users/diary/${entry.id}`)} className="rounded-lg bg-slate-100 px-2 py-1.5 hover:bg-slate-200">View</button>
                       <button onClick={() => openEditEntry(entry)} className="rounded-lg bg-slate-100 px-2 py-1.5 hover:bg-slate-200">Edit</button>
                       <button onClick={() => deleteEntry(entry.id)} className="rounded-lg bg-rose-100 px-2 py-1.5 text-rose-600 hover:bg-rose-200">Delete</button>
                     </div>
@@ -597,38 +613,6 @@ const DiaryManagement = () => {
 
       </div>
 
-      {selectedEntry && (
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-sm text-slate-500"><FiCalendar /> {formatDate(selectedEntry.entry_date)}</div>
-              <h3 className="mt-2 text-2xl font-bold text-slate-900">{selectedEntry.title}</h3>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => openEditEntry(selectedEntry)} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">Edit</button>
-              <button onClick={() => favoriteEntry(selectedEntry.id)} className="rounded-xl bg-rose-100 px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-200">Favorite</button>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">
-            <span className="rounded-full bg-violet-100 px-2.5 py-1">{selectedEntry.category_name || "General"}</span>
-            <span className="rounded-full bg-amber-100 px-2.5 py-1">{selectedEntry.mood}</span>
-            {selectedEntry.location && <span className="rounded-full bg-sky-100 px-2.5 py-1">{selectedEntry.location}</span>}
-          </div>
-
-          <div className="mt-5 prose max-w-none text-slate-700" dangerouslySetInnerHTML={{ __html: selectedEntry.content }} />
-          {selectedEntry.attachments?.length ? (
-            <div className="mt-6">
-              <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Attachments</h4>
-              <div className="mt-3 flex flex-wrap gap-3">
-                {selectedEntry.attachments.map((att) => (
-                  <a key={att.id} href={att.file_url} target="_blank" rel="noreferrer" className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{att.file_name}</a>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      )}
 
       {isEditorOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
@@ -746,10 +730,42 @@ const DiaryManagement = () => {
                     </div>
                   </div>
                   {files.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {files.map((file, index) => (
-                        <span key={`${file.name}-${index}`} className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">{file.name}</span>
-                      ))}
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {files.map((file, index) => {
+                        const fileType = file.type || "application/octet-stream";
+                        const previewUrl = getFilePreviewUrl(file);
+
+                        return (
+                          <div key={`${file.name}-${file.size}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div className="max-h-40 overflow-hidden bg-slate-100">
+                              {fileType.startsWith("image/") ? (
+                                <img src={previewUrl} alt={file.name} className="h-40 w-full object-cover" />
+                              ) : fileType.startsWith("video/") ? (
+                                <video src={previewUrl} className="h-40 w-full object-cover" controls />
+                              ) : fileType.startsWith("audio/") ? (
+                                <div className="flex h-40 items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500">
+                                  <audio src={previewUrl} controls className="w-full px-2" />
+                                </div>
+                              ) : (
+                                <div className="flex h-40 items-center justify-center bg-slate-200 px-3 text-center text-xs font-medium text-slate-700">
+                                  {file.name}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2 px-3 py-2">
+                              <span className="truncate text-[11px] text-slate-600">{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => setFiles((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))}
+                                className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-600"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

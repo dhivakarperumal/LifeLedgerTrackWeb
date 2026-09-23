@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import { toast } from "react-hot-toast";
 import {
@@ -18,7 +19,6 @@ import {
   FiBookOpen,
   FiSave,
   FiX,
-  FiEye,
   FiTag,
   FiClock,
 } from "react-icons/fi";
@@ -51,6 +51,7 @@ const initialForm = {
 };
 
 const MemoriesManagement = () => {
+  const navigate = useNavigate();
   const [memories, setMemories] = useState([]);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState("");
@@ -408,8 +409,19 @@ const MemoriesManagement = () => {
                     <td className="px-4 py-4 font-bold text-slate-700">{index + 1}</td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-violet-100 to-pink-100 text-violet-600">
-                          {memory.media_type === "video" ? <FiVideo size={18} /> : memory.media_type === "audio" ? <FiMusic size={18} /> : <FiImage size={18} />}
+                        <div className="flex h-14 w-20 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-violet-600">
+                          {memory.media_type === "video" ? (
+                            <video src={getMediaUrl(memory.media_url)} className="h-full w-full object-cover" controls playsInline muted />
+                          ) : memory.media_type === "audio" ? (
+                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 text-white">
+                              <FiMusic size={18} />
+                              <audio src={getMediaUrl(memory.media_url)} controls className="h-8 w-20" />
+                            </div>
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-100 to-pink-100">
+                              <FiImage size={18} />
+                            </div>
+                          )}
                         </div>
                         <div>
                           <p className="font-semibold text-slate-800">{memory.title}</p>
@@ -439,9 +451,6 @@ const MemoriesManagement = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => setSelectedMemory(memory)} className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200">
-                          <FiEye size={15} />
-                        </button>
                         <button onClick={() => openEditMemory(memory)} className="rounded-lg bg-violet-100 p-2 text-violet-700 transition hover:bg-violet-200">
                           <FiEdit2 size={15} />
                         </button>
@@ -465,8 +474,9 @@ const MemoriesManagement = () => {
                   memory.media_type === "video" ? (
                     <video src={getMediaUrl(memory.media_url)} className="h-full w-full object-cover" controls />
                   ) : memory.media_type === "audio" ? (
-                    <div className="flex h-full items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 text-4xl text-white">
-                      <FiMusic />
+                    <div className="relative flex flex-col h-full items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 text-4xl text-white">
+                      <FiMusic className="mb-4 text-white/60 drop-shadow-md" />
+                      <audio src={getMediaUrl(memory.media_url)} controls className="absolute bottom-2 w-11/12 max-w-[200px] h-8 opacity-90 shadow-sm" />
                     </div>
                   ) : (
                     <img src={getMediaUrl(memory.media_url)} alt={memory.title} className="h-full w-full object-cover" />
@@ -506,7 +516,6 @@ const MemoriesManagement = () => {
 
                 <div className="flex items-center justify-between">
                   <div className="flex gap-2">
-                    <button onClick={() => setSelectedMemory(memory)} className="rounded-lg bg-slate-100 p-2 text-slate-700"><FiEye size={15} /></button>
                     <button onClick={() => openEditMemory(memory)} className="rounded-lg bg-violet-100 p-2 text-violet-700"><FiEdit2 size={15} /></button>
                     <button onClick={() => handleDelete(memory.id)} className="rounded-lg bg-rose-100 p-2 text-rose-600"><FiTrash2 size={15} /></button>
                   </div>
@@ -677,61 +686,6 @@ const MemoriesManagement = () => {
         </div>
       )}
 
-      {selectedMemory && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-5 text-slate-800 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-slate-900">{selectedMemory.title}</h3>
-              <button onClick={() => setSelectedMemory(null)} className="rounded-full bg-slate-100 p-2 text-slate-600 hover:bg-slate-200"><FiX /></button>
-            </div>
-
-            <div className="mb-4 overflow-hidden rounded-2xl bg-slate-100">
-              {selectedMemory.media_url ? (
-                selectedMemory.media_type === "video" ? (
-                  <video src={getMediaUrl(selectedMemory.media_url)} controls className="w-full" />
-                ) : selectedMemory.media_type === "audio" ? (
-                  <div className="flex h-36 items-center justify-center text-4xl text-slate-700"><FiMusic /></div>
-                ) : (
-                  <img src={getMediaUrl(selectedMemory.media_url)} alt={selectedMemory.title} className="w-full" />
-                )
-              ) : (
-                <div className="flex h-40 items-center justify-center text-4xl text-slate-700"><FiBookOpen /></div>
-              )}
-            </div>
-
-            <div className="space-y-3 text-sm text-slate-700">
-              <p>{selectedMemory.description || "No description added."}</p>
-
-              <div className="flex flex-wrap gap-2">
-                {selectedMemory.location && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><FiMapPin size={12} /> {selectedMemory.location}</span>
-                )}
-                {selectedMemory.memory_date && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><FiCalendar size={12} /> {formatDate(selectedMemory.memory_date)}</span>
-                )}
-                {selectedMemory.mood && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><FiClock size={12} /> {selectedMemory.mood}</span>
-                )}
-              </div>
-
-              {selectedMemory.tags?.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {selectedMemory.tags.map((tag, idx) => (
-                    <span key={`${tag}-${idx}`} className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-1 text-xs text-violet-700"><FiTag size={10} /> {tag}</span>
-                  ))}
-                </div>
-              )}
-
-              {selectedMemory.voice_note && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-700">
-                  <p className="mb-1 text-xs uppercase tracking-[0.2em] text-slate-500">Voice note</p>
-                  <p>{selectedMemory.voice_note}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

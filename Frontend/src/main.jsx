@@ -23,12 +23,11 @@ const AllProducts = React.lazy(() => import("./Components/Pages/AllProducts.jsx"
 const AllExpensive = React.lazy(() => import("./Admin/Pages/AllExpensive.jsx"));
 const Category = React.lazy(() => import("./Admin/Pages/Category.jsx"));
 const DiaryManagement = React.lazy(() => import("./Admin/Pages/DiaryManagement.jsx"));
+const DiaryDetails = React.lazy(() => import("./Admin/Pages/DiaryDetails.jsx"));
 const MemoriesManagement = React.lazy(() => import("./Admin/Pages/MemoriesManagement.jsx"));
+const MemoryDetails = React.lazy(() => import("./Admin/Pages/MemoryDetails.jsx"));
 
 const Users = React.lazy(() => import("./Admin/Pages/Users.jsx"));
-
-
-
 
 const ErrorPage = React.lazy(() => import("./Admin/Pages/ErrorPage.jsx"));
 const Transfer = React.lazy(() => import("./Admin/Pages/Transfer.jsx"));
@@ -43,8 +42,6 @@ const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       { path: "/", element: <Home /> },
-      
-
     ],
   },
   { path: "/login", element: <Login /> },
@@ -71,7 +68,9 @@ const router = createBrowserRouter([
       { path: "users/all", element: <Users initialTab="All" /> },
       { path: "users/new", element: <Users initialTab="New" /> },
       { path: "users/diary", element: <DiaryManagement /> },
+      { path: "users/diary/:id", element: <DiaryDetails /> },
       { path: "users/memories", element: <MemoriesManagement /> },
+      { path: "users/memories/:id", element: <MemoryDetails /> },
       // Marketing & Support
 
       // Finance
