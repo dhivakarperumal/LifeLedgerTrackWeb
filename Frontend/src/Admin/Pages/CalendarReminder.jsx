@@ -407,7 +407,7 @@ const CalendarReminder = () => {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {summaryCards.map(({ title, value, icon: Icon, accent }) => (
           <div key={title} className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm">
             <div className="flex items-center justify-between">
@@ -423,216 +423,250 @@ const CalendarReminder = () => {
         ))}
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCalendarMonth((prev) => addMonths(prev, -1))}
-              className="rounded-xl border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <div className="min-w-[180px] text-center text-xl font-bold text-slate-900">{toMonthLabel(calendarMonth)}</div>
-            <button
-              onClick={() => setCalendarMonth((prev) => addMonths(prev, 1))}
-              className="rounded-xl border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => {
-                const today = new Date();
-                setCalendarMonth(startOfMonth(today));
-                setSelectedDate(today);
-              }}
-              className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-100"
-            >
-              Today
-            </button>
+      <div
+        className="grid grid-cols-1 gap-4"
+        style={{ gridTemplateColumns: "minmax(0, 1.85fr) minmax(0, 0.75fr)" }}
+      >
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCalendarMonth((prev) => addMonths(prev, -1))}
+                className="rounded-xl border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="min-w-[180px] text-center text-xl font-bold text-slate-900">{toMonthLabel(calendarMonth)}</div>
+              <button
+                onClick={() => setCalendarMonth((prev) => addMonths(prev, 1))}
+                className="rounded-xl border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => {
+                  const today = new Date();
+                  setCalendarMonth(startOfMonth(today));
+                  setSelectedDate(today);
+                }}
+                className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-100"
+              >
+                Today
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-xl bg-slate-100 p-1">
+              {VIEW_MODES.map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`rounded-lg px-3 py-2 text-xs font-semibold capitalize transition ${
+                    viewMode === mode ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl bg-slate-100 p-1">
-            {VIEW_MODES.map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`rounded-lg px-3 py-2 text-xs font-semibold capitalize transition ${
-                  viewMode === mode ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
+          {viewMode === "month" && (
+            <div className="grid grid-cols-7 gap-2">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                <div key={day} className="px-2 py-3 text-center text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+                  {day}
+                </div>
+              ))}
+
+              {monthDays.map((date) => {
+                const dayEvents = events.filter((event) => isSameDay(event.startDate, date));
+                const isCurrentMonth = date.getMonth() === calendarMonth.getMonth();
+                const isSelected = isSameDay(date, selectedDate);
+                const isToday = isSameDay(date, new Date());
+
+                return (
+                  <button
+                    key={date.toISOString()}
+                    onClick={() => setSelectedDate(date)}
+                    className={`min-h-[120px] rounded-2xl border p-2 text-left transition ${
+                      isSelected ? "border-violet-500 bg-violet-50" : "border-slate-200 bg-slate-50/50 hover:bg-white"
+                    } ${!isCurrentMonth ? "opacity-40" : ""}`}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${
+                        isToday ? "bg-slate-900 text-white" : "text-slate-700"
+                      }`}>
+                        {date.getDate()}
+                      </span>
+                      {dayEvents.length > 0 && (
+                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">
+                          {dayEvents.length}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      {dayEvents.slice(0, 2).map((event) => (
+                        <div
+                          key={event.id}
+                          onClick={(e) => { e.stopPropagation(); setSelectedItem({ type: 'event', data: event }); }}
+                          className="truncate rounded-md px-1.5 py-1 text-[10px] font-semibold text-white cursor-pointer hover:opacity-90 transition"
+                          style={{ backgroundColor: event.color || '#8B5CF6' }}
+                        >
+                          {event.title}
+                        </div>
+                      ))}
+                      {dayEvents.length > 2 && (
+                        <div className="text-[10px] font-medium text-slate-500">+{dayEvents.length - 2} more</div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {viewMode === "week" && (
+            <div className="grid gap-3 md:grid-cols-7">
+              {Array.from({ length: 7 }, (_, idx) => {
+                const current = new Date(selectedDate);
+                current.setDate(selectedDate.getDate() - selectedDate.getDay() + idx);
+                const dayEvents = events.filter((event) => isSameDay(event.startDate, current));
+                return (
+                  <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="mb-3 text-center text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
+                      {new Intl.DateTimeFormat("en-IN", { weekday: "short" }).format(current)}
+                    </div>
+                    <div className="space-y-2">
+                      {dayEvents.length > 0 ? dayEvents.map((event) => (
+                        <div
+                          key={event.id}
+                          onClick={(e) => { e.stopPropagation(); setSelectedItem({ type: 'event', data: event }); }}
+                          className="rounded-xl px-2 py-2 text-xs text-white cursor-pointer hover:opacity-90 transition"
+                          style={{ backgroundColor: event.color || '#8B5CF6' }}
+                        >
+                          <div className="font-semibold">{event.title}</div>
+                          <div className="mt-1 opacity-90">{event.startTime || 'All day'}</div>
+                        </div>
+                      )) : <div className="text-center text-xs text-slate-400">No events</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {viewMode === "day" && (
+            <div className="grid gap-2">
+              {HOURS.map((hour) => (
+                <div key={hour} className="grid grid-cols-[72px_1fr] items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                  <div className="text-xs font-semibold text-slate-500">{String(hour).padStart(2, '0')}:00</div>
+                  <div className="min-h-[42px] rounded-lg bg-white p-2">
+                    {events
+                      .filter((event) => {
+                        const sameDay = isSameDay(event.startDate, selectedDate);
+                        const hourValue = Number((event.startTime || "00:00").split(":")[0]);
+                        return sameDay && hourValue === hour;
+                      })
+                      .map((event) => (
+                        <div
+                          key={event.id}
+                          onClick={(e) => { e.stopPropagation(); setSelectedItem({ type: 'event', data: event }); }}
+                          className="rounded-lg px-2 py-1 text-xs font-medium text-white cursor-pointer hover:opacity-90 transition"
+                          style={{ backgroundColor: event.color || '#8B5CF6' }}
+                        >
+                          {event.title}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {viewMode === "agenda" && (
+            <div className="space-y-3">
+              {agendaItems.map((item) => (
+                <div
+                  key={`${item.type}-${item.id}`}
+                  onClick={() => setSelectedItem({ type: item.type, data: item })}
+                  className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 cursor-pointer hover:border-slate-300 transition"
+                >
+                  <div className={`mt-0.5 flex h-11 w-11 items-center justify-center rounded-xl ${item.type === 'event' ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {item.type === 'event' ? <CalendarDays className="h-5 w-5" /> : <BellRing className="h-5 w-5" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-base font-bold text-slate-900">{item.title}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-500">{item.type} · {item.category}</p>
+                      </div>
+                      <div className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600 shadow-sm">
+                        {item.priority || 'Medium'}
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-600">
+                      <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> {formatDate(item.startDate || item.reminderDate)}</span>
+                      <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" /> {item.startTime || item.reminderTime || 'All day'}</span>
+                      {item.location && <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {item.location}</span>}
+                    </div>
+                  </div>
+                  {item.type === 'event' ? (
+                    <div className="flex items-center gap-2 z-10 relative">
+                      <button onClick={(e) => { e.stopPropagation(); openEditItem('event', item); }} className="rounded-xl border border-violet-200 bg-violet-50 p-2 text-violet-600 transition hover:bg-violet-100">
+                        <PencilLine className="h-4 w-4" />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDeleteEvent(item.id); }} className="rounded-xl border border-red-200 bg-red-50 p-2 text-red-600 transition hover:bg-red-100">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 z-10 relative">
+                      <button onClick={(e) => { e.stopPropagation(); openEditItem('reminder', item); }} className="rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-emerald-600 transition hover:bg-emerald-100">
+                        <PencilLine className="h-4 w-4" />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleCompleteReminder(item.id); }} className="rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-emerald-600 transition hover:bg-emerald-100">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {viewMode === "month" && (
-          <div className="grid grid-cols-7 gap-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <div key={day} className="px-2 py-3 text-center text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-                {day}
-              </div>
-            ))}
-
-            {monthDays.map((date) => {
-              const dayEvents = events.filter((event) => isSameDay(event.startDate, date));
-              const isCurrentMonth = date.getMonth() === calendarMonth.getMonth();
-              const isSelected = isSameDay(date, selectedDate);
-              const isToday = isSameDay(date, new Date());
-
-              return (
-                <button
-                  key={date.toISOString()}
-                  onClick={() => setSelectedDate(date)}
-                  className={`min-h-[120px] rounded-2xl border p-2 text-left transition ${
-                    isSelected ? "border-violet-500 bg-violet-50" : "border-slate-200 bg-slate-50/50 hover:bg-white"
-                  } ${!isCurrentMonth ? "opacity-40" : ""}`}
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${
-                      isToday ? "bg-slate-900 text-white" : "text-slate-700"
-                    }`}>
-                      {date.getDate()}
-                    </span>
-                    {dayEvents.length > 0 && (
-                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">
-                        {dayEvents.length}
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Today</p>
+              <h3 className="mt-1 text-lg font-bold text-slate-900">Quick schedule</h3>
+            </div>
+          </div>
+          <div className="mt-4 space-y-3">
+            {selectedDayEvents.length === 0 && selectedDayReminders.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">No items for this date.</div>
+            ) : (
+              [...selectedDayEvents.map((event) => ({ ...event, kind: 'event' })), ...selectedDayReminders.map((reminder) => ({ ...reminder, kind: 'reminder' }))]
+                .slice(0, 5)
+                .map((item) => (
+                  <div key={`${item.kind}-${item.id}`} className="rounded-2xl border border-slate-200 bg-white p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${item.kind === 'event' ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {item.kind}
                       </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    {dayEvents.slice(0, 2).map((event) => (
-                      <div 
-                        key={event.id} 
-                        onClick={(e) => { e.stopPropagation(); setSelectedItem({ type: 'event', data: event }); }}
-                        className="truncate rounded-md px-1.5 py-1 text-[10px] font-semibold text-white cursor-pointer hover:opacity-90 transition" 
-                        style={{ backgroundColor: event.color || '#8B5CF6' }}
-                      >
-                        {event.title}
-                      </div>
-                    ))}
-                    {dayEvents.length > 2 && (
-                      <div className="text-[10px] font-medium text-slate-500">+{dayEvents.length - 2} more</div>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {viewMode === "week" && (
-          <div className="grid gap-3 md:grid-cols-7">
-            {Array.from({ length: 7 }, (_, idx) => {
-              const current = new Date(selectedDate);
-              current.setDate(selectedDate.getDate() - selectedDate.getDay() + idx);
-              const dayEvents = events.filter((event) => isSameDay(event.startDate, current));
-              return (
-                <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="mb-3 text-center text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
-                    {new Intl.DateTimeFormat("en-IN", { weekday: "short" }).format(current)}
-                  </div>
-                  <div className="space-y-2">
-                    {dayEvents.length > 0 ? dayEvents.map((event) => (
-                      <div 
-                        key={event.id} 
-                        onClick={(e) => { e.stopPropagation(); setSelectedItem({ type: 'event', data: event }); }}
-                        className="rounded-xl px-2 py-2 text-xs text-white cursor-pointer hover:opacity-90 transition" 
-                        style={{ backgroundColor: event.color || '#8B5CF6' }}
-                      >
-                        <div className="font-semibold">{event.title}</div>
-                        <div className="mt-1 opacity-90">{event.startTime || 'All day'}</div>
-                      </div>
-                    )) : <div className="text-center text-xs text-slate-400">No events</div>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {viewMode === "day" && (
-          <div className="grid gap-2">
-            {HOURS.map((hour) => (
-              <div key={hour} className="grid grid-cols-[72px_1fr] items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
-                <div className="text-xs font-semibold text-slate-500">{String(hour).padStart(2, '0')}:00</div>
-                <div className="min-h-[42px] rounded-lg bg-white p-2">
-                  {events
-                    .filter((event) => {
-                      const sameDay = isSameDay(event.startDate, selectedDate);
-                      const hourValue = Number((event.startTime || "00:00").split(":")[0]);
-                      return sameDay && hourValue === hour;
-                    })
-                    .map((event) => (
-                      <div 
-                        key={event.id} 
-                        onClick={(e) => { e.stopPropagation(); setSelectedItem({ type: 'event', data: event }); }}
-                        className="rounded-lg px-2 py-1 text-xs font-medium text-white cursor-pointer hover:opacity-90 transition" 
-                        style={{ backgroundColor: event.color || '#8B5CF6' }}
-                      >
-                        {event.title}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {viewMode === "agenda" && (
-          <div className="space-y-3">
-            {agendaItems.map((item) => (
-              <div 
-                key={`${item.type}-${item.id}`} 
-                onClick={() => setSelectedItem({ type: item.type, data: item })}
-                className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 cursor-pointer hover:border-slate-300 transition"
-              >
-                <div className={`mt-0.5 flex h-11 w-11 items-center justify-center rounded-xl ${item.type === 'event' ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                  {item.type === 'event' ? <CalendarDays className="h-5 w-5" /> : <BellRing className="h-5 w-5" />}
-                </div>
-                <div className="flex-1">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="text-base font-bold text-slate-900">{item.title}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-500">{item.type} · {item.category}</p>
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{item.priority || 'Medium'}</span>
                     </div>
-                    <div className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600 shadow-sm">
-                      {item.priority || 'Medium'}
-                    </div>
+                    <p className="mt-2 font-semibold text-slate-900">{item.title}</p>
+                    <p className="mt-1 text-xs text-slate-600">{item.startTime || item.reminderTime || 'All day'}</p>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-600">
-                    <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> {formatDate(item.startDate || item.reminderDate)}</span>
-                    <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" /> {item.startTime || item.reminderTime || 'All day'}</span>
-                    {item.location && <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {item.location}</span>}
-                  </div>
-                </div>
-                {item.type === 'event' ? (
-                  <div className="flex items-center gap-2 z-10 relative">
-                    <button onClick={(e) => { e.stopPropagation(); openEditItem('event', item); }} className="rounded-xl border border-violet-200 bg-violet-50 p-2 text-violet-600 transition hover:bg-violet-100">
-                      <PencilLine className="h-4 w-4" />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDeleteEvent(item.id); }} className="rounded-xl border border-red-200 bg-red-50 p-2 text-red-600 transition hover:bg-red-100">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 z-10 relative">
-                    <button onClick={(e) => { e.stopPropagation(); openEditItem('reminder', item); }} className="rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-emerald-600 transition hover:bg-emerald-100">
-                      <PencilLine className="h-4 w-4" />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleCompleteReminder(item.id); }} className="rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-emerald-600 transition hover:bg-emerald-100">
-                      <CheckCircle2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+                ))
+            )}
           </div>
-        )}
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid grid-cols-2 gap-6 xl:grid-cols-[1.4fr_0.9fr]">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div>
