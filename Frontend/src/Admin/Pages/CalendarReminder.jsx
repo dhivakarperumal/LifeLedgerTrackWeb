@@ -118,6 +118,8 @@ const CalendarReminder = () => {
   const [panelType, setPanelType] = useState("event");
   const [eventForm, setEventForm] = useState(defaultEventForm);
   const [reminderForm, setReminderForm] = useState(defaultReminderForm);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
 
   const fetchCalendar = async () => {
     setLoading(true);
@@ -149,11 +151,49 @@ const CalendarReminder = () => {
 
   const openPanel = (type) => {
     setPanelType(type);
+    setEditingItem(null);
+    setPanelOpen(true);
+  };
+
+  const openEditItem = (type, item) => {
+    setPanelType(type);
+    setEditingItem(item);
+    if (type === "event") {
+      setEventForm({
+        ...defaultEventForm,
+        ...item,
+        title: item.title || "",
+        category: item.category || "Personal",
+        startDate: item.startDate || toDateInput(),
+        startTime: item.startTime || "09:00",
+        endTime: item.endTime || "10:00",
+        location: item.location || "",
+        description: item.description || "",
+        priority: item.priority || "Medium",
+        color: item.color || "#8B5CF6",
+        reminder: item.reminder || "15 minutes before",
+        repeat: item.repeat || "None",
+      });
+    } else {
+      setReminderForm({
+        ...defaultReminderForm,
+        ...item,
+        title: item.title || "",
+        category: item.category || "Personal",
+        reminderDate: item.reminderDate || toDateInput(),
+        reminderTime: item.reminderTime || "09:00",
+        priority: item.priority || "Medium",
+        notes: item.notes || "",
+        notificationEnabled: item.notificationEnabled !== false,
+        repeat: item.repeat || "",
+      });
+    }
     setPanelOpen(true);
   };
 
   const closePanel = () => {
     setPanelOpen(false);
+    setEditingItem(null);
     setEventForm(defaultEventForm);
     setReminderForm(defaultReminderForm);
   };
@@ -165,14 +205,22 @@ const CalendarReminder = () => {
     }
 
     try {
-      await api.post("/calendar/events", {
+      const payload = {
         ...eventForm,
         title: eventForm.title.trim(),
         category: eventForm.category.trim(),
         description: eventForm.description?.trim() || "",
         allDay: Boolean(eventForm.allDay),
-      });
-      toast.success("Event added successfully.");
+      };
+
+      if (editingItem?.id) {
+        await api.put(`/calendar/events/${editingItem.id}`, payload);
+        toast.success("Event updated successfully.");
+      } else {
+        await api.post("/calendar/events", payload);
+        toast.success("Event added successfully.");
+      }
+
       closePanel();
       fetchCalendar();
     } catch (error) {
@@ -187,13 +235,21 @@ const CalendarReminder = () => {
     }
 
     try {
-      await api.post("/calendar/reminders", {
+      const payload = {
         ...reminderForm,
         title: reminderForm.title.trim(),
         category: reminderForm.category.trim(),
         notes: reminderForm.notes?.trim() || "",
-      });
-      toast.success("Reminder added successfully.");
+      };
+
+      if (editingItem?.id) {
+        await api.put(`/calendar/reminders/${editingItem.id}`, payload);
+        toast.success("Reminder updated successfully.");
+      } else {
+        await api.post("/calendar/reminders", payload);
+        toast.success("Reminder added successfully.");
+      }
+
       closePanel();
       fetchCalendar();
     } catch (error) {
@@ -382,7 +438,12 @@ const CalendarReminder = () => {
 
                   <div className="space-y-1">
                     {dayEvents.slice(0, 2).map((event) => (
-                      <div key={event.id} className="truncate rounded-md px-1.5 py-1 text-[10px] font-semibold text-white" style={{ backgroundColor: event.color || '#8B5CF6' }}>
+                      <div 
+                        key={event.id} 
+                        onClick={(e) => { e.stopPropagation(); setSelectedItem({ type: 'event', data: event }); }}
+                        className="truncate rounded-md px-1.5 py-1 text-[10px] font-semibold text-white cursor-pointer hover:opacity-90 transition" 
+                        style={{ backgroundColor: event.color || '#8B5CF6' }}
+                      >
                         {event.title}
                       </div>
                     ))}
@@ -409,7 +470,12 @@ const CalendarReminder = () => {
                   </div>
                   <div className="space-y-2">
                     {dayEvents.length > 0 ? dayEvents.map((event) => (
-                      <div key={event.id} className="rounded-xl px-2 py-2 text-xs text-white" style={{ backgroundColor: event.color || '#8B5CF6' }}>
+                      <div 
+                        key={event.id} 
+                        onClick={(e) => { e.stopPropagation(); setSelectedItem({ type: 'event', data: event }); }}
+                        className="rounded-xl px-2 py-2 text-xs text-white cursor-pointer hover:opacity-90 transition" 
+                        style={{ backgroundColor: event.color || '#8B5CF6' }}
+                      >
                         <div className="font-semibold">{event.title}</div>
                         <div className="mt-1 opacity-90">{event.startTime || 'All day'}</div>
                       </div>
@@ -434,7 +500,12 @@ const CalendarReminder = () => {
                       return sameDay && hourValue === hour;
                     })
                     .map((event) => (
-                      <div key={event.id} className="rounded-lg px-2 py-1 text-xs font-medium text-white" style={{ backgroundColor: event.color || '#8B5CF6' }}>
+                      <div 
+                        key={event.id} 
+                        onClick={(e) => { e.stopPropagation(); setSelectedItem({ type: 'event', data: event }); }}
+                        className="rounded-lg px-2 py-1 text-xs font-medium text-white cursor-pointer hover:opacity-90 transition" 
+                        style={{ backgroundColor: event.color || '#8B5CF6' }}
+                      >
                         {event.title}
                       </div>
                     ))}
@@ -447,7 +518,11 @@ const CalendarReminder = () => {
         {viewMode === "agenda" && (
           <div className="space-y-3">
             {agendaItems.map((item) => (
-              <div key={`${item.type}-${item.id}`} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div 
+                key={`${item.type}-${item.id}`} 
+                onClick={() => setSelectedItem({ type: item.type, data: item })}
+                className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 cursor-pointer hover:border-slate-300 transition"
+              >
                 <div className={`mt-0.5 flex h-11 w-11 items-center justify-center rounded-xl ${item.type === 'event' ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700'}`}>
                   {item.type === 'event' ? <CalendarDays className="h-5 w-5" /> : <BellRing className="h-5 w-5" />}
                 </div>
@@ -468,11 +543,11 @@ const CalendarReminder = () => {
                   </div>
                 </div>
                 {item.type === 'event' ? (
-                  <button onClick={() => handleDeleteEvent(item.id)} className="rounded-xl border border-red-200 bg-red-50 p-2 text-red-600 transition hover:bg-red-100">
+                  <button onClick={(e) => { e.stopPropagation(); handleDeleteEvent(item.id); }} className="rounded-xl border border-red-200 bg-red-50 p-2 text-red-600 transition hover:bg-red-100 z-10 relative">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 ) : (
-                  <button onClick={() => handleCompleteReminder(item.id)} className="rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-emerald-600 transition hover:bg-emerald-100">
+                  <button onClick={(e) => { e.stopPropagation(); handleCompleteReminder(item.id); }} className="rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-emerald-600 transition hover:bg-emerald-100 z-10 relative">
                     <CheckCircle2 className="h-4 w-4" />
                   </button>
                 )}
@@ -498,7 +573,11 @@ const CalendarReminder = () => {
             <div>
               <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-violet-600">Events</p>
               {selectedDayEvents.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">No events on this date.</div> : selectedDayEvents.map((event) => (
-              <div key={event.id} className="mb-3 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div 
+                key={event.id} 
+                onClick={() => setSelectedItem({ type: 'event', data: event })}
+                className="mb-3 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 cursor-pointer hover:border-slate-300 transition"
+              >
                 <div className="mt-1 h-3.5 w-3.5 rounded-full" style={{ backgroundColor: event.color || '#8B5CF6' }} />
                 <div className="flex-1">
                   <div className="flex items-center justify-between gap-3">
@@ -510,7 +589,7 @@ const CalendarReminder = () => {
                     <span>{event.location || 'No location'}</span>
                   </div>
                 </div>
-                <button onClick={() => handleDeleteEvent(event.id)} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                <button onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-red-600 z-10 relative"><Trash2 className="h-4 w-4" /></button>
               </div>
             ))}
             </div>
@@ -518,7 +597,11 @@ const CalendarReminder = () => {
             <div>
               <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-emerald-600">Reminders</p>
               {selectedDayReminders.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">No reminders on this date.</div> : selectedDayReminders.map((reminder) => (
-              <div key={reminder.id} className="mb-3 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div 
+                key={reminder.id} 
+                onClick={() => setSelectedItem({ type: 'reminder', data: reminder })}
+                className="mb-3 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 cursor-pointer hover:border-slate-300 transition"
+              >
                 <div className="mt-1 rounded-full bg-emerald-100 p-1.5 text-emerald-700"><BellRing className="h-3.5 w-3.5" /></div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between gap-3">
@@ -527,7 +610,7 @@ const CalendarReminder = () => {
                   </div>
                   <div className="mt-2 text-xs text-slate-600">{reminder.notes || 'No notes'}</div>
                 </div>
-                <button onClick={() => handleDeleteReminder(reminder.id)} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                <button onClick={(e) => { e.stopPropagation(); handleDeleteReminder(reminder.id); }} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-red-600 z-10 relative"><Trash2 className="h-4 w-4" /></button>
               </div>
             ))}
             </div>
@@ -544,7 +627,11 @@ const CalendarReminder = () => {
 
           <div className="space-y-3">
             {sortItems([...events.map((e) => ({ ...e, type: 'event'})), ...reminders.map((r) => ({ ...r, type: 'reminder'}))], (item) => item.startDate || item.reminderDate).slice(0, 6).map((item) => (
-              <div key={`${item.type}-${item.id}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div 
+                key={`${item.type}-${item.id}`} 
+                onClick={() => setSelectedItem({ type: item.type, data: item })}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-3 cursor-pointer hover:border-slate-300 transition"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <div className={`h-2.5 w-2.5 rounded-full ${item.type === 'event' ? 'bg-violet-500' : 'bg-emerald-500'}`} />
@@ -564,8 +651,8 @@ const CalendarReminder = () => {
           <div className="h-full w-full max-w-xl overflow-y-auto bg-white p-5 shadow-2xl">
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-violet-600">{panelType === 'event' ? 'Add event' : 'Add reminder'}</p>
-                <h3 className="mt-2 text-2xl font-bold text-slate-900">{panelType === 'event' ? 'New Calendar Event' : 'New Reminder'}</h3>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-violet-600">{panelType === 'event' ? (editingItem ? 'Edit event' : 'Add event') : (editingItem ? 'Edit reminder' : 'Add reminder')}</p>
+                <h3 className="mt-2 text-2xl font-bold text-slate-900">{panelType === 'event' ? (editingItem ? 'Update Calendar Event' : 'New Calendar Event') : (editingItem ? 'Update Reminder' : 'New Reminder')}</h3>
               </div>
               <button onClick={closePanel} className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-slate-100">
                 <X className="h-5 w-5" />
@@ -645,7 +732,7 @@ const CalendarReminder = () => {
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button onClick={closePanel} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
-                  <button onClick={handleCreateEvent} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Save Event</button>
+                  <button onClick={handleCreateEvent} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">{editingItem ? 'Update Event' : 'Save Event'}</button>
                 </div>
               </div>
             ) : (
@@ -717,10 +804,110 @@ const CalendarReminder = () => {
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button onClick={closePanel} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
-                  <button onClick={handleCreateReminder} className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500">Save Reminder</button>
+                  <button onClick={handleCreateReminder} className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500">{editingItem ? 'Update Reminder' : 'Save Reminder'}</button>
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            {/* Header with color banner */}
+            <div 
+               className="px-5 py-4 flex items-center justify-between"
+               style={{ backgroundColor: selectedItem.data.color || (selectedItem.type === 'event' ? '#8B5CF6' : '#10B981') }}
+            >
+               <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                 {selectedItem.type === 'event' ? <CalendarDays className="h-5 w-5" /> : <BellRing className="h-5 w-5" />}
+                 {selectedItem.data.title}
+               </h3>
+               <button onClick={() => setSelectedItem(null)} className="rounded-xl bg-black/10 p-1.5 text-white hover:bg-black/20 transition">
+                 <X className="h-4 w-4" />
+               </button>
+            </div>
+            
+            <div className="p-5 space-y-4">
+               <div className="flex items-center gap-3">
+                 <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold uppercase ${
+                    selectedItem.type === 'event' ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700'
+                 }`}>
+                   {selectedItem.data.category}
+                 </span>
+                 <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold uppercase text-slate-600">
+                   {selectedItem.data.priority || 'Medium'} Priority
+                 </span>
+               </div>
+               
+               <div className="space-y-2.5 text-sm text-slate-700">
+                 <div className="flex items-center gap-3">
+                   <CalendarDays className="h-4 w-4 text-slate-400" />
+                   <span>
+                     {formatDate(selectedItem.type === 'event' ? selectedItem.data.startDate : selectedItem.data.reminderDate)} 
+                     {selectedItem.data.allDay ? ' (All day)' : ''}
+                   </span>
+                 </div>
+                 
+                 {(!selectedItem.data.allDay && (selectedItem.data.startTime || selectedItem.data.reminderTime)) && (
+                   <div className="flex items-center gap-3">
+                     <Clock3 className="h-4 w-4 text-slate-400" />
+                     <span>
+                       {selectedItem.data.startTime || selectedItem.data.reminderTime}
+                       {selectedItem.data.endTime ? ` - ${selectedItem.data.endTime}` : ''}
+                     </span>
+                   </div>
+                 )}
+                 
+                 {selectedItem.data.location && (
+                   <div className="flex items-center gap-3">
+                     <MapPin className="h-4 w-4 text-slate-400" />
+                     <span>{selectedItem.data.location}</span>
+                   </div>
+                 )}
+                 
+                 {selectedItem.data.repeat && selectedItem.data.repeat !== 'None' && (
+                   <div className="flex items-center gap-3">
+                     <Sparkles className="h-4 w-4 text-slate-400" />
+                     <span>Repeats {selectedItem.data.repeat}</span>
+                   </div>
+                 )}
+               </div>
+               
+               {(selectedItem.data.description || selectedItem.data.notes) && (
+                 <div className="mt-4 border-t border-slate-100 pt-4">
+                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Details</p>
+                   <p className="text-sm text-slate-700 whitespace-pre-wrap">{selectedItem.data.description || selectedItem.data.notes}</p>
+                 </div>
+               )}
+            </div>
+            
+            <div className="border-t border-slate-100 bg-slate-50 px-5 py-4 flex justify-end gap-3">
+               <button onClick={() => {
+                 if (selectedItem.type === 'event') {
+                   handleDeleteEvent(selectedItem.data.id);
+                 } else {
+                   handleDeleteReminder(selectedItem.data.id);
+                 }
+                 setSelectedItem(null);
+               }} className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 transition">
+                 Delete
+               </button>
+               <button onClick={() => {
+                 setSelectedItem(null);
+                 openEditItem(selectedItem.type, selectedItem.data);
+               }} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition">
+                 Edit
+               </button>
+               {selectedItem.type === 'reminder' && selectedItem.data.status !== 'Completed' && (
+                 <button onClick={() => {
+                   handleCompleteReminder(selectedItem.data.id);
+                   setSelectedItem(null);
+                 }} className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 transition">
+                   Mark Complete
+                 </button>
+               )}
+            </div>
           </div>
         </div>
       )}
