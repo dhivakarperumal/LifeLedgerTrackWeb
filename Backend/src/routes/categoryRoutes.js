@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { requireAuth } = require("../middleware/auth");
 
 const {
     getAllCategories,
@@ -8,9 +9,9 @@ const {
     deleteCategory
 } = require("../controllers/categoryController");
 
-router.get("/", getAllCategories);
-router.post("/", addCategory);
-router.put("/:id", updateCategory);
-router.delete("/:id", deleteCategory);
+router.get("/", requireAuth, getAllCategories);
+router.post("/", requireAuth, addCategory);
+router.put("/:id", requireAuth, updateCategory);
+router.delete("/:id", requireAuth, deleteCategory);
 
 module.exports = router;

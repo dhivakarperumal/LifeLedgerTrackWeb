@@ -32,14 +32,20 @@ const Category = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchCategories();
-    }, []);
+        if (user?.user_id) {
+            fetchCategories();
+        }
+    }, [user?.user_id]);
 
     const fetchCategories = async () => {
         try {
             setLoading(true);
             const response = await api.get("/categories");
-            setCategories(response.data);
+            const userCategories = response.data.filter(cat => {
+                const currentUserId = user?.user_id;
+                return !currentUserId || cat.user_id === currentUserId || cat.user_id === null || cat.user_id === undefined || cat.user_id === "";
+            });
+            setCategories(userCategories);
         } catch (error) {
             console.error("Failed to fetch categories:", error);
         } finally {
@@ -144,14 +150,20 @@ const Category = () => {
     };
 
     const handleSaveCategory = async () => {
-        if (!formData.catId || !formData.name) return;
+        if (!formData.name) return;
 
         const selectedSubcategories = subcategories
             .map(value => value.trim())
             .filter(Boolean);
 
+        const existingCatIds = new Set(categories.map(cat => cat.catId));
+        const safeCatId = formData.catId && !existingCatIds.has(formData.catId)
+            ? formData.catId
+            : `CAT${Date.now().toString().slice(-8)}`;
+
         const newCatData = {
             ...formData,
+            catId: safeCatId,
             status: formData.status || "Active",
             subcategory: selectedSubcategories,
             user_id: user?.user_id || formData.user_id || null,
@@ -199,17 +211,9 @@ const Category = () => {
     };
 
     const openAddModal = () => {
-        let nextId = "CAT001";
-        if (categories.length > 0) {
-            const existingIds = categories.map(c => {
-                const match = c.catId.match(/\d+/);
-                return match ? parseInt(match[0], 10) : 0;
-            });
-            const maxId = Math.max(...existingIds);
-            nextId = `CAT${String(maxId + 1).padStart(3, '0')}`;
-        }
+        const timestampId = `CAT${Date.now().toString().slice(-8)}`;
         resetModalForm();
-        setFormData(prev => ({ ...prev, catId: nextId, catType: "Expensive" }));
+        setFormData(prev => ({ ...prev, catId: timestampId, catType: "Expensive" }));
         setIsModalOpen(true);
     };
 
