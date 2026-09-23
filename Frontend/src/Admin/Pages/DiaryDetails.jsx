@@ -118,7 +118,7 @@ const DiaryDetails = () => {
               {entry.is_favorite ? "Favorited" : "Favorite"}
             </button>
             <button
-              onClick={() => navigate(`/admin/users/diary?edit=${entry.id}`)}
+              onClick={() => navigate(`/admin/users/diary?edit=${entry.id}`, { replace: true })}
               className="inline-flex items-center gap-2 rounded-xl bg-violet-100 px-4 py-2.5 text-sm font-bold text-violet-700 shadow-sm transition hover:bg-violet-200"
             >
               <FiEdit2 /> Edit

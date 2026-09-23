@@ -31,6 +31,23 @@ const formatDate = (value) => {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
+const normalizeDateInput = (value) => {
+  if (!value) return new Date().toISOString().slice(0, 10);
+
+  const direct = new Date(value);
+  if (!Number.isNaN(direct.getTime())) {
+    return direct.toISOString().slice(0, 10);
+  }
+
+  const match = String(value).match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (match) {
+    const [, day, month, year] = match;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  return value;
+};
+
 const getMediaUrl = (value) => {
   if (!value) return "";
   if (typeof value !== "string") return "";
@@ -91,6 +108,7 @@ const MemoriesManagement = () => {
   const [form, setForm] = useState(initialForm);
   const [uploadFiles, setUploadFiles] = useState([]);
   const [existingMedia, setExistingMedia] = useState([]);
+  const [removedMedia, setRemovedMedia] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVoiceName, setRecordedVoiceName] = useState("");
   const mediaRecorderRef = useRef(null);
@@ -198,6 +216,7 @@ const MemoriesManagement = () => {
     setSelectedMemory(null);
     setUploadFiles([]);
     setExistingMedia([]);
+    setRemovedMedia([]);
     setRecordedVoiceName("");
     setForm({
       ...initialForm,
@@ -211,12 +230,13 @@ const MemoriesManagement = () => {
     setSelectedMemory(memory);
     setUploadFiles([]);
     setExistingMedia(normalizeExistingMedia(memory));
+    setRemovedMedia([]);
     setRecordedVoiceName("");
     setForm({
       title: memory.title || "",
       description: memory.description || "",
       category_id: memory.category_id || "",
-      memory_date: memory.memory_date || new Date().toISOString().slice(0, 10),
+      memory_date: normalizeDateInput(memory.memory_date),
       location: memory.location || "",
       mood: memory.mood || "Happy",
       tags: Array.isArray(memory.tags) ? memory.tags.join(", ") : memory.tags || "",
@@ -259,6 +279,10 @@ const MemoriesManagement = () => {
         formData.append(key, value);
       });
 
+      if (removedMedia.length) {
+        formData.append("removed_media", JSON.stringify(removedMedia));
+      }
+
       uploadFiles.forEach((file) => {
         formData.append("media", file);
       });
@@ -274,6 +298,8 @@ const MemoriesManagement = () => {
       setIsEditorOpen(false);
       setForm(initialForm);
       setUploadFiles([]);
+      setExistingMedia([]);
+      setRemovedMedia([]);
       setRecordedVoiceName("");
       fetchData();
     } catch (error) {
@@ -732,7 +758,11 @@ const MemoriesManagement = () => {
 
                   {(existingMedia.length > 0 || uploadFiles.length > 0) && (
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      {existingMedia.map((item, index) => renderMediaPreviewCard(item, index, () => setExistingMedia((prev) => prev.filter((_, itemIndex) => itemIndex !== index))))}
+                      {existingMedia.map((item, index) => renderMediaPreviewCard(item, index, () => {
+                        const removedValue = item.previewUrl || item.name || item.file_url || item.url || "";
+                        setRemovedMedia((prev) => (removedValue ? [...prev, removedValue] : prev));
+                        setExistingMedia((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+                      }))}
                       {uploadFiles.map((file, index) => renderMediaPreviewCard(file, index, () => setUploadFiles((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))))}
                     </div>
                   )}

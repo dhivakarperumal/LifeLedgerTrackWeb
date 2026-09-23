@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../api";
 import { useAuth } from "../../PrivateRouter/AuthContext";
 import { toast } from "react-hot-toast";
@@ -33,6 +33,47 @@ const formatDate = (value) => {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
+const normalizeDateInput = (value) => {
+  if (!value) return new Date().toISOString().slice(0, 10);
+
+  const direct = new Date(value);
+  if (!Number.isNaN(direct.getTime())) {
+    return direct.toISOString().slice(0, 10);
+  }
+
+  const match = String(value).match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (match) {
+    const [, day, month, year] = match;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  return value;
+};
+
+const normalizeTimeInput = (value) => {
+  if (!value) return "";
+
+  const trimmed = String(value).trim();
+  if (/^\d{2}:\d{2}$/.test(trimmed)) return trimmed;
+  if (/^\d{2}:\d{2}:\d{2}$/.test(trimmed)) return trimmed.slice(0, 5);
+
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+  if (match) {
+    let [, hour, minute, meridiem] = match;
+    let hours = Number(hour);
+
+    if (meridiem) {
+      const period = meridiem.toUpperCase();
+      if (period === "PM" && hours < 12) hours += 12;
+      if (period === "AM" && hours === 12) hours = 0;
+    }
+
+    return `${String(hours).padStart(2, "0")}:${minute}`;
+  }
+
+  return trimmed;
+};
+
 const moodMap = Object.fromEntries(defaultMoodOptions.map((m) => [m.value, m.emoji]));
 
 const isDiaryCategory = (category) => {
@@ -50,6 +91,7 @@ const isDiaryCategory = (category) => {
 const DiaryManagement = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [entries, setEntries] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +108,7 @@ const DiaryManagement = () => {
   const [autoSaveTimer, setAutoSaveTimer] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [files, setFiles] = useState([]);
+  const [existingFiles, setExistingFiles] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -79,7 +122,13 @@ const DiaryManagement = () => {
   const getFilePreviewUrl = (file) => {
     if (!file) return "";
     if (typeof file === "string") return file;
-    return URL.createObjectURL(file);
+    if (file.previewUrl || file.file_url || file.url || file.src || file.path) {
+      return file.previewUrl || file.file_url || file.url || file.src || file.path;
+    }
+    if (file instanceof Blob || file instanceof File) {
+      return URL.createObjectURL(file);
+    }
+    return "";
   };
 
   const normalizeExistingDiaryMedia = (entry) => {
@@ -157,6 +206,16 @@ const DiaryManagement = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || !entries.length) return;
+
+    const matchingEntry = entries.find((entry) => String(entry.id) === String(editId));
+    if (matchingEntry) {
+      openEditEntry(matchingEntry);
+    }
+  }, [entries, searchParams]);
 
   useEffect(() => {
     if (!isEditorOpen || !formState.title && !formState.content) return;
@@ -245,9 +304,14 @@ const DiaryManagement = () => {
   };
 
   const openNewEntry = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("edit");
+    setSearchParams(nextParams, { replace: true });
+
     setEditingId(null);
     setSelectedEntry(null);
     setFiles([]);
+    setExistingFiles([]);
     setFormState({
       title: "",
       content: "",
@@ -273,7 +337,8 @@ const DiaryManagement = () => {
   const openEditEntry = (entry) => {
     setEditingId(entry.id);
     setSelectedEntry(entry);
-    setFiles(normalizeExistingDiaryMedia(entry));
+    setExistingFiles(normalizeExistingDiaryMedia(entry));
+    setFiles([]);
     setFormState({
       title: entry.title || "",
       content: entry.content || "",
@@ -281,8 +346,8 @@ const DiaryManagement = () => {
       mood: entry.mood || "Happy",
       tags: (entry.tags || []).join(", "),
       location: entry.location || "",
-      entry_date: entry.entry_date || new Date().toISOString().slice(0, 10),
-      entry_time: entry.entry_time || "",
+      entry_date: normalizeDateInput(entry.entry_date),
+      entry_time: normalizeTimeInput(entry.entry_time),
       status: entry.status || "published",
       is_favorite: Boolean(entry.is_favorite),
       is_private: Boolean(entry.is_private),
@@ -299,9 +364,14 @@ const DiaryManagement = () => {
   };
 
   const closeEditor = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("edit");
+    setSearchParams(nextParams, { replace: true });
+
     setIsEditorOpen(false);
     setEditingId(null);
     setFiles([]);
+    setExistingFiles([]);
     setSelectedEntry(null);
     setDraftSaved(true);
     localStorage.removeItem("diary-draft-temp");
@@ -312,10 +382,11 @@ const DiaryManagement = () => {
   };
 
   const uploadAttachmentFiles = async (entryId, pendingFiles = []) => {
-    if (!entryId || !pendingFiles.length) return;
+    const validFiles = (pendingFiles || []).filter((file) => file instanceof File || file instanceof Blob);
+    if (!entryId || !validFiles.length) return;
 
     await Promise.all(
-      pendingFiles.map(async (file) => {
+      validFiles.map(async (file) => {
         const formData = new FormData();
         formData.append("file", file);
         await api.post(`/diary/${entryId}/attachments`, formData, {
@@ -352,14 +423,16 @@ const DiaryManagement = () => {
       }
 
       const savedEntryId = response?.data?.id || editingId;
-      if (files.length) {
-        await uploadAttachmentFiles(savedEntryId, files);
+      const newUploadFiles = files.filter((file) => file instanceof File || file instanceof Blob);
+      if (newUploadFiles.length) {
+        await uploadAttachmentFiles(savedEntryId, newUploadFiles);
       }
 
       localStorage.removeItem("diary-draft-temp");
       setEditingId(savedEntryId);
       setSelectedEntry(response.data || selectedEntry);
       setFiles([]);
+      setExistingFiles([]);
       setDraftSaved(true);
       await fetchData();
       closeEditor();
@@ -770,11 +843,12 @@ const DiaryManagement = () => {
                       </label>
                     </div>
                   </div>
-                  {files.length > 0 && (
+                  {(existingFiles.length > 0 || files.length > 0) && (
                     <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {files.map((file, index) => {
-                        const fileType = file.type || "application/octet-stream";
+                      {[...existingFiles, ...files].map((file, index) => {
+                        const fileType = file.type || file.file_type || "application/octet-stream";
                         const previewUrl = getFilePreviewUrl(file);
+                        const isExisting = index < existingFiles.length;
 
                         return (
                           <div key={`${file.name}-${file.size}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -798,7 +872,13 @@ const DiaryManagement = () => {
                               <span className="truncate text-[11px] text-slate-600">{file.name}</span>
                               <button
                                 type="button"
-                                onClick={() => setFiles((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))}
+                                onClick={() => {
+                                  if (isExisting) {
+                                    setExistingFiles((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index));
+                                  } else {
+                                    setFiles((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index - existingFiles.length));
+                                  }
+                                }}
                                 className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-600"
                               >
                                 Remove

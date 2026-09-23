@@ -297,24 +297,41 @@ const updateMemory = async (req, res) => {
       return res.status(404).json({ message: "Memory not found." });
     }
 
-    const { title, description, category_id, memory_date, location, tags, mood, status, is_favorite, voice_note } = req.body;
+    const { title, description, category_id, memory_date, location, tags, mood, status, is_favorite, voice_note, removed_media } = req.body;
     const favoriteFlag = parseBooleanValue(is_favorite, Boolean(existing[0][0].is_favorite));
     const resolvedCategory = await syncMemoryCategoryFromShared(req.user.user_id, category_id ?? existing[0][0].category_id, req.body.category_name || req.body.category || null);
     const uploadedFiles = Array.isArray(req.files) ? req.files : [];
+
+    const removedMediaList = (() => {
+      if (!removed_media) return [];
+      try {
+        const parsed = JSON.parse(removed_media);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        return String(removed_media).split(",").map((item) => item.trim()).filter(Boolean);
+      }
+    })();
+
+    const existingGallery = normalizeMediaGallery(existing[0][0].media_gallery || existing[0][0].gallery || []);
+    const remainingGallery = existingGallery.filter((item) => {
+      const value = typeof item === "string" ? item : item?.file_url || item?.url || item?.path || item?.src || "";
+      return !removedMediaList.some((removed) => String(removed) === String(value));
+    });
+
     const gallery = uploadedFiles.length
       ? uploadedFiles.map((file) => `/uploads/memories/${path.basename(path.dirname(file.path))}/${path.basename(file.path)}`)
-      : normalizeMediaGallery(existing[0][0].media_gallery || existing[0][0].gallery || []);
+      : remainingGallery;
 
     const primaryFile = uploadedFiles[0] || null;
     const mediaType = primaryFile ? (
       primaryFile.mimetype.startsWith("image/") ? "image" :
       primaryFile.mimetype.startsWith("video/") ? "video" :
       primaryFile.mimetype.startsWith("audio/") ? "audio" : "file"
-    ) : existing[0][0].media_type || "image";
+    ) : (uploadedFiles.length ? "file" : existing[0][0].media_type || "image");
 
     const mediaUrl = primaryFile
       ? gallery[0]
-      : (req.body.media_url || existing[0][0].media_url || "");
+      : (req.body.media_url || existing[0][0].media_url || (remainingGallery[0] || ""));
 
     const tagValue = Array.isArray(tags) ? JSON.stringify(tags) : JSON.stringify(parseTags(tags ?? existing[0][0].tags));
 
@@ -324,21 +341,21 @@ const updateMemory = async (req, res) => {
            status = ?, is_favorite = ?, media_url = ?, media_gallery = ?, media_type = ?, voice_note = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ? AND user_id = ?`,
       [
-        title || existing[0][0].title,
-        description ?? existing[0][0].description,
-        resolvedCategory.id ?? existing[0][0].category_id,
-        resolvedCategory.name ?? existing[0][0].category_name,
-        resolvedCategory.color ?? existing[0][0].category_color ?? "#8B5CF6",
-        memory_date || existing[0][0].memory_date,
-        location ?? existing[0][0].location,
-        mood || existing[0][0].mood,
+        title !== undefined ? title : existing[0][0].title,
+        description !== undefined ? description : existing[0][0].description,
+        resolvedCategory.id !== undefined && resolvedCategory.id !== null ? resolvedCategory.id : existing[0][0].category_id,
+        resolvedCategory.name !== undefined && resolvedCategory.name !== null ? resolvedCategory.name : existing[0][0].category_name,
+        resolvedCategory.color !== undefined && resolvedCategory.color !== null ? resolvedCategory.color : existing[0][0].category_color ?? "#8B5CF6",
+        memory_date !== undefined ? memory_date : existing[0][0].memory_date,
+        location !== undefined ? location : existing[0][0].location,
+        mood !== undefined ? mood : existing[0][0].mood,
         tagValue,
-        status || existing[0][0].status,
+        status !== undefined ? status : existing[0][0].status,
         favoriteFlag ? 1 : 0,
         mediaUrl,
         JSON.stringify(gallery),
         mediaType,
-        voice_note ?? existing[0][0].voice_note,
+        voice_note !== undefined ? voice_note : existing[0][0].voice_note,
         req.user.user_id,
         id,
         req.user.user_id,
