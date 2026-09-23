@@ -66,6 +66,7 @@ const MemoriesManagement = () => {
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [uploadFiles, setUploadFiles] = useState([]);
+  const [existingMedia, setExistingMedia] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVoiceName, setRecordedVoiceName] = useState("");
   const mediaRecorderRef = useRef(null);
@@ -81,6 +82,39 @@ const MemoriesManagement = () => {
     if (!file) return "";
     if (typeof file === "string") return getMediaUrl(file);
     return URL.createObjectURL(file);
+  };
+
+  const normalizeExistingMedia = (memoryItem) => {
+    const gallery = Array.isArray(memoryItem?.media_gallery) && memoryItem.media_gallery.length
+      ? memoryItem.media_gallery
+      : memoryItem?.media_url
+        ? [memoryItem.media_url]
+        : [];
+
+    return gallery
+      .filter(Boolean)
+      .map((item, index) => {
+        const value = String(item);
+        const fileName = value.split("/").pop() || `media-${index + 1}`;
+        const extension = fileName.split(".").pop()?.toLowerCase();
+
+        let type = "application/octet-stream";
+        if (["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"].includes(extension)) {
+          type = `image/${extension === "jpg" ? "jpeg" : extension}`;
+        } else if (["mp4", "webm", "ogg", "mov", "m4v"].includes(extension)) {
+          type = `video/${extension === "m4v" ? "mp4" : extension}`;
+        } else if (["mp3", "wav", "m4a", "aac", "ogg"].includes(extension)) {
+          type = `audio/${extension === "m4a" ? "mp4" : extension}`;
+        }
+
+        return {
+          id: `existing-${index}-${fileName}`,
+          name: fileName,
+          type,
+          previewUrl: getMediaUrl(value),
+          isExisting: true,
+        };
+      });
   };
 
   const fetchData = async () => {
@@ -148,6 +182,7 @@ const MemoriesManagement = () => {
     setEditingId(null);
     setSelectedMemory(null);
     setUploadFiles([]);
+    setExistingMedia([]);
     setRecordedVoiceName("");
     setForm({
       ...initialForm,
@@ -160,6 +195,7 @@ const MemoriesManagement = () => {
     setEditingId(memory.id);
     setSelectedMemory(memory);
     setUploadFiles([]);
+    setExistingMedia(normalizeExistingMedia(memory));
     setRecordedVoiceName("");
     setForm({
       title: memory.title || "",
@@ -303,6 +339,42 @@ const MemoriesManagement = () => {
       setIsRecording(false);
       toast.success("Voice note captured.");
     }
+  };
+
+  const renderMediaPreviewCard = (item, index, onRemove) => {
+    const fileType = item?.type || "application/octet-stream";
+    const previewUrl = item?.previewUrl || getFilePreviewUrl(item);
+
+    return (
+      <div key={item?.id || `${item?.name || "media"}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+        <div className="max-h-44 overflow-hidden bg-slate-100">
+          {fileType.startsWith("image/") ? (
+            <img src={previewUrl} alt={item?.name || "Preview"} className="h-44 w-full object-cover" />
+          ) : fileType.startsWith("video/") ? (
+            <video src={previewUrl} className="h-44 w-full object-cover" controls />
+          ) : fileType.startsWith("audio/") ? (
+            <div className="flex h-44 items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 p-3 text-white">
+              <audio src={previewUrl} controls className="w-full" />
+            </div>
+          ) : (
+            <div className="flex h-44 items-center justify-center bg-slate-200 text-sm font-medium text-slate-700">{item?.name || "Media file"}</div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 px-3 py-2">
+          <span className="truncate text-xs text-slate-600">{item?.name || "Media file"}</span>
+          {onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="rounded-lg bg-rose-100 px-2 py-1 text-[11px] font-semibold text-rose-600"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -634,41 +706,10 @@ const MemoriesManagement = () => {
                     </span>
                   </div>
 
-                  {uploadFiles.length > 0 && (
+                  {(existingMedia.length > 0 || uploadFiles.length > 0) && (
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      {uploadFiles.map((file, index) => {
-                        const fileType = file.type || "application/octet-stream";
-                        const previewUrl = getFilePreviewUrl(file);
-
-                        return (
-                          <div key={`${file.name}-${file.size}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                            <div className="max-h-44 overflow-hidden bg-slate-100">
-                              {fileType.startsWith("image/") ? (
-                                <img src={previewUrl} alt={file.name} className="h-44 w-full object-cover" />
-                              ) : fileType.startsWith("video/") ? (
-                                <video src={previewUrl} className="h-44 w-full object-cover" controls />
-                              ) : fileType.startsWith("audio/") ? (
-                                <div className="flex h-44 items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 p-3 text-white">
-                                  <audio src={previewUrl} controls className="w-full" />
-                                </div>
-                              ) : (
-                                <div className="flex h-44 items-center justify-center bg-slate-200 text-sm font-medium text-slate-700">{file.name}</div>
-                              )}
-                            </div>
-
-                            <div className="flex items-center justify-between gap-3 px-3 py-2">
-                              <span className="truncate text-xs text-slate-600">{file.name}</span>
-                              <button
-                                type="button"
-                                onClick={() => setUploadFiles((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))}
-                                className="rounded-lg bg-rose-100 px-2 py-1 text-[11px] font-semibold text-rose-600"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {existingMedia.map((item, index) => renderMediaPreviewCard(item, index, () => setExistingMedia((prev) => prev.filter((_, itemIndex) => itemIndex !== index))))}
+                      {uploadFiles.map((file, index) => renderMediaPreviewCard(file, index, () => setUploadFiles((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))))}
                     </div>
                   )}
                 </div>
