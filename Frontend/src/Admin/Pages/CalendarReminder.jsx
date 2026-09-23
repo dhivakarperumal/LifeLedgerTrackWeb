@@ -909,7 +909,7 @@ const CalendarReminder = () => {
               })}
             </p>
 
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-800/80 p-4">
+            <div className="mt-4 rounded-2xl  bg-slate-800/80 ">
               {selectedDayEvents.length === 0 &&
               selectedDayReminders.length === 0 ? (
                 <div className="flex items-center justify-center gap-3 rounded-xl border border-dashed border-slate-600 bg-slate-900/40 px-3 py-6 text-sm font-medium text-slate-300">
@@ -947,7 +947,7 @@ const CalendarReminder = () => {
                         <p className="mt-2 font-semibold text-slate-100">
                           {item.title}
                         </p>
-                        <p className="mt-1 text-xs text-slate-300">
+                        <p className="mt-1 text-xs text-gray-600">
                           {item.startTime || item.reminderTime || "All day"}
                         </p>
                       </div>
@@ -972,7 +972,7 @@ const CalendarReminder = () => {
                 onClick={() => openPanel("event")}
                 className="rounded-2xl border border-slate-200 bg-[#1f2937] p-4 text-left text-slate-100 transition hover:bg-[#243244]"
               >
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold">
+                <div className="mb-3 flex h-12 w-12 text-white items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold">
                   <Plus className="h-5 w-5" />
                 </div>
                 <div className="text-base font-semibold text-slate-100">
@@ -980,35 +980,15 @@ const CalendarReminder = () => {
                 </div>
               </button>
 
-              <button
-                onClick={() => openPanel("event")}
-                className="rounded-2xl border border-slate-200 bg-[#1f2937] p-4 text-left text-slate-100 transition hover:bg-[#243244]"
-              >
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-lg font-bold">
-                  <NotebookPen className="h-5 w-5" />
-                </div>
-                <div className="text-base font-semibold text-slate-100">
-                  Add Meeting
-                </div>
-              </button>
+         
 
-              <button
-                onClick={() => openPanel("event")}
-                className="rounded-2xl border border-slate-200 bg-[#1f2937] p-4 text-left text-slate-100 transition hover:bg-[#243244]"
-              >
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 text-lg font-bold">
-                  <CheckCircle2 className="h-5 w-5" />
-                </div>
-                <div className="text-base font-semibold text-slate-100">
-                  Add Task
-                </div>
-              </button>
+              
 
               <button
                 onClick={() => openPanel("reminder")}
                 className="rounded-2xl border border-slate-200 bg-[#1f2937] p-4 text-left text-slate-100 transition hover:bg-[#243244]"
               >
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-orange-500 text-lg font-bold">
+                <div className="mb-3 flex h-12 text-white w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-orange-500 text-lg font-bold">
                   <BellRing className="h-5 w-5" />
                 </div>
                 <div className="text-base font-semibold text-slate-100">
