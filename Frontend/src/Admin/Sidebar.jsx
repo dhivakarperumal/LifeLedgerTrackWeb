@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../PrivateRouter/AuthContext";
-import api from "../api";
 
 /* ================= NAV ITEMS ================= */
 const navItems = [
@@ -82,34 +81,8 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
     cancelled: 0,
   });
 
-  /* ================= FETCH ORDER COUNTS ================= */
   useEffect(() => {
-    const fetchOrderCounts = async () => {
-      try {
-        const response = await api.get("/orders");
-        const orders = response.data.data || [];
-
-        const counts = {
-          all: orders.length,
-          new: orders.filter(
-            (o) => o.status === "New Order" || o.status === "Order Placed",
-          ).length,
-          delivery: orders.filter(
-            (o) => o.status === "Delivery" || o.status === "Shipped",
-          ).length,
-          cancelled: orders.filter((o) => o.status === "Cancelled").length,
-        };
-
-        setOrderCounts(counts);
-      } catch (error) {
-        console.error("Error fetching order counts:", error);
-      }
-    };
-
-    fetchOrderCounts();
-    // Refresh counts every 30 seconds
-    const interval = setInterval(fetchOrderCounts, 30000);
-    return () => clearInterval(interval);
+    setOrderCounts({ all: 0, new: 0, delivery: 0, cancelled: 0 });
   }, []);
   /* ================= ACTIVE ROUTE MAP ================= */
   const activeRouteMap = {

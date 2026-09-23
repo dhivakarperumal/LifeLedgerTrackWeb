@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import api from "../api";
 import {
   Menu,
   Search,
@@ -135,62 +134,14 @@ const Header = ({ onMenuClick }) => {
     }
   };
 
-  const fetchNotifications = async () => {
-    try {
-      const response = await api.get("/orders");
-      const data = response.data || [];
-
-      // Filter for all pending/new orders
-      const pendingOrders = Array.isArray(data)
-        ? data.filter(o => o.status?.trim() === "Order Placed")
-        : [];
-
-      // Get today's date parts in local time (handles M/D/YYYY and ISO formats)
-      const nowLocal = new Date();
-      const todayY = nowLocal.getFullYear();
-      const todayM = nowLocal.getMonth();   // 0-indexed
-      const todayD = nowLocal.getDate();
-
-      const isSameDay = (dateValue) => {
-        if (!dateValue) return false;
-        // Handle string formats like "3/11/2026" or ISO "2026-03-11T..."
-        const d = new Date(dateValue);
-        if (isNaN(d.getTime())) return false;
-        return (
-          d.getFullYear() === todayY &&
-          d.getMonth() === todayM &&
-          d.getDate() === todayD
-        );
-      };
-
-      const categorized = pendingOrders.reduce((acc, order) => {
-        const dateVal = order.created_at || order.order_date || order.date || null;
-        if (isSameDay(dateVal)) {
-          acc.today.push(order);
-        } else {
-          acc.earlier.push(order);
-        }
-        return acc;
-      }, { today: [], earlier: [] });
-
-      setNotifications(categorized);
-      setUnreadCount(pendingOrders.length);
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
-    }
+  const fetchNotifications = () => {
+    setNotifications({ today: [], earlier: [] });
+    setUnreadCount(0);
   };
 
-  // Pre-fetch orders for search on mount
   useEffect(() => {
-    const loadAllOrders = async () => {
-      try {
-        const res = await api.get("/orders");
-        setAllOrders(Array.isArray(res.data) ? res.data : []);
-      } catch (e) {
-        console.error("Failed to preload orders for search", e);
-      }
-    };
-    loadAllOrders();
+    setAllOrders([]);
+    fetchNotifications();
   }, []);
 
   // Live search filter
@@ -266,35 +217,8 @@ const Header = ({ onMenuClick }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSearch, searchQuery]); // Dependencies to check search state
 
-  // Fetch low stock products
-  const fetchLowStockProducts = async () => {
-    try {
-      const res = await api.get("/products");
-      const products = Array.isArray(res.data) ? res.data : [];
-      const alerts = products.filter(p => {
-        const stock = parseInt(p.total_stock ?? p.stock ?? 0);
-        return stock <= 10; // low stock threshold
-      }).sort((a, b) => {
-        const sa = parseInt(a.total_stock ?? a.stock ?? 0);
-        const sb = parseInt(b.total_stock ?? b.stock ?? 0);
-        return sa - sb; // worst first
-      });
-      setLowStockItems(alerts);
-    } catch (e) {
-      console.error("Failed to fetch low stock", e);
-    }
-  };
-
   useEffect(() => {
-    fetchLowStockProducts();
-    const interval = setInterval(fetchLowStockProducts, 60000); // refresh every 1 min
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    setLowStockItems([]);
   }, []);
 
   const handleNotificationClick = (orderId) => {
