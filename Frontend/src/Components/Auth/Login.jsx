@@ -26,9 +26,13 @@ function Login() {
     e.preventDefault();
     try {
       const res = await api.post("/auth/login", form);
-      login(res.data.user, res.data.token);
+      const userData = {
+        ...res.data.user,
+        role: String(res.data.user.role || "").trim().toLowerCase(),
+      };
+      login(userData, res.data.token);
       toast.success("Login successful!");
-      if (res.data.user.role === "admin") {
+      if (userData.role === "admin") {
         navigate("/admin");
       } else {
         navigate("/");
@@ -49,9 +53,13 @@ function Login() {
         googleId: decoded.sub
       };
       const res = await api.post("/auth/google-login", googleUser);
-      login(res.data.user, res.data.token);
+      const userData = {
+        ...res.data.user,
+        role: String(res.data.user.role || "").trim().toLowerCase(),
+      };
+      login(userData, res.data.token);
       toast.success("Google Login Successful!");
-      if (res.data.user.role === "admin") {
+      if (userData.role === "admin") {
         navigate("/admin");
       } else {
         navigate("/");

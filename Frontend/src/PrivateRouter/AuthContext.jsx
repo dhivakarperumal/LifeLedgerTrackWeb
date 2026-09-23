@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
 
   // Map user data for Header/Sidebar compatibility
   const profileName = user?.username || user?.name || "Admin";
-  const role = user?.role || "admin";
+  const role = String(user?.role || "admin").trim().toLowerCase();
   const email = user?.email || "";
   const phone = user?.phone || "";
 

@@ -344,7 +344,7 @@ const navClass = ({ isActive }) =>
                       My Account
                     </Link>
 
-                    {user.role === "admin" && (
+                    {String(user.role || "").trim().toLowerCase() === "admin" && (
                       <Link
                         to="admin"
                         className="block px-4 py-3 text-sm hover:bg-gray-100"

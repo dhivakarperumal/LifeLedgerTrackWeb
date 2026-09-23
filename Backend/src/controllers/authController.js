@@ -11,6 +11,7 @@ exports.register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = "USR" + Math.random().toString(36).substr(2, 9).toUpperCase();
+    const normalizedRole = String(role || "Customer").trim();
 
     const [result] = await db.query(
       `INSERT INTO users (
@@ -18,7 +19,7 @@ exports.register = async (req, res) => {
         street_address, city, district, state, country, zip_code
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        userId, username, name || username, email, phone, role || "Customer", hashedPassword,
+        userId, username, name || username, email, phone, normalizedRole, hashedPassword,
         street_address || null, city || null, district || null, state || null, country || "India", zip_code || null
       ]
     );
@@ -71,6 +72,7 @@ exports.login = async (req, res) => {
     }
 
     const token = signToken({ id: user.id });
+    const normalizedRole = String(user.role || "customer").trim().toLowerCase();
 
     res.json({
       token,
@@ -79,11 +81,9 @@ exports.login = async (req, res) => {
         user_id: user.user_id,
         username: user.username,
         name: user.name,
-        name: user.name,
         email: user.email,
         phone: user.phone,
-        phone: user.phone,
-        role: user.role,
+        role: normalizedRole,
         state: user.state,
         city: user.city,
         country: user.country,

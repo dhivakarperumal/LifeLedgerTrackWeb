@@ -41,6 +41,7 @@ const Billing = () => {
     return Number.isFinite(savedBudget) ? savedBudget : 0;
   });
   const [incomes, setIncomes] = useState([]);
+  const [incomeCategoryOptions, setIncomeCategoryOptions] = useState([]);
   const [selectedIncome, setSelectedIncome] = useState(null);
   const [editingIncomeId, setEditingIncomeId] = useState(null);
   const [existingAttachment, setExistingAttachment] = useState(null);
@@ -62,8 +63,29 @@ const Billing = () => {
 
     const loadIncome = async () => {
       try {
-        const response = await api.get("/incomes");
-        setIncomes(response.data || []);
+        const [incomeResponse, categoryResponse] = await Promise.all([
+          api.get("/incomes"),
+          api.get("/categories"),
+        ]);
+
+        const incomeData = incomeResponse.data || [];
+        const categories = Array.isArray(categoryResponse.data) ? categoryResponse.data : [];
+        const filteredIncomeCategories = categories
+          .filter((category) => {
+            const typeValue = String(category?.catType || category?.type || category?.category_type || "")
+              .trim()
+              .toLowerCase();
+            return ["income", "incomes", "earning", "earnings", "revenue"].includes(typeValue);
+          })
+          .map((category) => category.name)
+          .filter(Boolean);
+
+        setIncomes(incomeData);
+        setIncomeCategoryOptions(
+          filteredIncomeCategories.length
+            ? [...new Set(filteredIncomeCategories)]
+            : ["Salary", "Business", "Freelance", "Investment", "Other"],
+        );
       } catch (error) {
         console.error("Fetch Income Error:", error);
         toast.error("Failed to load income records");
@@ -685,12 +707,10 @@ const Billing = () => {
                     required
                     className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"
                   >
-                    <option value="">Select category</option>
-                    <option>Salary</option>
-                    <option>Business</option>
-                    <option>Freelance</option>
-                    <option>Investment</option>
-                    <option>Other</option>
+                    <option value="">{incomeCategoryOptions.length ? "Select category" : "No income categories available"}</option>
+                    {incomeCategoryOptions.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
                   </select>
                 </label>
                 <label>

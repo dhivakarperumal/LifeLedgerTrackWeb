@@ -30,6 +30,7 @@ const Transfer = () => {
 
     const [transfers, setTransfers] = useState([]);
     const [incomes, setIncomes] = useState([]);
+    const [transferCategoryOptions, setTransferCategoryOptions] = useState([]);
     const [selectedIncomeId, setSelectedIncomeId] = useState("");
     const [selectedTransfer, setSelectedTransfer] = useState(null);
     const [editingTransferId, setEditingTransferId] = useState(null);
@@ -65,9 +66,34 @@ const Transfer = () => {
         }
     };
 
+    const loadCategories = async () => {
+        try {
+            const res = await api.get("/categories");
+            const categories = Array.isArray(res.data) ? res.data : [];
+            const filteredTransferCategories = categories
+                .filter((category) => {
+                    const typeValue = String(category?.catType || category?.type || category?.category_type || "")
+                        .trim()
+                        .toLowerCase();
+                    return ["transfer", "transfers", "budget transfer", "budgettransfer", "saving", "savings"].includes(typeValue);
+                })
+                .map((category) => category.name)
+                .filter(Boolean);
+
+            setTransferCategoryOptions(
+                filteredTransferCategories.length
+                    ? [...new Set(filteredTransferCategories)]
+                    : ["Savings", "Investment", "Budget Transfer", "Other"],
+            );
+        } catch (err) {
+            console.error("Fetch Transfer Categories Error:", err);
+            setTransferCategoryOptions(["Savings", "Investment", "Budget Transfer", "Other"]);
+        }
+    };
+
     const loadAll = async () => {
         setLoading(true);
-        await Promise.all([loadTransfers(), loadIncomes()]);
+        await Promise.all([loadTransfers(), loadIncomes(), loadCategories()]);
         setLoading(false);
     };
 
@@ -242,11 +268,10 @@ const Transfer = () => {
                     onChange={(e) => setCategoryFilter(e.target.value)}
                     className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf]"
                 >
-                    <option>All Transfers</option>
-                    <option>Savings</option>
-                    <option>Investment</option>
-                    <option>Budget Transfer</option>
-                    <option>Other</option>
+                    <option value="All Transfers">All Transfers</option>
+                    {transferCategoryOptions.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                    ))}
                 </select>
                 <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
                     <button type="button" onClick={() => setViewMode("table")}
@@ -607,11 +632,10 @@ const Transfer = () => {
                                         value={formData.category} onChange={handleChange}
                                         className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 outline-none focus:border-purple-500"
                                     >
-                                        <option value="">Select category</option>
-                                        <option>Savings</option>
-                                        <option>Investment</option>
-                                        <option>Budget Transfer</option>
-                                        <option>Other</option>
+                                        <option value="">{transferCategoryOptions.length ? "Select category" : "No transfer categories available"}</option>
+                                        {transferCategoryOptions.map((option) => (
+                                            <option key={option} value={option}>{option}</option>
+                                        ))}
                                     </select>
                                 </label>
 
