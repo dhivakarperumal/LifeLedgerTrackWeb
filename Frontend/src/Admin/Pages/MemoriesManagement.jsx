@@ -101,6 +101,7 @@ const MemoriesManagement = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [viewMode, setViewMode] = useState("table");
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [loading, setLoading] = useState(true);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -120,6 +121,28 @@ const MemoriesManagement = () => {
   const [recordedVoiceName, setRecordedVoiceName] = useState("");
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setViewMode("grid");
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const handleViewModeChange = (nextMode) => {
+    if (isMobile) {
+      setViewMode("grid");
+      return;
+    }
+    setViewMode(nextMode);
+  };
 
   const mergeUniqueFiles = (existingFiles, incomingFiles) => {
     const seen = new Set(existingFiles.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
@@ -489,29 +512,29 @@ const MemoriesManagement = () => {
   }
 
   return (
-    <div className="min-h-screen space-y-5 bg-[#f3f4f6] p-4 pb-20 md:p-6">
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <div className="min-h-screen space-y-5  p-1 pb-20 md:p-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { label: "Total Memories", value: stats.total, sub: "All records", icon: <FiImage size={20} />, gradient: "from-[#240046] to-[#7b2cbf]" },
           { label: "Favorites", value: stats.favorites, sub: "Saved moments", icon: <FiHeart size={18} />, gradient: "from-rose-500 to-pink-500" },
           { label: "This Year", value: stats.thisYear, sub: "Recent memories", icon: <FiCalendar size={18} />, gradient: "from-amber-400 to-orange-500" },
           { label: "Albums", value: stats.albums, sub: "Collections", icon: <FiFolder size={20} />, gradient: "from-emerald-400 to-teal-500" },
         ].map((card, index) => (
-          <div key={index} className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${card.gradient} text-white shadow-md`}>
+          <div key={index} className="flex min-h-[120px] items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:gap-4 sm:p-5">
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${card.gradient} text-white shadow-md sm:h-14 sm:w-14`}>
               {card.icon}
             </div>
-            <div>
-              <p className="text-xs font-medium text-gray-400">{card.label}</p>
-              <p className="my-1 text-3xl font-black leading-none text-slate-800">{card.value}</p>
-              <p className="text-[10px] text-gray-400">{card.sub}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-medium text-gray-400 sm:text-xs">{card.label}</p>
+              <p className="my-1 text-2xl font-black leading-none text-slate-800 sm:text-3xl">{card.value}</p>
+              <p className="text-[9px] text-gray-400 sm:text-[10px]">{card.sub}</p>
             </div>
           </div>
         ))}
       </div>
 
       <div className="flex flex-col gap-3 rounded-[20px] border border-gray-200 bg-[#f3f4f6] p-3 shadow-sm md:flex-row md:items-center">
-        <div className="relative flex-1 min-w-[220px]">
+        <div className="relative w-full md:flex-1 md:min-w-[220px]">
           <FiSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
           <input
             value={search}
@@ -521,12 +544,12 @@ const MemoriesManagement = () => {
           />
         </div>
 
-        <div className="flex items-center gap-3 md:ml-auto">
-          <div className="relative">
+        <div className="flex w-full flex-col gap-3 sm:flex-row md:ml-auto md:w-auto md:items-center">
+          <div className="relative w-full sm:w-auto">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="appearance-none rounded-[18px] border border-gray-200 bg-white px-4 py-3.5 pr-10 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-[#7b2cbf]"
+              className="w-full appearance-none rounded-[18px] border border-gray-200 bg-white px-4 py-3.5 pr-10 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-[#7b2cbf] sm:w-auto"
             >
               <option value="all">All Categories</option>
               {memoryCategories.map((category) => (
@@ -536,16 +559,17 @@ const MemoriesManagement = () => {
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
           </div>
 
-          <div className="flex overflow-hidden rounded-[18px] border border-gray-200 bg-white shadow-sm">
+          <div className="flex overflow-hidden rounded-[18px] border border-gray-200 bg-white shadow-sm self-start sm:self-auto">
             <button
-              onClick={() => setViewMode("table")}
-              className={`flex h-[46px] w-[46px] items-center justify-center transition-all ${viewMode === "table" ? "bg-[#f1e6ff] text-[#7b2cbf]" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+              onClick={() => handleViewModeChange("table")}
+              disabled={isMobile}
+              className={`flex h-[46px] w-[46px] items-center justify-center transition-all ${viewMode === "table" ? "bg-[#f1e6ff] text-[#7b2cbf]" : "bg-white text-slate-500 hover:bg-slate-50"} ${isMobile ? "cursor-not-allowed opacity-50" : ""}`}
               aria-label="Table view"
             >
               <FiList size={17} />
             </button>
             <button
-              onClick={() => setViewMode("grid")}
+              onClick={() => handleViewModeChange("grid")}
               className={`flex h-[46px] w-[46px] items-center justify-center border-l border-gray-200 transition-all ${viewMode === "grid" ? "bg-[#f1e6ff] text-[#7b2cbf]" : "bg-white text-slate-500 hover:bg-slate-50"}`}
               aria-label="Grid view"
             >
@@ -555,7 +579,7 @@ const MemoriesManagement = () => {
 
           <button
             onClick={openNewMemory}
-            className="inline-flex items-center justify-center gap-2 rounded-[18px] bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-purple-900/20 transition-all hover:from-[#10002b] hover:to-[#5a189a]"
+            className="inline-flex items-center justify-center gap-2 rounded-[18px] bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-purple-900/20 transition-all hover:from-[#10002b] hover:to-[#5a189a] sm:w-auto"
           >
             <FiPlus size={18} />
             Add Memory

@@ -461,38 +461,35 @@ const CalendarReminder = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {summaryCards.map(({ title, value, icon: Icon, accent }) => (
           <div
             key={title}
             className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm"
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.15em] text-slate-500">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500 sm:text-xs">
                   {title}
                 </p>
-                <p className="mt-3 text-3xl font-bold text-slate-900">
+                <p className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
                   {value}
                 </p>
               </div>
               <div
-                className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${accent} text-white`}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${accent} text-white sm:h-12 sm:w-12`}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div
-        className="grid grid-cols-1 gap-4"
-        style={{ gridTemplateColumns: "minmax(0, 1.85fr) minmax(0, 0.75fr)" }}
-      >
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.85fr)_minmax(0,0.75fr)]">
         <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <button
                 onClick={() => setCalendarMonth((prev) => addMonths(prev, -1))}
                 className="rounded-xl border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100"
@@ -965,7 +962,7 @@ const CalendarReminder = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_0.9fr]">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div>

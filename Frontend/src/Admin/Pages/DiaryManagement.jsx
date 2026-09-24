@@ -601,7 +601,7 @@ const DiaryManagement = () => {
   const recentEntries = [...entries].sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date)).slice(0, 5);
 
   return (
-    <div className="min-h-screen space-y-5 p-4 pb-20 md:p-2">
+    <div className="min-h-screen space-y-5 p-1 pb-20 md:p-2">
 
         
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
