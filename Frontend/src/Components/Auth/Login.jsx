@@ -39,7 +39,8 @@ function Login() {
       }
     } catch (error) {
       console.error("Login Error:", error);
-      toast.error(error.response?.data?.message || "Login failed");
+      const message = error.response?.data?.message || "Login failed";
+      toast.error(message);
     }
   };
 
@@ -162,7 +163,7 @@ function Login() {
                   type="text"
                   placeholder="Enter your email or mobile number"
                   onChange={handleChange}
-                  className="w-full pl-12 p-3.5 rounded-xl bg-white border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm font-medium text-gray-700"
+                  className="w-full pl-12 py-4 pr-4 rounded-xl bg-white border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm font-medium text-gray-700"
                   required
                 />
               </div>
@@ -184,7 +185,7 @@ function Login() {
                   name="password"
                   placeholder="Enter your password"
                   onChange={handleChange}
-                  className="w-full pl-12 p-3.5 pr-12 rounded-xl bg-white border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm font-medium text-gray-700"
+                  className="w-full pl-12 py-4 pr-12 rounded-xl bg-white border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm font-medium text-gray-700"
                   required
                 />
                 <button

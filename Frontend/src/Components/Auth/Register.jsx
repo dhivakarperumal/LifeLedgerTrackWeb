@@ -207,20 +207,7 @@ function Register() {
                 <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
               </button>
 
-              {googleClientId && (
-                <div className="flex justify-center w-full hover:scale-[1.02] transition-transform">
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={() => toast.error("Google sign up failed")}
-                    type="standard"
-                    theme="outline"
-                    size="large"
-                    shape="rectangular"
-                    width="100%"
-                    logo_alignment="center"
-                  />
-                </div>
-              )}
+             
 
               <p className="text-center text-xs text-gray-400 pt-1">
                 Already have an account?{" "}

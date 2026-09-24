@@ -144,6 +144,19 @@ const Users = ({ initialTab = "All" }) => {
         }
     };
 
+    const handleStatusToggle = async (user) => {
+        const nextStatus = user.status === "Active" ? "Inactive" : "Active";
+        try {
+            await api.patch(`/auth/users/${user.id}/status`, { status: nextStatus });
+            setUsers((current) => current.map((item) => (
+                item.id === user.id ? { ...item, status: nextStatus } : item
+            )));
+            toast.success(`Account marked ${nextStatus.toLowerCase()}`);
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to update account status");
+        }
+    };
+
     const handleQuickRoleUpdate = async (id, newRole, user) => {
         try {
             const payload = {
@@ -405,9 +418,14 @@ const Users = ({ initialTab = "All" }) => {
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 text-center">
-                                                            <span className={`px-3 py-1 rounded text-[11px] font-bold ${user.status === 'Active' ? 'bg-[#dcfce7] text-[#16a34a]' : 'bg-[#ffedd5] text-[#ea580c]'}`}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleStatusToggle(user)}
+                                                                className={`px-3 py-1 rounded text-[11px] font-bold transition-colors ${user.status === 'Active' ? 'bg-[#dcfce7] text-[#16a34a] hover:bg-[#bbf7d0]' : 'bg-[#ffedd5] text-[#ea580c] hover:bg-[#fed7aa]'}`}
+                                                                title="Change account status"
+                                                            >
                                                                 {user.status || 'Active'}
-                                                            </span>
+                                                            </button>
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="text-[12px] font-bold text-[#2B3674]">{user.joined}</div>
@@ -459,9 +477,14 @@ const Users = ({ initialTab = "All" }) => {
                                                         <p className="text-[11px] text-gray-500 mt-0.5">CUS{1000 + (parseInt(user.id) || idx + 1)}</p>
                                                     </div>
                                                 </div>
-                                                <span className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap ${user.status === 'Active' ? 'bg-[#dcfce7] text-[#16a34a]' : 'bg-[#ffedd5] text-[#ea580c]'}`}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleStatusToggle(user)}
+                                                    className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors ${user.status === 'Active' ? 'bg-[#dcfce7] text-[#16a34a] hover:bg-[#bbf7d0]' : 'bg-[#ffedd5] text-[#ea580c] hover:bg-[#fed7aa]'}`}
+                                                    title="Change account status"
+                                                >
                                                     {user.status || 'Active'}
-                                                </span>
+                                                </button>
                                             </div>
 
                                             <div className="mt-5 space-y-3 text-[12px] text-gray-600">

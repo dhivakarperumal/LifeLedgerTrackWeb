@@ -79,7 +79,19 @@ const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const app = (
   <AuthProvider>
     <StoreProvider>
-      <Toaster position="top-left" reverseOrder={false} />
+      <Toaster
+        position="top-left"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 4500,
+          style: {
+            zIndex: 99999,
+            fontSize: "14px",
+            fontWeight: 600,
+          },
+        }}
+        containerStyle={{ zIndex: 99999 }}
+      />
       <React.Suspense fallback={<Loader />}>
         <RouterProvider router={router} />
       </React.Suspense>

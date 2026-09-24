@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { LockKeyhole, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, Mail, Phone, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import { useAuth } from "../../PrivateRouter/AuthContext";
 
 const Profile = () => {
-  const { user, profileName, email, phone, role } = useAuth();
+  const { user, profileName, email, phone, role, logout } = useAuth();
+  const navigate = useNavigate();
   const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
   const [passwordStatus, setPasswordStatus] = useState({ type: "", message: "" });
   const [isSavingPassword, setIsSavingPassword] = useState(false);
@@ -51,6 +53,22 @@ const Profile = () => {
       });
     } finally {
       setIsSavingPassword(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const userId = user?.id || user?.user_id;
+    if (!userId) return;
+
+    const confirmed = window.confirm("Deactivate your account? Your user details will be kept, but the account will no longer be able to log in.");
+    if (!confirmed) return;
+
+    try {
+      await api.patch(`/auth/users/${userId}/status`, { status: "Inactive" });
+      await logout();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      setPasswordStatus({ type: "error", message: error.response?.data?.message || "Unable to delete your account." });
     }
   };
 
@@ -154,24 +172,64 @@ const Profile = () => {
           </div>
         </form>
       </section>
+
+      <section className="flex flex-col gap-4 rounded-[2rem] border border-red-100 bg-red-50/60 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-red-500">Danger zone</p>
+          <h2 className="mt-1 text-lg font-black text-slate-900">Deactivate account</h2>
+          <p className="mt-1 text-sm text-slate-600">Mark your account inactive and sign out. Your user details will be preserved.</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleDeleteAccount}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-600 hover:text-white"
+        >
+          <Trash2 size={16} />
+          Deactivate account
+        </button>
+      </section>
     </div>
   );
 };
 
 const PasswordField = ({ label, value, onChange, autoComplete, minLength }) => (
-  <label className="block">
-    <span className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-500">{label}</span>
-    <input
-      type="password"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      autoComplete={autoComplete}
-      minLength={minLength}
-      required
-      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-[#1F0A3C] focus:bg-white focus:ring-4 focus:ring-[#1F0A3C]/10"
-    />
-  </label>
+  <PasswordFieldInput
+    label={label}
+    value={value}
+    onChange={onChange}
+    autoComplete={autoComplete}
+    minLength={minLength}
+  />
 );
+
+const PasswordFieldInput = ({ label, value, onChange, autoComplete, minLength }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <label className="block">
+    <span className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-500">{label}</span>
+    <div className="relative">
+      <input
+        type={isVisible ? "text" : "password"}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        autoComplete={autoComplete}
+        minLength={minLength}
+        required
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-[#1F0A3C] focus:bg-white focus:ring-4 focus:ring-[#1F0A3C]/10"
+      />
+      <button
+        type="button"
+        onClick={() => setIsVisible((visible) => !visible)}
+        className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-[#1F0A3C]"
+        aria-label={isVisible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+      >
+        {isVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
+    </div>
+  </label>
+  );
+};
 
 const ProfileDetail = ({ icon, label, value, wide = false }) => (
   <div className={`rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-[#1F0A3C]/30 ${wide ? "md:col-span-2" : ""}`}>

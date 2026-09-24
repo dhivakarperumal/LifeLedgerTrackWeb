@@ -63,6 +63,7 @@ const initializeDatabase = async () => {
       email VARCHAR(255) UNIQUE,
       phone VARCHAR(50),
       role VARCHAR(50) DEFAULT 'Customer',
+      status VARCHAR(20) DEFAULT 'Active',
       password VARCHAR(255),
       street_address TEXT,
       city VARCHAR(100),
@@ -456,6 +457,7 @@ const initializeDatabase = async () => {
 
   const auditTables = [
     { table: 'users', columns: [
+      ['status', 'VARCHAR(20) DEFAULT \'Active\''],
       ['user_id', 'VARCHAR(50) NULL'],
       ['created_by', 'VARCHAR(50) NULL'],
       ['updated_by', 'VARCHAR(50) NULL'],

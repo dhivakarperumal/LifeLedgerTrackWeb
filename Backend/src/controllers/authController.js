@@ -43,15 +43,22 @@ const signToken = (payload) => jwt.sign(payload, process.env.JWT_SECRET || "secr
 
 exports.login = async (req, res) => {
   try {
-    const { identifier, password } = req.body; // 'identifier' field can be email or username
+    const { identifier, password } = req.body; // 'identifier' field can be email, username, or phone
 
     if (!identifier || !password) {
-      return res.status(400).json({ message: "Email/Username and password are required" });
+      return res.status(400).json({ message: "Email/Username/Phone and password are required" });
     }
 
+    const normalizedIdentifier = String(identifier).trim();
+
     const [results] = await db.query(
-      "SELECT * FROM users WHERE email = ? OR username = ?",
-      [identifier, identifier]
+      `SELECT * FROM users
+       WHERE LOWER(TRIM(email)) = LOWER(?)
+          OR LOWER(TRIM(username)) = LOWER(?)
+          OR LOWER(TRIM(name)) = LOWER(?)
+          OR user_id = ?
+          OR REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') = REPLACE(REPLACE(REPLACE(?, ' ', ''), '-', ''), '+', '')`,
+      [normalizedIdentifier, normalizedIdentifier, normalizedIdentifier, normalizedIdentifier, normalizedIdentifier]
     );
 
     if (results.length === 0) {
@@ -59,6 +66,10 @@ exports.login = async (req, res) => {
     }
 
     const user = results[0];
+
+    if (String(user.status || "Active").toLowerCase() === "inactive") {
+      return res.status(403).json({ message: "Your account is inactive. Please contact an administrator." });
+    }
 
     // Check if user has a password (users without password can only login via Google)
     if (!user.password) {
@@ -198,7 +209,7 @@ exports.changePassword = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const [results] = await db.query(
-      "SELECT id, user_id, name, username, email, phone, role, created_at, CASE WHEN id % 6 = 0 OR id % 9 = 0 THEN 'Inactive' ELSE 'Active' END AS status FROM users"
+      "SELECT id, user_id, name, username, email, phone, role, status, created_at FROM users"
     );
     res.json(results);
   } catch (err) {
@@ -244,6 +255,10 @@ exports.googleLogin = async (req, res) => {
     } else {
       // user exists, just login
       user = users[0];
+    }
+
+    if (String(user.status || "Active").toLowerCase() === "inactive") {
+      return res.status(403).json({ message: "Your account is inactive. Please contact an administrator." });
     }
 
     // generate JWT using same secret as regular login
@@ -302,5 +317,22 @@ exports.deleteUser = async (req, res) => {
   } catch (err) {
     console.error("Delete User Error:", err);
     res.status(500).json({ message: "Failed to delete user", error: err.message });
+  }
+};
+
+exports.updateUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["Active", "Inactive"].includes(status)) {
+      return res.status(400).json({ message: "Status must be Active or Inactive" });
+    }
+
+    await db.query("UPDATE users SET status = ? WHERE id = ?", [status, id]);
+    res.json({ message: "User status updated successfully", status });
+  } catch (err) {
+    console.error("Update User Status Error:", err);
+    res.status(500).json({ message: "Failed to update user status", error: err.message });
   }
 };
