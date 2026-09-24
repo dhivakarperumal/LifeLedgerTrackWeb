@@ -399,8 +399,9 @@ const AllExpensive = () => {
                                            
                                             <td className="px-4 py-4">
                                                 <div className="flex items-center gap-2">
-                                                    {ex.attachment && (
-                                                        <button
+                                                  
+
+                                                     <button
                                                             type="button"
                                                             onClick={() => openViewExpense(ex)}
                                                             className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all"
@@ -408,7 +409,6 @@ const AllExpensive = () => {
                                                         >
                                                             <FiEye size={13} />
                                                         </button>
-                                                    )}
                                                     <button
                                                         type="button"
                                                         onClick={() => openEditExpense(ex)}
