@@ -718,24 +718,24 @@ const Reports = () => {
                         <p className="text-xs text-gray-400 font-medium mt-0.5">Expense &amp; Transfer event history with filters</p>
                     </div>
                 </div>
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:flex-wrap">
                     <button
                         onClick={exportPDF}
-                        className="flex items-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-violet-500/30 active:scale-95"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-500/30 transition-all hover:from-violet-600 hover:to-purple-700 active:scale-95 md:w-auto"
                     >
                         <FiDownload size={15} /> Export PDF
                     </button>
 
                     <button
                         onClick={sharePDF}
-                        className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-500/30 active:scale-95"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:from-blue-600 hover:to-indigo-700 active:scale-95 md:w-auto"
                     >
                         <FiSend size={15} /> Share PDF
                     </button>
 
                     <button
                         onClick={exportCSV}
-                        className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-500/30 active:scale-95"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 transition-all hover:from-emerald-600 hover:to-teal-600 active:scale-95 md:w-auto"
                     >
                         <FiDownload size={15} /> Export CSV
                     </button>
@@ -765,69 +765,68 @@ const Reports = () => {
             </div>
 
             {/* ── FILTER BAR ── */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
-                <div className="flex flex-wrap gap-3 items-center">
-
+            <div className="space-y-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center">
                     {/* Search */}
-                    <div className="relative flex-1 min-w-[180px]">
+                    <div className="relative w-full md:flex-1">
                         <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
                         <input
                             type="text"
                             placeholder="Search by title, category, notes..."
-                            className="w-1/2 pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#7b2cbf] focus:bg-white transition-all text-sm font-medium text-slate-700"
+                            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 text-sm font-medium text-slate-700 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
 
-                    {/* Report type tabs */}
-                    <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200 gap-1">
-                        {[
-                            { value: "all",      label: "All" },
-                            { value: "expense",  label: "Expenses" },
-                            { value: "transfer", label: "Transfers" },
-                        ].map((t) => (
-                            <button
-                                key={t.value}
-                                onClick={() => setReportType(t.value)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                    reportType === t.value
-                                        ? "bg-white text-[#7b2cbf] shadow-sm"
-                                        : "text-gray-400 hover:text-slate-600"
-                                }`}
-                            >
-                                {t.label}
-                            </button>
-                        ))}
-                    </div>
+                    <div className="flex w-full items-center justify-between gap-2 md:w-auto">
+                        {/* Report type tabs */}
+                        <div className="flex flex-1 gap-1 rounded-xl border border-gray-200 bg-gray-100 p-1 md:flex-none">
+                            {[
+                                { value: "all", label: "All" },
+                                { value: "expense", label: "Expenses" },
+                                { value: "transfer", label: "Transfers" },
+                            ].map((t) => (
+                                <button
+                                    key={t.value}
+                                    onClick={() => setReportType(t.value)}
+                                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                                        reportType === t.value
+                                            ? "bg-white text-[#7b2cbf] shadow-sm"
+                                            : "text-gray-400 hover:text-slate-600"
+                                    }`}
+                                >
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
 
-                    {/* View mode */}
-                    <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
-                        <button onClick={() => setViewMode("table")} className={`p-2 rounded-lg transition-all ${viewMode === "table" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}>
-                            <FiList size={16} />
-                        </button>
-                        <button onClick={() => setViewMode("grid")} className={`p-2 rounded-lg transition-all ${viewMode === "grid" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}>
-                            <FiGrid size={16} />
-                        </button>
+                        {/* View mode */}
+                        <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
+                            <button onClick={() => setViewMode("table")} className={`rounded-lg p-2 transition-all ${viewMode === "table" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}>
+                                <FiList size={16} />
+                            </button>
+                            <button onClick={() => setViewMode("grid")} className={`rounded-lg p-2 transition-all ${viewMode === "grid" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}>
+                                <FiGrid size={16} />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {/* Second row of filters */}
-                <div className="flex flex-wrap gap-3 items-center">
-                    {/* Category */}
+                <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
                     <select
                         value={categoryFilter}
                         onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none hover:border-[#7b2cbf] transition-all cursor-pointer"
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf] cursor-pointer md:w-auto"
                     >
                         {categories.map((c) => <option key={c} value={c}>{c === "All" ? "All Categories" : c}</option>)}
                     </select>
 
-                    {/* Payment Method */}
                     <select
                         value={paymentFilter}
                         onChange={(e) => setPaymentFilter(e.target.value)}
-                        className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none hover:border-[#7b2cbf] transition-all cursor-pointer"
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf] cursor-pointer md:w-auto"
                     >
                         {paymentMethods.map((m) => <option key={m} value={m}>{m === "All" ? "All Payment Methods" : m}</option>)}
                     </select>
@@ -842,7 +841,7 @@ const Reports = () => {
                                 setDateTo("");
                             }
                         }}
-                        className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none hover:border-[#7b2cbf] transition-all cursor-pointer"
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf] cursor-pointer md:w-auto"
                     >
                         {[
                             "All",
@@ -862,8 +861,8 @@ const Reports = () => {
 
                     {datePreset === "Custom Range" && (
                         <>
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs text-gray-400 font-medium whitespace-nowrap">From</label>
+                            <div className="flex w-full items-center gap-2 md:w-auto">
+                                <label className="whitespace-nowrap text-xs font-medium text-gray-400">From</label>
                                 <input
                                     type="date"
                                     value={dateFrom}
@@ -871,12 +870,12 @@ const Reports = () => {
                                         setDateFrom(e.target.value);
                                         setDatePreset("Custom Range");
                                     }}
-                                    className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#7b2cbf] transition-all"
+                                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf] md:w-auto"
                                 />
                             </div>
 
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs text-gray-400 font-medium whitespace-nowrap">To</label>
+                            <div className="flex w-full items-center gap-2 md:w-auto">
+                                <label className="whitespace-nowrap text-xs font-medium text-gray-400">To</label>
                                 <input
                                     type="date"
                                     value={dateTo}
@@ -884,7 +883,7 @@ const Reports = () => {
                                         setDateTo(e.target.value);
                                         setDatePreset("Custom Range");
                                     }}
-                                    className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#7b2cbf] transition-all"
+                                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf] md:w-auto"
                                 />
                             </div>
                         </>
@@ -894,13 +893,13 @@ const Reports = () => {
                     {(searchTerm || categoryFilter !== "All" || paymentFilter !== "All" || datePreset !== "All" || dateFrom || dateTo || reportType !== "all") && (
                         <button
                             onClick={resetFilters}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 text-red-500 bg-red-50 hover:bg-red-100 text-xs font-bold transition-all"
+                            className="flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-500 transition-all hover:bg-red-100"
                         >
                             <FiX size={13} /> Reset Filters
                         </button>
                     )}
 
-                    <span className="ml-auto text-xs text-gray-400 font-medium">
+                    <span className="ml-0 text-right text-xs font-medium text-gray-400 md:ml-auto">
                         Showing <span className="font-bold text-slate-700">{visible.length}</span> records
                     </span>
                 </div>

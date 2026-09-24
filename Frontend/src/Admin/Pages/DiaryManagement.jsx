@@ -631,7 +631,7 @@ const DiaryManagement = () => {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-1/2 rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 text-sm font-medium text-slate-700 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white"
+              className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 text-sm font-medium text-slate-700 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white"
               placeholder="Search title, mood, category, location, tags..."
             />
           </div>
