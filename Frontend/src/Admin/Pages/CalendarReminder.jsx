@@ -842,28 +842,28 @@ const CalendarReminder = () => {
           )}
         </div>
 
-        <div className="rounded-[30px]  border border-slate-200 bg-white p-4 shadow-sm  text-slate-100 ">
+        <div className="rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm text-slate-700">
           <div className="mb-3 flex items-center justify-between">
             <button
               onClick={() => setCalendarMonth((prev) => addMonths(prev, -1))}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-800 text-black transition hover:bg-slate-700"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:bg-slate-200"
               aria-label="Previous month"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <div className="text-xl font-bold ">
+            <div className="text-xl font-bold text-slate-800">
               {toMonthLabel(calendarMonth)}
             </div>
             <button
               onClick={() => setCalendarMonth((prev) => addMonths(prev, 1))}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-800 text-black transition hover:bg-slate-700"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-700 transition hover:bg-slate-200"
               aria-label="Next month"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium ">
+          <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-slate-600">
             {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
               <div key={day} className="py-1">
                 {day}
@@ -884,10 +884,10 @@ const CalendarReminder = () => {
                     isSelected
                       ? "bg-gradient-to-br from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/30"
                       : isToday
-                        ? "bg-slate-700 text-red-400"
+                        ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200"
                         : isCurrentMonth
-                          ? "text-gray-500 hover:bg-slate-800"
-                          : "text-black"
+                          ? "text-slate-700 hover:bg-slate-100"
+                          : "text-slate-300 hover:bg-slate-100"
                   }`}
                 >
                   {date.getDate()}
@@ -897,10 +897,10 @@ const CalendarReminder = () => {
           </div>
 
           <div className="mt-6">
-            <h3 className="text-2xl font-bold text-slate-100">
+            <h3 className="text-2xl font-bold text-slate-900">
               Today's Events
             </h3>
-            <p className="mt-2 text-sm ">
+            <p className="mt-2 text-sm text-slate-600">
               {formatDate(selectedDate, {
                 weekday: "long",
                 month: "long",
@@ -909,11 +909,11 @@ const CalendarReminder = () => {
               })}
             </p>
 
-            <div className="mt-4 rounded-2xl  bg-slate-800/80 ">
+            <div className="mt-4 rounded-2xl bg-slate-100">
               {selectedDayEvents.length === 0 &&
               selectedDayReminders.length === 0 ? (
-                <div className="flex items-center justify-center gap-3 rounded-xl border border-dashed border-slate-600 bg-slate-900/40 px-3 py-6 text-sm font-medium text-slate-300">
-                  <CalendarDays className="h-5 w-5 text-slate-400" />
+                <div className="flex items-center justify-center gap-3 rounded-xl border border-dashed border-blue-200 bg-blue-50 px-3 py-6 text-sm font-medium text-slate-700">
+                  <CalendarDays className="h-5 w-5 text-blue-600" />
                   No events today
                 </div>
               ) : (
@@ -958,7 +958,7 @@ const CalendarReminder = () => {
 
             <button
               onClick={() => setViewMode("agenda")}
-              className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+              className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 transition hover:text-blue-700"
             >
               View All Events
               <ChevronRight className="h-4 w-4" />
@@ -966,7 +966,7 @@ const CalendarReminder = () => {
           </div>
 
           <div className="mt-6">
-            <h3 className="text-2xl font-bold text-slate-100">Quick Actions</h3>
+            <h3 className="text-2xl font-bold text-slate-900">Quick Actions</h3>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <button
                 onClick={() => openPanel("event")}

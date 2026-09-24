@@ -8,7 +8,7 @@ import {
     FiX, FiArrowDown, FiArrowUp, FiRepeat, FiAlertCircle,
     FiDollarSign, FiCalendar, FiTag, FiCreditCard,
     FiFileText, FiRefreshCw, FiPaperclip, FiInfo,
-    FiTrendingDown, FiCheckCircle, FiEye, FiEdit2,
+    FiTrendingDown, FiCheckCircle, FiEye, FiEdit2, FiMapPin,
 } from "react-icons/fi";
 
 // ─── empty form factory ───────────────────────────────────────────────────────
@@ -18,14 +18,16 @@ const emptyForm = () => ({
     transfer_amount: "",
     transfer_id: "",
     category: "",
+    from: "",
+    to: "",
     payment_method: "Cash",
     date: new Date().toISOString().split("T")[0],
     notes: "",
-    recurring: "No",
     attachment: null,
 });
 
 const PAYMENT_METHODS = ["Cash", "UPI", "Bank Transfer", "Card", "Cheque", "Other"];
+const isTravelCategory = (value) => String(value || "").trim().toLowerCase() === "travel";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 const fmt = (n) =>
@@ -98,9 +100,21 @@ const AllExpensive = () => {
         const { name, value, files } = e.target;
         if (name === "attachment") {
             setForm((f) => ({ ...f, attachment: files[0] || null }));
-        } else {
-            setForm((f) => ({ ...f, [name]: value }));
+            return;
         }
+
+        if (name === "category") {
+            const nextIsTravel = isTravelCategory(value);
+            setForm((f) => ({
+                ...f,
+                category: value,
+                from: nextIsTravel ? f.from : "",
+                to: nextIsTravel ? f.to : "",
+            }));
+            return;
+        }
+
+        setForm((f) => ({ ...f, [name]: value }));
     };
 
     const openCreateModal = () => {
@@ -120,10 +134,11 @@ const AllExpensive = () => {
             transfer_amount: expense.transfer_amount ?? "",
             transfer_id: expense.transfer_id ?? "",
             category: expense.category || "",
+            from: expense.from || "",
+            to: expense.to || "",
             payment_method: expense.payment_method || "Cash",
             date: expense.expense_date ? String(expense.expense_date).split("T")[0] : new Date().toISOString().split("T")[0],
             notes: expense.notes || "",
-            recurring: expense.recurring || "No",
             attachment: null,
         });
         setManualTransfer(!expense.transfer_id);
@@ -144,16 +159,39 @@ const AllExpensive = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const isTravel = isTravelCategory(form.category);
+
         if (!form.title || !form.expense_amount || !form.category || !form.date) {
             toast.error("Please fill all required fields.");
+            return;
+        }
+
+        if (isTravel && (!String(form.from || "").trim() || !String(form.to || "").trim())) {
+            toast.error("Travel expenses require both From and To locations.");
             return;
         }
         setSaving(true);
         try {
             const payload = new FormData();
             Object.entries(form).forEach(([k, v]) => {
-                if (k === "attachment") { if (v) payload.append(k, v); }
-                else if (v !== null && v !== undefined && v !== "") payload.append(k, v);
+                if (k === "attachment") {
+                    if (v) payload.append(k, v);
+                    return;
+                }
+
+                if ((k === "from" || k === "to") && !isTravel) {
+                    payload.append(k, "");
+                    return;
+                }
+
+                if (k === "from" || k === "to") {
+                    if (v !== null && v !== undefined && String(v).trim() !== "") {
+                        payload.append(k, String(v));
+                    }
+                    return;
+                }
+
+                if (v !== null && v !== undefined && v !== "") payload.append(k, v);
             });
 
             let res;
@@ -743,6 +781,34 @@ const AllExpensive = () => {
                                 </Field>
                             </div>
 
+                            {isTravelCategory(form.category) && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field label="From *" icon={<FiMapPin />}>
+                                        <input
+                                            type="text"
+                                            name="from"
+                                            value={form.from}
+                                            onChange={handleChange}
+                                            placeholder="Ambur"
+                                            className={inputCls}
+                                            required
+                                        />
+                                    </Field>
+
+                                    <Field label="To *" icon={<FiMapPin />}>
+                                        <input
+                                            type="text"
+                                            name="to"
+                                            value={form.to}
+                                            onChange={handleChange}
+                                            placeholder="Chennai"
+                                            className={inputCls}
+                                            required
+                                        />
+                                    </Field>
+                                </div>
+                            )}
+
                             {/* Date */}
                             <Field label="Date *" icon={<FiCalendar />}>
                                 <input
@@ -766,29 +832,6 @@ const AllExpensive = () => {
                                     className={`${inputCls} resize-none`}
                                 />
                             </Field>
-
-                            {/* Recurring */}
-                            <div>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Recurring Expense</p>
-                                <div className="flex items-center gap-3">
-                                    {["No", "Yes"].map((val) => (
-                                        <button
-                                            key={val}
-                                            type="button"
-                                            onClick={() => setForm((f) => ({ ...f, recurring: val }))}
-                                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 text-sm font-bold transition-all ${form.recurring === val
-                                                ? val === "Yes"
-                                                    ? "bg-emerald-50 border-emerald-400 text-emerald-700"
-                                                    : "bg-gray-100 border-gray-300 text-gray-700"
-                                                : "border-gray-200 text-gray-400 hover:border-gray-300"
-                                                }`}
-                                        >
-                                            {val === "Yes" ? <FiCheckCircle size={14} /> : <FiX size={14} />}
-                                            {val}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
 
                             {/* Attachment */}
                             <Field label="Attachment / Receipt — Optional" icon={<FiPaperclip />}>

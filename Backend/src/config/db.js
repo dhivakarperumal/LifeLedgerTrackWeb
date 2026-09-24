@@ -302,6 +302,8 @@ const initializeDatabase = async () => {
   await ensureColumn("expenses", "user_id", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "transfer_id", "INT NULL");
   await ensureColumn("expenses", "expense_time", "TIME NULL");
+  await ensureColumn("expenses", "from", "VARCHAR(255) NULL");
+  await ensureColumn("expenses", "to", "VARCHAR(255) NULL");
   await ensureColumn("expenses", "created_by", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "updated_by", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "updated_at", "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
