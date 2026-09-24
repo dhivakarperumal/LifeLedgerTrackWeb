@@ -44,7 +44,9 @@ const Transfer = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("All Transfers");
     const [viewMode, setViewMode] = useState("table");
+    const [currentPage, setCurrentPage] = useState(1);
     const [deletingId, setDeletingId] = useState(null);
+    const pageSize = 10;
 
     /* ── data loaders ─────────────────────────────────────────────────── */
     const loadTransfers = async () => {
@@ -113,6 +115,10 @@ const Transfer = () => {
     };
 
     useEffect(() => { loadAll(); }, []);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, categoryFilter]);
 
     /* ── selected income helpers ──────────────────────────────────────── */
     const selectedIncome = useMemo(
@@ -247,12 +253,27 @@ const Transfer = () => {
     const totalExpense     = transfers.reduce((s, t) => s + Number(t.total_expense || 0), 0);
 
     /* ── filtered list ────────────────────────────────────────────────── */
-    const visible = transfers.filter((t) => {
-        const hay = `${t.title || ""} ${t.category || ""}`.toLowerCase();
-        const matchSearch = hay.includes(searchTerm.toLowerCase());
-        const matchFilter = categoryFilter === "All Transfers" || t.category === categoryFilter;
-        return matchSearch && matchFilter;
-    });
+    const visible = useMemo(() => {
+        return transfers.filter((t) => {
+            const hay = `${t.title || ""} ${t.category || ""}`.toLowerCase();
+            const matchSearch = hay.includes(searchTerm.toLowerCase());
+            const matchFilter = categoryFilter === "All Transfers" || t.category === categoryFilter;
+            return matchSearch && matchFilter;
+        });
+    }, [transfers, searchTerm, categoryFilter]);
+
+    const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+    const paginatedTransfers = visible.slice(
+        (safeCurrentPage - 1) * pageSize,
+        safeCurrentPage * pageSize,
+    );
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
 
     /* ── render ───────────────────────────────────────────────────────── */
     return (
@@ -330,20 +351,20 @@ const Transfer = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {visible.length === 0 && (
+                                {paginatedTransfers.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="py-10 text-center text-sm text-slate-400">
+                                        <td colSpan={10} className="py-10 text-center text-sm text-slate-400">
                                             No transfer records found.
                                         </td>
                                     </tr>
                                 )}
-                                {visible.map((t, index) => {
+                                {paginatedTransfers.map((t, index) => {
                                     const trAmt  = Number(t.amount || 0);
                                     const expAmt = Number(t.total_expense || 0);
                                     const remAmt = Math.max(trAmt - expAmt, 0);
                                     return (
                                         <tr key={t.id} className="text-slate-700 hover:bg-purple-50/40">
-                                            <td className="px-4 py-4 font-bold text-slate-500">{index + 1}</td>
+                                            <td className="px-4 py-4 font-bold text-slate-500">{(safeCurrentPage - 1) * pageSize + index + 1}</td>
                                             <td className="px-6 py-4 font-bold">{t.title}</td>
                                             <td className="px-6 py-4 text-slate-500">{t.category || "—"}</td>
                                             <td className="px-5 py-4 text-right font-bold text-slate-800">{fmt(trAmt)}</td>
@@ -407,12 +428,12 @@ const Transfer = () => {
                 ) : (
                     /* ── grid view ──────────────────────────────────── */
                     <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
-                        {visible.length === 0 && (
+                        {paginatedTransfers.length === 0 && (
                             <p className="col-span-full py-10 text-center text-sm text-slate-400">
                                 No transfer records found.
                             </p>
                         )}
-                        {visible.map((t, index) => {
+                        {paginatedTransfers.map((t, index) => {
                             const trAmt  = Number(t.amount || 0);
                             const expAmt = Number(t.total_expense || 0);
                             const remAmt = Math.max(trAmt - expAmt, 0);
@@ -420,7 +441,7 @@ const Transfer = () => {
                             return (
                                 <div key={t.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                        <span>S No {index + 1}</span>
+                                        <span>S No {(safeCurrentPage - 1) * pageSize + index + 1}</span>
                                         <div className="flex items-center gap-2">
                                             {t.receipt && (
                                                 <button
@@ -497,6 +518,50 @@ const Transfer = () => {
                     </div>
                 )}
             </div>
+
+            {visible.length > 0 && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-semibold text-slate-600">
+                        Showing {Math.min((safeCurrentPage - 1) * pageSize + 1, visible.length)}-
+                        {Math.min(safeCurrentPage * pageSize, visible.length)} of {visible.length}
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                            disabled={safeCurrentPage === 1}
+                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            Prev
+                        </button>
+
+                        {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                            <button
+                                key={pageNumber}
+                                type="button"
+                                onClick={() => setCurrentPage(pageNumber)}
+                                className={`h-9 w-9 rounded-lg text-sm font-bold transition-all ${
+                                    pageNumber === safeCurrentPage
+                                        ? "bg-[#4b0b78] text-white shadow-md"
+                                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                }`}
+                            >
+                                {pageNumber}
+                            </button>
+                        ))}
+
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                            disabled={safeCurrentPage === totalPages}
+                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {selectedTransfer && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
