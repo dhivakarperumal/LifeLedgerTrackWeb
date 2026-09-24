@@ -510,7 +510,7 @@ const Billing = () => {
       {selectedIncome && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => setSelectedIncome(null)} />
-          <div className="relative z-10 w-full max-w-xl rounded-[1.8rem] bg-white shadow-2xl">
+          <div className="relative z-10 w-full max-w-xl overflow-hidden rounded-[1.8rem] bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-[#3c096c]/20 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">

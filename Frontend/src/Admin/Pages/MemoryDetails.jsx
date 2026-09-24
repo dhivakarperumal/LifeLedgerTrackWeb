@@ -74,8 +74,8 @@ const MemoryDetails = () => {
   if (!memory) return null;
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] pb-20">
-      <div className="mx-auto max-w-5xl px-4 py-6 md:p-8">
+    <div className="min-h-screen  pb-20">
+      <div className="mx-auto max-w-7xl px-4 py-6 md:p-2">
         
         {/* Top Navigation */}
         <div className="mb-6 flex items-center justify-between">
