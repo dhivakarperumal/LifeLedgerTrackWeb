@@ -70,24 +70,39 @@ const Transfer = () => {
         try {
             const res = await api.get("/categories");
             const categories = Array.isArray(res.data) ? res.data : [];
+            const transferKeywords = [
+                "transfer",
+                "transfers",
+                "budget transfer",
+                "budgettransfer",
+                "saving",
+                "savings",
+                "investment",
+                "investments",
+            ];
+
             const filteredTransferCategories = categories
                 .filter((category) => {
                     const typeValue = String(category?.catType || category?.type || category?.category_type || "")
                         .trim()
                         .toLowerCase();
-                    return ["transfer", "transfers", "budget transfer", "budgettransfer", "saving", "savings"].includes(typeValue);
+                    const nameValue = String(category?.name || "").trim().toLowerCase();
+
+                    return (
+                        typeValue === "transfer"
+                        || typeValue.includes("transfer")
+                        || typeValue.includes("saving")
+                        || typeValue.includes("investment")
+                        || transferKeywords.some((keyword) => nameValue.includes(keyword))
+                    );
                 })
-                .map((category) => category.name)
+                .map((category) => String(category.name).trim())
                 .filter(Boolean);
 
-            setTransferCategoryOptions(
-                filteredTransferCategories.length
-                    ? [...new Set(filteredTransferCategories)]
-                    : ["Savings", "Investment", "Budget Transfer", "Other"],
-            );
+            setTransferCategoryOptions([...new Set(filteredTransferCategories)]);
         } catch (err) {
             console.error("Fetch Transfer Categories Error:", err);
-            setTransferCategoryOptions(["Savings", "Investment", "Budget Transfer", "Other"]);
+            setTransferCategoryOptions([]);
         }
     };
 
