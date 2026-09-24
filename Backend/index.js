@@ -51,6 +51,7 @@ app.use((error, req, res, next) => {
   res.status(error.status || 500).json({ message: error.message || "Internal server error." });
 });
 
+const fs = require("fs");
 const startServer = async () => {
   try {
     await db.initializeDatabase();
@@ -59,6 +60,7 @@ const startServer = async () => {
     });
   } catch (error) {
     console.error("Failed to start backend server:", error.message);
+    fs.writeFileSync(path.join(__dirname, "startup-error.log"), error.stack || error.message);
     process.exit(1);
   }
 };
