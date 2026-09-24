@@ -316,8 +316,8 @@ const Category = () => {
             </div>
 
             {/* Filter Bar */}
-            <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
-                <div className="relative w-full">
+            <div className="mb-6 flex w-full flex-col gap-3 rounded-[22px] border border-gray-200 bg-white p-3 shadow-sm sm:p-4 md:flex-row md:items-center">
+                <div className="relative w-full md:w-1/2 md:min-w-[220px]">
                     <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
                     <input
                         type="text"
@@ -328,12 +328,12 @@ const Category = () => {
                     />
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="relative flex-1 min-w-0">
+                <div className="flex w-full flex-col gap-3 md:ml-auto md:w-auto md:flex-row md:items-center">
+                    <div className="relative w-full md:min-w-[180px]">
                         <select
                             value={statusFilter}
                             onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                            className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 py-3 pl-4 pr-10 text-sm font-semibold text-gray-700 outline-none transition-all focus:border-purple-300 focus:bg-white"
+                            className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm font-semibold text-gray-700 outline-none transition-all focus:border-purple-300 focus:bg-white"
                         >
                             <option value="All">Select Status</option>
                             <option value="Active">Active</option>
@@ -342,17 +342,17 @@ const Category = () => {
                         <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     </div>
 
-                    <div className="flex shrink-0 items-center rounded-xl border border-gray-200 bg-gray-50 p-1 shadow-sm">
+                    <div className="flex shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-[#f2e9ff] p-1 shadow-sm md:justify-start">
                         <button
                             onClick={() => handleViewModeChange("table")}
                             disabled={isMobile}
-                            className={`flex h-10 w-10 items-center justify-center rounded-lg transition-all ${viewMode === 'table' ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:text-slate-600'} ${isMobile ? 'cursor-not-allowed opacity-50' : ''}`}
+                            className={`flex h-11 w-11 items-center justify-center rounded-lg transition-all ${viewMode === 'table' ? 'bg-[#f5f0ff] text-[#7a2ed7]' : 'text-gray-500 hover:text-slate-700'} ${isMobile ? 'cursor-not-allowed opacity-50' : ''}`}
                         >
                             <FiList size={18} />
                         </button>
                         <button
                             onClick={() => handleViewModeChange("grid")}
-                            className={`flex h-10 w-10 items-center justify-center rounded-lg transition-all ${viewMode === 'grid' ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:text-slate-600'}`}
+                            className={`flex h-11 w-11 items-center justify-center rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#f5f0ff] text-[#7a2ed7]' : 'text-gray-500 hover:text-slate-700'}`}
                         >
                             <FiGrid size={18} />
                         </button>
@@ -360,11 +360,12 @@ const Category = () => {
 
                     <button
                         onClick={openAddModal}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] text-white shadow-md transition-all hover:brightness-110 active:scale-95"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-4 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:brightness-110 active:scale-95 md:w-auto"
                         aria-label="Add new category"
                         title="Add new category"
                     >
-                        <FiPlus size={20} />
+                        <FiPlus size={18} />
+                        Add New Category
                     </button>
                 </div>
             </div>
@@ -384,79 +385,142 @@ const Category = () => {
                     <p className="text-gray-400 text-sm mt-1">Adjust your search or filter to find what you're looking for.</p>
                 </div>
             ) : viewMode === 'table' ? (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left whitespace-nowrap">
-                            <thead>
-                                <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] border-b border-[#3c096c]">
-                                    <th className="px-4 py-4 w-12 text-center "><input type="checkbox" className="rounded accent-white w-4 h-4 border-violet-300" /></th>
-                                    <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">S.NO.</th>
-                                    <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">CATEGORY</th>
-                                    <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">DESCRIPTION</th>
-                                    <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">PRODUCTS</th>
-                                    <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">STATUS</th>
-                                    <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">ACTIONS</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {currentCategories.map((cat, ind) => {
-                                    const sNo = (currentPage - 1) * itemsPerPage + ind + 1;
-                                    const status = cat.status || (ind % 4 === 3 ? 'Inactive' : 'Active');
-                                    const totalProds = cat.totalProducts || Math.floor(Math.random() * 20 + 2);
+                <>
+                    <div className="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left whitespace-nowrap">
+                                <thead>
+                                    <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] border-b border-[#3c096c]">
+                                        <th className="px-4 py-4 w-12 text-center "><input type="checkbox" className="rounded accent-white w-4 h-4 border-violet-300" /></th>
+                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">S.NO.</th>
+                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">CATEGORY</th>
+                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">DESCRIPTION</th>
+                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">PRODUCTS</th>
+                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">STATUS</th>
+                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">ACTIONS</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {currentCategories.map((cat, ind) => {
+                                        const sNo = (currentPage - 1) * itemsPerPage + ind + 1;
+                                        const status = cat.status || (ind % 4 === 3 ? 'Inactive' : 'Active');
+                                        const totalProds = cat.totalProducts || Math.floor(Math.random() * 20 + 2);
 
-                                    return (
-                                        <tr key={cat.catId} className="hover:bg-gray-50/50 transition-colors group">
-                                            <td className="px-6 py-4 text-center"><input type="checkbox" className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4 border-gray-300" /></td>
-                                            <td className="px-4 py-4 text-sm font-bold text-gray-500">{sNo}</td>
-                                            <td className="px-4 py-4">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
-                                                        {cat.images && cat.images.length > 0 ? (
-                                                            <img src={Array.isArray(cat.images) ? cat.images[0] : cat.images} alt={cat.name} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center"><FiImage className="text-gray-400" /></div>
-                                                        )}
+                                        return (
+                                            <tr key={cat.catId} className="hover:bg-gray-50/50 transition-colors group">
+                                                <td className="px-6 py-4 text-center"><input type="checkbox" className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4 border-gray-300" /></td>
+                                                <td className="px-4 py-4 text-sm font-bold text-gray-500">{sNo}</td>
+                                                <td className="px-4 py-4">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                                                            {cat.images && cat.images.length > 0 ? (
+                                                                <img src={Array.isArray(cat.images) ? cat.images[0] : cat.images} alt={cat.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center"><FiImage className="text-gray-400" /></div>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-sm font-bold text-slate-800 mb-0.5">{cat.name}</h4>
+                                                            <p className="text-[11px] text-gray-400 font-medium">ID: {cat.catId || "N/A"}</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <h4 className="text-sm font-bold text-slate-800 mb-0.5">{cat.name}</h4>
-                                                        <p className="text-[11px] text-gray-400 font-medium">ID: {cat.catId || "N/A"}</p>
+                                                </td>
+                                                <td className="px-4 py-4 text-sm font-medium text-gray-500 max-w-[200px] truncate">
+                                                    {cat.description || "No description"}
+                                                </td>
+                                                <td className="px-4 py-4 text-sm font-bold text-slate-800 text-center">
+                                                    {totalProds}
+                                                </td>
+                                                <td className="px-4 py-4 text-center">
+                                                    {status === 'Active' ? (
+                                                        <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-600 text-[11px] font-bold rounded-lg">
+                                                            Active
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-block px-3 py-1 bg-orange-50 text-orange-600 text-[11px] font-bold rounded-lg">
+                                                            Inactive
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button onClick={() => openEditModal(cat)} className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 transition-colors" title="Edit">
+                                                            <FiEdit2 size={14} />
+                                                        </button>
+                                                        <button onClick={() => handleDeleteCategory(cat.catId)} className="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Delete">
+                                                            <FiTrash2 size={14} />
+                                                        </button>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-4 text-sm font-medium text-gray-500 max-w-[200px] truncate">
-                                                {cat.description || "No description"}
-                                            </td>
-                                            <td className="px-4 py-4 text-sm font-bold text-slate-800 text-center">
-                                                {totalProds}
-                                            </td>
-                                            <td className="px-4 py-4 text-center">
-                                                {status === 'Active' ? (
-                                                    <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-600 text-[11px] font-bold rounded-lg">
-                                                        Active
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-block px-3 py-1 bg-orange-50 text-orange-600 text-[11px] font-bold rounded-lg">
-                                                        Inactive
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => openEditModal(cat)} className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 transition-colors" title="Edit">
-                                                        <FiEdit2 size={14} />
-                                                    </button>
-                                                    <button onClick={() => handleDeleteCategory(cat.catId)} className="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Delete">
-                                                        <FiTrash2 size={14} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
+
+                    <div className="space-y-3 md:hidden">
+                        {currentCategories.map((cat, ind) => {
+                            const sNo = (currentPage - 1) * itemsPerPage + ind + 1;
+                            const status = cat.status || (ind % 4 === 3 ? 'Inactive' : 'Active');
+                            const totalProds = cat.totalProducts || Math.floor(Math.random() * 20 + 2);
+
+                            return (
+                                <div key={cat.catId} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-12 w-12 overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
+                                                {cat.images && cat.images.length > 0 ? (
+                                                    <img src={Array.isArray(cat.images) ? cat.images[0] : cat.images} alt={cat.name} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="flex h-full w-full items-center justify-center text-gray-400">
+                                                        <FiImage size={18} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400">#{sNo}</div>
+                                                <div className="text-base font-bold text-slate-800">{cat.name}</div>
+                                            </div>
+                                        </div>
+                                        {status === 'Active' ? (
+                                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-600">Active</span>
+                                        ) : (
+                                            <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-bold text-orange-600">Inactive</span>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2 text-sm text-slate-600">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className="font-medium text-gray-400">ID</span>
+                                            <span className="font-semibold text-slate-700">{cat.catId || "N/A"}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className="font-medium text-gray-400">Products</span>
+                                            <span className="font-semibold text-slate-700">{totalProds}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className="font-medium text-gray-400">Description</span>
+                                            <span className="max-w-[55%] truncate text-right font-semibold text-slate-700">
+                                                {cat.description || "No description"}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 flex items-center justify-end gap-2">
+                                        <button onClick={() => openEditModal(cat)} className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100" title="Edit">
+                                            <FiEdit2 size={14} />
+                                        </button>
+                                        <button onClick={() => handleDeleteCategory(cat.catId)} className="flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100" title="Delete">
+                                            <FiTrash2 size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
                     {currentCategories.map((cat, ind) => {
