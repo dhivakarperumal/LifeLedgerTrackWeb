@@ -141,6 +141,15 @@ const Category = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const getNextCategoryId = () => {
+        const highestId = categories.reduce((highest, category) => {
+            const match = String(category.catId || "").match(/^CAT(\d+)$/i);
+            return match ? Math.max(highest, Number(match[1])) : highest;
+        }, 0);
+
+        return `CAT${String(highestId + 1).padStart(3, "0")}`;
+    };
+
     const handleImageUpload = async (e) => {
         try {
             const files = Array.from(e.target.files);
@@ -182,7 +191,7 @@ const Category = () => {
         const existingCatIds = new Set(categories.map(cat => cat.catId));
         const safeCatId = formData.catId && !existingCatIds.has(formData.catId)
             ? formData.catId
-            : `CAT${Date.now().toString().slice(-8)}`;
+            : getNextCategoryId();
 
         const newCatData = {
             ...formData,
@@ -234,9 +243,8 @@ const Category = () => {
     };
 
     const openAddModal = () => {
-        const timestampId = `CAT${Date.now().toString().slice(-8)}`;
         resetModalForm();
-        setFormData(prev => ({ ...prev, catId: timestampId, catType: "Expensive" }));
+        setFormData(prev => ({ ...prev, catId: getNextCategoryId(), catType: "Expensive" }));
         setIsModalOpen(true);
     };
 

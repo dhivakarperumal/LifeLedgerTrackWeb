@@ -1,5 +1,18 @@
 const db = require("../config/db");
 
+const getNextCategoryId = async (userId) => {
+    const [rows] = await db.query(
+        "SELECT catId FROM categories WHERE user_id = ? AND catId REGEXP '^CAT[0-9]+$'",
+        [userId]
+    );
+    const highestId = rows.reduce((highest, row) => {
+        const match = String(row.catId || "").match(/^CAT(\d+)$/i);
+        return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0);
+
+    return `CAT${String(highestId + 1).padStart(3, "0")}`;
+};
+
 exports.getAllCategories = async (req, res) => {
     try {
         const currentUserId = req.user?.user_id;
@@ -9,7 +22,7 @@ exports.getAllCategories = async (req, res) => {
         }
 
         const [results] = await db.query(
-            "SELECT * FROM categories WHERE user_id = ? OR user_id IS NULL ORDER BY created_at DESC",
+            "SELECT * FROM categories WHERE user_id = ? ORDER BY created_at DESC",
             [currentUserId]
         );
 
@@ -38,13 +51,16 @@ exports.getAllCategories = async (req, res) => {
 
 exports.addCategory = async (req, res) => {
     try {
-        const { catId, name, description, subcategory, images, user_id, status, catType } = req.body;
-        const currentUserId = req.user?.user_id || user_id || null;
+        const { catId, name, description, subcategory, images, status, catType } = req.body;
+        const currentUserId = req.user?.user_id;
+        if (!currentUserId) {
+            return res.status(401).json({ message: "Authentication required." });
+        }
         const requestedCatId = String(catId || "").trim();
 
         let finalCatId = requestedCatId;
         if (!finalCatId) {
-            finalCatId = `CAT${Date.now().toString().slice(-8)}`;
+            finalCatId = await getNextCategoryId(currentUserId);
         } else {
             const [existingRows] = await db.query(
                 "SELECT id FROM categories WHERE catId = ? AND user_id = ?",
@@ -52,7 +68,7 @@ exports.addCategory = async (req, res) => {
             );
 
             if (existingRows.length) {
-                finalCatId = `CAT${Date.now().toString().slice(-8)}`;
+                finalCatId = await getNextCategoryId(currentUserId);
             }
         }
 
@@ -78,8 +94,11 @@ exports.addCategory = async (req, res) => {
 exports.updateCategory = async (req, res) => {
     try {
         const { id } = req.params;
-        const { catId, name, description, subcategory, images, user_id, status, catType } = req.body;
-        const currentUserId = req.user?.user_id || user_id || null;
+        const { catId, name, description, subcategory, images, status, catType } = req.body;
+        const currentUserId = req.user?.user_id;
+        if (!currentUserId) {
+            return res.status(401).json({ message: "Authentication required." });
+        }
         const requestedCatId = String(catId || "").trim() || id;
 
         const [duplicateRows] = await db.query(
@@ -87,11 +106,11 @@ exports.updateCategory = async (req, res) => {
             [requestedCatId, id, currentUserId]
         );
 
-        const finalCatId = duplicateRows.length ? `CAT${Date.now().toString().slice(-8)}` : requestedCatId;
+        const finalCatId = duplicateRows.length ? await getNextCategoryId(currentUserId) : requestedCatId;
 
         await db.query(
-            "UPDATE categories SET user_id = ?, catId = ?, name = ?, description = ?, status = ?, catType = ?, subcategory = ?, images = ? WHERE catId = ? AND (user_id = ? OR user_id IS NULL)",
-            [currentUserId, finalCatId, name, description, status || "Active", catType || "Expensive", JSON.stringify(subcategory || []), JSON.stringify(images || []), id, currentUserId]
+            "UPDATE categories SET catId = ?, name = ?, description = ?, status = ?, catType = ?, subcategory = ?, images = ? WHERE catId = ? AND user_id = ?",
+            [finalCatId, name, description, status || "Active", catType || "Expensive", JSON.stringify(subcategory || []), JSON.stringify(images || []), id, currentUserId]
         );
         res.json({ message: "Category updated successfully", catId: finalCatId });
     } catch (err) {
@@ -109,7 +128,7 @@ exports.deleteCategory = async (req, res) => {
             return res.status(401).json({ message: "Authentication required." });
         }
 
-        await db.query("DELETE FROM categories WHERE catId = ? AND (user_id = ? OR user_id IS NULL)", [id, currentUserId]);
+        await db.query("DELETE FROM categories WHERE catId = ? AND user_id = ?", [id, currentUserId]);
         res.json({ message: "Category deleted successfully" });
     } catch (err) {
         console.error("Delete Category Error:", err);

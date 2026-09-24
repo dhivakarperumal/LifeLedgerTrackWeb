@@ -18,6 +18,17 @@ import {
 import api from "../../api";
 
 const VIEW_MODES = ["month", "week", "day", "agenda"];
+const CALENDAR_CATEGORY_OPTIONS = [
+  "Personal",
+  "Family",
+  "Work",
+  "Birthday",
+  "Anniversary",
+  "Appointment",
+  "Reminder",
+  "Travel",
+  "Other",
+];
 const HOURS = Array.from({ length: 24 }, (_, idx) => idx);
 
 const formatDate = (value, opts = {}) => {
@@ -142,7 +153,7 @@ const CalendarReminder = () => {
   const fetchCalendar = async () => {
     setLoading(true);
     try {
-      const [eventsRes, remindersRes, summaryRes, categoriesRes] =
+      const [eventsRes, remindersRes, summaryRes] =
         await Promise.all([
           api.get("/calendar/events").catch(() => ({ data: { data: [] } })),
           api.get("/calendar/reminders").catch(() => ({ data: { data: [] } })),
@@ -158,7 +169,6 @@ const CalendarReminder = () => {
                 },
               },
             })),
-          api.get("/categories").catch(() => ({ data: [] })),
         ]);
 
       const eventList = Array.isArray(eventsRes?.data?.data)
@@ -168,20 +178,9 @@ const CalendarReminder = () => {
         ? remindersRes.data.data
         : [];
       const summaryData = summaryRes?.data?.data || {};
-      const categoryList = Array.isArray(categoriesRes?.data)
-        ? categoriesRes.data
-        : Array.isArray(categoriesRes?.data?.data)
-          ? categoriesRes.data.data
-          : [];
-
-      const mappedCategories = categoryList
-        .map((category) => category?.name)
-        .filter(Boolean)
-        .filter((name, index, arr) => arr.indexOf(name) === index);
-
       setEvents(eventList);
       setReminders(reminderList);
-      setCalendarCategoryOptions(mappedCategories);
+      setCalendarCategoryOptions(CALENDAR_CATEGORY_OPTIONS);
       setSummary({
         todayEvents: Number(summaryData.todayEvents || 0),
         todayReminders: Number(summaryData.todayReminders || 0),

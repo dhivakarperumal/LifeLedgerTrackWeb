@@ -80,7 +80,7 @@ const initializeDatabase = async () => {
     `CREATE TABLE IF NOT EXISTS categories (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id VARCHAR(50),
-      catId VARCHAR(50) UNIQUE,
+      catId VARCHAR(50),
       name VARCHAR(120),
       description TEXT,
       status VARCHAR(20) DEFAULT 'Active',
@@ -228,6 +228,20 @@ const initializeDatabase = async () => {
 
   for (const statement of schemaStatements) {
     await pool.query(statement);
+  }
+
+  try {
+    const [categoryIndexes] = await pool.query(
+      "SHOW INDEX FROM categories WHERE Column_name = 'catId' AND Non_unique = 0"
+    );
+
+    for (const index of categoryIndexes) {
+      if (index.Key_name !== "PRIMARY") {
+        await pool.query(`ALTER TABLE categories DROP INDEX \`${index.Key_name}\``);
+      }
+    }
+  } catch (error) {
+    console.error("Category ID index migration failed:", error.message);
   }
 
   try {
