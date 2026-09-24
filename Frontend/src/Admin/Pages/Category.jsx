@@ -512,16 +512,16 @@ const Category = () => {
             {isModalOpen && createPortal(
                 <div className="fixed inset-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4" style={{ zIndex: 9999 }}>
                     <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
+                        <div className="flex items-center justify-between p-6 border-b border-[#3c096c] bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] text-white shrink-0">
                             <div>
-                                <h2 className="text-xl font-black text-slate-800">
+                                <h2 className="text-xl font-black text-white">
                                     {isEditing ? 'Edit Category' : 'Add New Category'}
                                 </h2>
-                                {isEditing && <p className="text-xs text-gray-500 mt-1 font-medium">Editing ID: <span className="font-bold text-[#8B5CF6]">{formData.catId}</span></p>}
+                                {isEditing && <p className="text-xs text-white/80 mt-1 font-medium">Editing ID: <span className="font-bold text-white">{formData.catId}</span></p>}
                             </div>
                             <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="p-2 text-gray-400 hover:text-slate-700 hover:bg-gray-100 rounded-full transition-colors"
+                                className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors"
                             >
                                 <FiX size={20} />
                             </button>
