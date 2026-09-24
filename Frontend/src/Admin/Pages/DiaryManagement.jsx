@@ -8,7 +8,7 @@ import {
   FiFileText, FiImage, FiVideo, FiPaperclip, FiBookmark, FiCheck, FiX,
   FiArrowLeft, FiArrowRight, FiFilter, FiTag, FiMapPin, FiSmile, FiEye,
   FiSave, FiPenTool, FiUploadCloud, FiDownload, FiLock, FiUnlock, FiUsers,
-  FiGrid, FiList,
+  FiGrid, FiList, FiChevronLeft, FiChevronRight,
 } from "react-icons/fi";
 
 const defaultMoodOptions = [
@@ -31,6 +31,25 @@ const formatDate = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
+const toDateKey = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getCalendarDays = (monthDate) => {
+  const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const gridStart = new Date(firstDay);
+  gridStart.setDate(firstDay.getDate() - firstDay.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    return date;
+  });
 };
 
 const normalizeDateInput = (value) => {
@@ -100,6 +119,8 @@ const DiaryManagement = () => {
   const [selectedMood, setSelectedMood] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState("list");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -694,6 +715,66 @@ const DiaryManagement = () => {
               ))}
             </select>
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
+          </div>
+
+          <div className="relative min-w-[150px]">
+            <button
+              type="button"
+              onClick={() => setIsCalendarOpen((open) => !open)}
+              className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf] focus:border-[#7b2cbf] focus:bg-white"
+              aria-label="Filter diary entries by date"
+              aria-expanded={isCalendarOpen}
+            >
+              <FiCalendar className="text-violet-500" size={15} />
+              <span className="truncate">{selectedDate ? formatDate(selectedDate) : "Choose date"}</span>
+            </button>
+
+            {isCalendarOpen && (
+              <div className="absolute left-0 top-full z-30 mt-2 w-[min(300px,calc(100vw-24px))] max-w-[calc(100vw-24px)] rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/15 sm:left-auto sm:right-0">
+                <div className="flex items-center justify-between">
+                  <button type="button" onClick={() => setCalendarMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:border-violet-300 hover:text-violet-700" aria-label="Previous month">
+                    <FiChevronLeft size={17} />
+                  </button>
+                  <p className="whitespace-nowrap text-base font-black text-slate-800 sm:text-lg">{calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
+                  <button type="button" onClick={() => setCalendarMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:border-violet-300 hover:text-violet-700" aria-label="Next month">
+                    <FiChevronRight size={17} />
+                  </button>
+                </div>
+
+                <div className="mt-4 grid grid-cols-7 text-center text-xs font-semibold text-slate-500">
+                  {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => <span key={day}>{day}</span>)}
+                </div>
+
+                <div className="mt-2 grid grid-cols-7 gap-y-1 text-center">
+                  {getCalendarDays(calendarMonth).map((date) => {
+                    const dateKey = toDateKey(date);
+                    const isCurrentMonth = date.getMonth() === calendarMonth.getMonth();
+                    const isSelected = selectedDate === dateKey;
+                    const isToday = dateKey === toDateKey(new Date());
+
+                    return (
+                      <button
+                        type="button"
+                        key={dateKey}
+                        onClick={() => {
+                          setSelectedDate(dateKey);
+                          setIsCalendarOpen(false);
+                        }}
+                        className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm transition ${isSelected ? "bg-orange-500 font-black text-white shadow-lg shadow-orange-300" : isCurrentMonth ? "text-slate-700 hover:bg-orange-50 hover:text-orange-600" : "text-slate-300"} ${isToday && !isSelected ? "font-black text-orange-500" : ""}`}
+                      >
+                        {date.getDate()}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedDate && (
+                  <button type="button" onClick={() => { setSelectedDate(""); setIsCalendarOpen(false); }} className="mt-3 w-full rounded-xl border border-slate-200 py-2 text-xs font-bold text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600">
+                    Clear date filter
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
            <div className="flex items-center justify-end gap-2 md:col-span-1">
