@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import api from "../../api";
 import Loader from "../../Components/CommenComponents/Loader";
@@ -49,6 +49,8 @@ const AllExpensive = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("All");
     const [viewMode, setViewMode] = useState("table");
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 10;
 
     // ── transfer records for dropdown ─────────────────────────────────────────
     const [transfers, setTransfers] = useState([]);
@@ -101,6 +103,10 @@ const AllExpensive = () => {
     };
 
     useEffect(() => { fetchAll(); }, []);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, categoryFilter]);
 
     // ── form handlers ─────────────────────────────────────────────────────────
     const handleChange = (e) => {
@@ -239,15 +245,30 @@ const AllExpensive = () => {
     };
 
     // ── filtered list ─────────────────────────────────────────────────────────
-    const visible = expenses.filter((ex) => {
-        const q = searchTerm.toLowerCase();
-        const matchSearch =
-            (ex.title || "").toLowerCase().includes(q) ||
-            (ex.category || "").toLowerCase().includes(q) ||
-            (ex.notes || "").toLowerCase().includes(q);
-        const matchCat = categoryFilter === "All" || ex.category === categoryFilter;
-        return matchSearch && matchCat;
-    });
+    const visible = useMemo(() => {
+        return expenses.filter((ex) => {
+            const q = searchTerm.toLowerCase();
+            const matchSearch =
+                (ex.title || "").toLowerCase().includes(q) ||
+                (ex.category || "").toLowerCase().includes(q) ||
+                (ex.notes || "").toLowerCase().includes(q);
+            const matchCat = categoryFilter === "All" || ex.category === categoryFilter;
+            return matchSearch && matchCat;
+        });
+    }, [expenses, searchTerm, categoryFilter]);
+
+    const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+    const paginatedExpenses = visible.slice(
+        (safeCurrentPage - 1) * pageSize,
+        safeCurrentPage * pageSize,
+    );
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
 
     // ── render ────────────────────────────────────────────────────────────────
     return (
@@ -362,12 +383,12 @@ const AllExpensive = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {visible.map((ex, i) => {
+                                {paginatedExpenses.map((ex, i) => {
                                     const hasTransfer = ex.transfer_amount != null;
                                     const rem = ex.remaining_amount;
                                     return (
                                         <tr key={ex.id} className="hover:bg-[#240046]/5 transition-colors">
-                                            <td className="px-4 py-4 text-gray-500 font-medium">{i + 1}</td>
+                                            <td className="px-4 py-4 text-gray-500 font-medium">{(safeCurrentPage - 1) * pageSize + i + 1}</td>
                                             <td className="px-4 py-4">
                                                 <p className="font-bold text-slate-800 max-w-[160px] truncate">{ex.title}</p>
                                                 {ex.notes && <p className="text-[11px] text-gray-400 truncate max-w-[160px]">{ex.notes}</p>}
@@ -431,7 +452,7 @@ const AllExpensive = () => {
                             </tbody>
                         </table>
                     </div>
-                    {visible.length === 0 && (
+                    {paginatedExpenses.length === 0 && (
                         <div className="text-center py-16 text-gray-400 font-semibold text-sm">
                             No expenses found.
                         </div>
@@ -440,7 +461,7 @@ const AllExpensive = () => {
             ) : (
                 /* ── GRID VIEW ── */
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {visible.map((ex) => {
+                    {paginatedExpenses.map((ex) => {
                         const hasTransfer = ex.transfer_amount != null;
                         const rem = ex.remaining_amount;
                         return (
@@ -523,11 +544,55 @@ const AllExpensive = () => {
                             </div>
                         );
                     })}
-                    {visible.length === 0 && (
+                    {paginatedExpenses.length === 0 && (
                         <div className="col-span-full text-center py-16 text-gray-400 font-semibold text-sm">
                             No expenses found.
                         </div>
                     )}
+                </div>
+            )}
+
+            {visible.length > 0 && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-semibold text-slate-600">
+                        Showing {Math.min((safeCurrentPage - 1) * pageSize + 1, visible.length)}-
+                        {Math.min(safeCurrentPage * pageSize, visible.length)} of {visible.length}
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                            disabled={safeCurrentPage === 1}
+                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            Prev
+                        </button>
+
+                        {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                            <button
+                                key={pageNumber}
+                                type="button"
+                                onClick={() => setCurrentPage(pageNumber)}
+                                className={`h-9 w-9 rounded-lg text-sm font-bold transition-all ${
+                                    pageNumber === safeCurrentPage
+                                        ? "bg-[#4b0b78] text-white shadow-md"
+                                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                }`}
+                            >
+                                {pageNumber}
+                            </button>
+                        ))}
+
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                            disabled={safeCurrentPage === totalPages}
+                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
             )}
 
