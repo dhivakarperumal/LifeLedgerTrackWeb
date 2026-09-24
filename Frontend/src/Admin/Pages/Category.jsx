@@ -324,7 +324,7 @@ const Category = () => {
                         placeholder="Search categories by name, ID."
                         value={searchQuery}
                         onChange={handleSearch}
-                        className="w-full rounded-full border border-gray-200 bg-[#f3f4f6] py-3 pl-11 pr-4 text-sm text-gray-700 outline-none transition-all placeholder:text-gray-400 focus:border-purple-300 focus:bg-white focus:ring-2 focus:ring-purple-100"
+                        className="w-1/2 rounded-full border border-gray-200 bg-[#f3f4f6] py-3 pl-11 pr-4 text-sm text-gray-700 outline-none transition-all placeholder:text-gray-400 focus:border-purple-300 focus:bg-white focus:ring-2 focus:ring-purple-100"
                     />
                 </div>
 
@@ -346,13 +346,13 @@ const Category = () => {
                         <button
                             onClick={() => handleViewModeChange("table")}
                             disabled={isMobile}
-                            className={`flex h-11 w-11 items-center justify-center rounded-lg transition-all ${viewMode === 'table' ? 'bg-[#f5f0ff] text-[#7a2ed7]' : 'text-gray-500 hover:text-slate-700'} ${isMobile ? 'cursor-not-allowed opacity-50' : ''}`}
+                            className={`flex h-10 w-10 items-center justify-center rounded-lg transition-all ${viewMode === 'table' ? 'bg-[#f5f0ff] text-[#7a2ed7]' : 'text-gray-500 hover:text-slate-700'} ${isMobile ? 'cursor-not-allowed opacity-50' : ''}`}
                         >
                             <FiList size={18} />
                         </button>
                         <button
                             onClick={() => handleViewModeChange("grid")}
-                            className={`flex h-11 w-11 items-center justify-center rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#f5f0ff] text-[#7a2ed7]' : 'text-gray-500 hover:text-slate-700'}`}
+                            className={`flex h-10 w-10 items-center justify-center rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#f5f0ff] text-[#7a2ed7]' : 'text-gray-500 hover:text-slate-700'}`}
                         >
                             <FiGrid size={18} />
                         </button>
@@ -360,12 +360,12 @@ const Category = () => {
 
                     <button
                         onClick={openAddModal}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-4 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:brightness-110 active:scale-95 md:w-auto"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-4 py-3.5 text-sm font-bold text-white shadow-md transition-all hover:brightness-110 active:scale-95 md:w-auto md:min-w-[180px] whitespace-nowrap"
                         aria-label="Add new category"
                         title="Add new category"
                     >
                         <FiPlus size={18} />
-                        Add New Category
+                        Add Category
                     </button>
                 </div>
             </div>
