@@ -17,6 +17,10 @@ const createDatabaseIfMissing = async () => {
     throw new Error("MySQL env variables are not configured.");
   }
 
+  if (process.env.DB_CREATE_IF_MISSING !== "true") {
+    return;
+  }
+
   const baseConnection = await mysql.createConnection({
     host: DB_HOST,
     port: DB_PORT,
