@@ -193,6 +193,27 @@ const initializeDatabase = async () => {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       KEY idx_calendar_event_user (user_id)
     )`,
+    `CREATE TABLE IF NOT EXISTS calendar_reminders (
+      id VARCHAR(64) PRIMARY KEY,
+      user_id VARCHAR(50) NULL,
+      title VARCHAR(255) NOT NULL,
+      category VARCHAR(100) NOT NULL,
+      reminder_date DATE NOT NULL,
+      reminder_time TIME NULL,
+      priority VARCHAR(20) DEFAULT 'Medium',
+      notes TEXT NULL,
+      related_event VARCHAR(64) NULL,
+      notification_enabled BOOLEAN DEFAULT TRUE,
+      repeat_option VARCHAR(20) DEFAULT 'None',
+      status VARCHAR(30) DEFAULT 'Pending',
+      completed_at TIMESTAMP NULL,
+      snoozed_at TIMESTAMP NULL,
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_calendar_reminder_user_date (user_id, reminder_date)
+    )`,
 
     `CREATE TABLE IF NOT EXISTS diary_entries (
       id INT AUTO_INCREMENT PRIMARY KEY,

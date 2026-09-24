@@ -26,9 +26,9 @@ import {
 } from "react-icons/fi";
 
 const formatDate = (value) => {
-  if (!value) return "—";
+  if (!value) return "No date";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  if (Number.isNaN(date.getTime())) return "No date";
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
@@ -599,7 +599,13 @@ const MemoriesManagement = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredMemories.map((memory, index) => (
+                {filteredMemories.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-12 text-center text-sm font-medium text-slate-400">
+                      No memories found.
+                    </td>
+                  </tr>
+                ) : filteredMemories.map((memory, index) => (
                   <tr key={memory.id} className="bg-white hover:bg-violet-50/40">
                     <td className="px-4 py-4 font-bold text-slate-700">{index + 1}</td>
                     <td className="px-4 py-4">
