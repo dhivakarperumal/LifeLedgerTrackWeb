@@ -70,22 +70,28 @@ const Billing = () => {
 
         const incomeData = incomeResponse.data || [];
         const categories = Array.isArray(categoryResponse.data) ? categoryResponse.data : [];
+        const incomeKeywords = ["income", "incomes", "earning", "earnings", "revenue", "salary", "business", "freelance"];
+
         const filteredIncomeCategories = categories
           .filter((category) => {
             const typeValue = String(category?.catType || category?.type || category?.category_type || "")
               .trim()
               .toLowerCase();
-            return ["income", "incomes", "earning", "earnings", "revenue"].includes(typeValue);
+            const nameValue = String(category?.name || "").trim().toLowerCase();
+
+            return (
+              typeValue === "income"
+              || typeValue.includes("income")
+              || typeValue.includes("earning")
+              || typeValue.includes("revenue")
+              || incomeKeywords.some((keyword) => nameValue.includes(keyword))
+            );
           })
           .map((category) => category.name)
           .filter(Boolean);
 
         setIncomes(incomeData);
-        setIncomeCategoryOptions(
-          filteredIncomeCategories.length
-            ? [...new Set(filteredIncomeCategories)]
-            : ["Salary", "Business", "Freelance", "Investment", "Other"],
-        );
+        setIncomeCategoryOptions([...new Set(filteredIncomeCategories)]);
       } catch (error) {
         console.error("Fetch Income Error:", error);
         toast.error("Failed to load income records");
