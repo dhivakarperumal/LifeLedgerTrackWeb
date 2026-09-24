@@ -285,8 +285,8 @@ const Users = ({ initialTab = "All" }) => {
                 </div>
 
                 {/* Filter Bar */}
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex flex-wrap items-center gap-4 flex-1">
+                <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+                    <div className="flex w-full flex-col gap-3 md:flex-row md:flex-1 md:items-center">
                         <div className="relative w-full md:w-64">
                             <input
                                 type="text"
@@ -297,15 +297,14 @@ const Users = ({ initialTab = "All" }) => {
                             />
                             <FiSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         </div>
-
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-end gap-4 w-full md:w-auto">
-                        <div className="relative">
+                    <div className="flex w-full flex-wrap items-center gap-3 md:w-auto md:justify-end">
+                        <div className="relative w-full md:w-auto">
                             <select
                                 value={selectedRole}
                                 onChange={(e) => setSelectedRole(e.target.value)}
-                                className="w-36 px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] font-medium focus:outline-none focus:border-[#4318FF] appearance-none"
+                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] font-medium focus:outline-none focus:border-[#4318FF] appearance-none md:w-36"
                             >
                                 <option value="all">All Roles</option>
                                 <option value="admin">Admin</option>
@@ -336,7 +335,7 @@ const Users = ({ initialTab = "All" }) => {
 
                         <button
                             onClick={() => { setIsEditing(false); setFormData({ username: "", name: "", email: "", phone: "", role: "user", password: "" }); setIsModalOpen(true); }}
-                            className="flex items-center gap-2 bg-[#4b0b78] hover:bg-[#260642] text-white px-5 py-3 rounded-md font-bold text-sm transition-all shadow-lg shadow-purple-500/25 active:scale-95"
+                            className="flex w-full items-center justify-center gap-2 bg-[#4b0b78] hover:bg-[#260642] text-white px-5 py-3 rounded-md font-bold text-sm transition-all shadow-lg shadow-purple-500/25 active:scale-95 md:w-auto"
                         >
                             <span className="text-lg leading-none ">+</span> Add New Customer
                         </button>
