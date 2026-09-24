@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import api from "../../api";
+import Loader from "../../Components/CommenComponents/Loader";
 import { toast, Toaster } from "react-hot-toast";
 import { FaRupeeSign } from "react-icons/fa";
 import {
@@ -338,10 +339,11 @@ const AllExpensive = () => {
 
             {/* ── CONTENT ── */}
             {loading ? (
-                <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                    <div className="w-10 h-10 border-4 border-[#7b2cbf]/20 border-t-[#7b2cbf] rounded-full animate-spin mb-4" />
-                    <p className="text-gray-400 font-bold text-sm">Loading expenses...</p>
-                </div>
+                <Loader
+                    title="LIFE LEDGER"
+                    subtitle="Loading expenses..."
+                    fullScreen={false}
+                />
             ) : viewMode === "table" ? (
                 /* ── TABLE VIEW ── */
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">

@@ -1,28 +1,37 @@
 import React from "react";
 
-const Loader = () => {
+const Loader = ({
+  title = "LIFE LEDGER",
+  subtitle = "Loading your finance dashboard...",
+  fullScreen = true,
+}) => {
+  const shellClass = fullScreen
+    ? "flex min-h-screen flex-col items-center justify-center bg-[#0B1120] text-white"
+    : "flex min-h-[60vh] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm";
+
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-[#0B1120] text-white">
-      <div className="relative">
-        <div className="w-24 h-24 rounded-full border-t-2 border-b-2 border-blue-500 animate-spin"></div>
-        <div className="absolute top-0 left-0 w-24 h-24 rounded-full border-l-2 border-r-2 border-purple-500 animate-pulse"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-xl rotate-45 animate-bounce shadow-xl shadow-blue-500/20"></div>
-        </div>
+    <div className={shellClass}>
+      <div className="relative flex items-center justify-center">
+        <div className="h-20 w-20 rounded-full border-[5px] border-violet-200 border-t-violet-600 border-r-indigo-500 animate-spin shadow-lg shadow-violet-500/20" />
+        <div className="absolute inset-4 rounded-full border border-white/10 bg-gradient-to-br from-violet-500/20 via-indigo-500/20 to-cyan-400/20" />
       </div>
 
-      <div className="mt-12 text-center animate-in fade-in slide-in-from-bottom-4 duration-1000">
-        <h1 className="text-4xl font-black tracking-[0.3em] bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 animate-gradient-x">
-          SAREE WORLD
+      <div className="mt-8 text-center">
+        <h1 className="text-xl font-black uppercase tracking-[0.35em] text-violet-200 sm:text-2xl">
+          {title}
         </h1>
-        <p className="text-[10px] text-blue-400 font-bold uppercase tracking-[0.4em] mt-3 opacity-60">
-          Luxury Artisan Collection
+        <p className="mt-3 text-xs font-semibold uppercase tracking-[0.25em] text-violet-300/70 sm:text-sm">
+          {subtitle}
         </p>
       </div>
 
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1">
+      <div className="mt-6 flex gap-2">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="w-1.5 h-1.5 bg-blue-500/30 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.2}s` }}></div>
+          <div
+            key={i}
+            className="h-2.5 w-2.5 rounded-full bg-violet-400/80 animate-bounce"
+            style={{ animationDelay: `${i * 0.15}s` }}
+          />
         ))}
       </div>
     </div>

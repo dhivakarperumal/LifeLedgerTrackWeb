@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
+import Loader from "../../Components/CommenComponents/Loader";
 import { toast } from "react-hot-toast";
 import {
   FiImage,
@@ -479,14 +480,11 @@ const MemoriesManagement = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen ">
-        <div className="flex min-h-[60vh] items-center justify-center rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex flex-col items-center gap-4">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#7b2cbf]/20 border-t-[#7b2cbf]" />
-            <p className="text-sm font-bold text-gray-500">Loading memories...</p>
-          </div>
-        </div>
-      </div>
+      <Loader
+        title="LIFE LEDGER"
+        subtitle="Loading memories..."
+        fullScreen={false}
+      />
     );
   }
 
