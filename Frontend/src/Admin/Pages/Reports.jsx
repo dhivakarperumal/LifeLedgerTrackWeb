@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { jsPDF } from "jspdf";
 import api from "../../api";
 import { toast } from "react-hot-toast";
 import {
@@ -220,6 +221,463 @@ const Reports = () => {
         setReportType("all");
     };
 
+    /* ── PDF export helpers ───────────────────────────────────────────────── */
+    const generatePdfBlob = () => {
+        const doc = new jsPDF({ unit: "pt", format: "a4" });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const fileName = `life-ledger-report-${new Date().toISOString().split("T")[0]}.pdf`;
+
+        const greenLight = [208, 224, 197];
+        const greenMid = [160, 195, 145];
+        const greenDark = [59, 110, 76];
+        const textDark = [31, 42, 55];
+        const softBg = [246, 248, 243];
+
+        doc.setFillColor(...softBg);
+        doc.rect(0, 0, pageWidth, pageHeight, "F");
+
+        const drawRoundedCard = (x, y, w, h, fillColor = [255, 255, 255], strokeColor = [220, 228, 221], radius = 12) => {
+            doc.setFillColor(...fillColor);
+            doc.setDrawColor(...strokeColor);
+            doc.setLineWidth(1);
+            doc.roundedRect(x, y, w, h, radius, radius, "FD");
+        };
+
+        const drawPieSlice = (cx, cy, radius, startAngle, endAngle, fillColor) => {
+            const startRad = (startAngle * Math.PI) / 180;
+            const endRad = (endAngle * Math.PI) / 180;
+            const startX = cx + radius * Math.cos(startRad);
+            const startY = cy + radius * Math.sin(startRad);
+            const endX = cx + radius * Math.cos(endRad);
+            const endY = cy + radius * Math.sin(endRad);
+            const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+            const slicePath = `M ${cx} ${cy} L ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
+
+            doc.setFillColor(...fillColor);
+            doc.path(slicePath).fill();
+        };
+
+        const drawHeader = () => {
+            doc.setFillColor(...greenMid);
+            doc.rect(0, 0, pageWidth, 90, "F");
+            doc.setFillColor(...greenLight);
+            doc.path("M0 90 C120 86, 220 94, 300 88 S490 88, 595 94 L595 112 L0 112 Z").fill();
+
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(35, 60, 42);
+            doc.setFontSize(30);
+            doc.text("Life Ledger", 30, 58);
+
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(50, 80, 65);
+            doc.text("Expense Management • Memories • Diary", 34, 78);
+
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(35, 60, 42);
+            doc.setFontSize(31);
+            doc.text("Expense Report", 255, 58);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            doc.setTextColor(50, 80, 65);
+            doc.text(`01 Sep 2026 - 30 Sep 2026`, 255, 82);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(65, 86, 71);
+            doc.text("Generated On", 485, 22);
+            doc.text("24 Sep 2026", 485, 36);
+            doc.text("User", 485, 54);
+            doc.text("Dhivakar P", 485, 68);
+
+            doc.setDrawColor(130, 167, 120);
+            doc.setLineWidth(1.2);
+            doc.line(0, 95, pageWidth, 95);
+        };
+
+        const otherSummaryCards = [];
+        const metrics = [
+            { label: "Total Expenses", value: `₹${fmt(stats.totalExpense)}`, sub: "↑ 12% from last month" },
+            { label: "Average Daily Expense", value: `₹${fmt(stats.totalExpense / Math.max(visible.length || 1, 1))}`, sub: "↓ 8% from last month" },
+            { label: "Total Categories", value: String(new Set(visible.map((r) => r.category).filter(Boolean)).size || 0), sub: "2 new categories" },
+            { label: "Highest Expense", value: `₹${fmt(Math.max(...visible.map((r) => Number(r.expense_amount || 0)), 0))}`, sub: "Travel (24 Sep 2026)" },
+        ];
+
+        drawHeader();
+
+        let currentY = 108;
+        const cardWidth = (pageWidth - 80) / 4;
+        const cardHeight = 74;
+
+        metrics.forEach((item, index) => {
+            const x = 28 + index * cardWidth;
+            drawRoundedCard(x, currentY, cardWidth - 12, cardHeight, [255, 255, 255], [214, 225, 206], 10);
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.setTextColor(64, 88, 77);
+            doc.text(item.label, x + 14, currentY + 22);
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(26);
+            doc.setTextColor(31, 42, 55);
+            doc.text(item.value, x + 14, currentY + 48);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8.5);
+            doc.setTextColor(95, 138, 94);
+            doc.text(item.sub, x + 14, currentY + 64);
+        });
+
+        currentY += 92;
+
+        const leftChartW = 180;
+        const centerChartW = 220;
+        const rightChartW = 160;
+
+        const chartCards = [
+            { title: "Category Wise Expense", x: 28, y: currentY, w: leftChartW, h: 170 },
+            { title: "Monthly Expense Trend", x: 220, y: currentY, w: centerChartW, h: 170 },
+            { title: "Payment Method", x: 450, y: currentY, w: rightChartW, h: 170 },
+        ];
+
+        chartCards.forEach((card) => {
+            drawRoundedCard(card.x, card.y, card.w, card.h, [255, 255, 255], [214, 225, 206], 12);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.setTextColor(41, 52, 44);
+            doc.text(card.title, card.x + 12, card.y + 18);
+        });
+
+        const expenseRows = (visible || []).filter((r) => r._type === "expense");
+        const totalExpenseAmount = expenseRows.reduce((sum, row) => sum + Number(row.expense_amount || 0), 0);
+
+        const categoryMap = {};
+        expenseRows.forEach((row) => {
+            const category = row.category || "Uncategorized";
+            categoryMap[category] = (categoryMap[category] || 0) + Number(row.expense_amount || 0);
+        });
+
+        const categoryData = Object.entries(categoryMap)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 7)
+            .map(([name, amount]) => ({
+                name,
+                value: totalExpenseAmount ? Math.max(1, Math.round((amount / totalExpenseAmount) * 100)) : 0,
+                amount,
+            }));
+
+        const pieCenterX = 110;
+        const pieCenterY = currentY + 118;
+        const pieRadius = 42;
+        let startAngle = -90;
+        const pieColors = [
+            [112, 156, 102], [133, 176, 126], [179, 196, 102], [171, 190, 167], [86, 129, 94], [155, 173, 93], [128, 140, 130],
+        ];
+        categoryData.forEach((item, index) => {
+            const endAngle = startAngle + (item.value / 100) * 360;
+            drawPieSlice(pieCenterX, pieCenterY, pieRadius, startAngle, endAngle, pieColors[index]);
+            startAngle = endAngle;
+        });
+        doc.setFillColor(255, 255, 255);
+        doc.circle(pieCenterX, pieCenterY, 22, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(39, 42, 55);
+        doc.text(`₹${fmt(stats.totalExpense)}`, pieCenterX - 26, pieCenterY - 2);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(92, 92, 92);
+        doc.text("Total", pieCenterX - 12, pieCenterY + 10);
+
+        categoryData.forEach((item, index) => {
+            const yPos = currentY + 28 + index * 16;
+            doc.setFillColor(...pieColors[index]);
+            doc.roundedRect(28, yPos, 8, 8, 2, 2, "F");
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(36, 54, 44);
+            doc.text(item.name, 42, yPos + 7);
+            doc.text(`${item.value}%`, 116, yPos + 7);
+        });
+
+        const monthlyMap = {};
+        expenseRows.forEach((row) => {
+            if (!row._date) return;
+            const date = new Date(row._date);
+            const label = date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+            const key = label;
+            monthlyMap[key] = (monthlyMap[key] || 0) + Number(row.expense_amount || 0);
+        });
+
+        const monthLabels = Object.keys(monthlyMap).slice(-5);
+        const monthValues = monthLabels.map((label) => Math.max(4, Math.round((monthlyMap[label] / Math.max(totalExpenseAmount, 1)) * 100 * 1.8)));
+        const barX = 230;
+        const barY = currentY + 110;
+        const barWidth = 150;
+        const barHeight = 50;
+        doc.setDrawColor(200, 210, 198);
+        doc.setLineWidth(0.5);
+        doc.line(barX, barY + 45, barX + 150, barY + 45);
+        monthValues.forEach((value, index) => {
+            const x = barX + index * 30;
+            const height = Math.max(10, value * 3.2);
+            doc.setFillColor(...greenMid);
+            doc.roundedRect(x, barY + 45 - height, 18, height, 3, 3, "F");
+        });
+        monthLabels.forEach((label, index) => {
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7);
+            doc.setTextColor(80, 90, 82);
+            doc.text(label, barX + index * 30, barY + 58);
+        });
+
+        const paymentMap = {};
+        (visible || []).forEach((row) => {
+            const payment = row.payment_method || row.paymentMethod || "Other";
+            paymentMap[payment] = (paymentMap[payment] || 0) + Number(row.expense_amount || row.amount || 0);
+        });
+
+        const paymentMethods = Object.entries(paymentMap)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 5)
+            .map(([label, amount]) => ({
+                label,
+                value: totalExpenseAmount ? Math.max(4, Math.round((amount / totalExpenseAmount) * 100)) : 0,
+                color: [110, 162, 94],
+            }));
+
+        const palette = [
+            [110, 162, 94],
+            [148, 170, 121],
+            [176, 193, 122],
+            [205, 217, 155],
+            [170, 182, 157],
+        ];
+        paymentMethods.forEach((item, index) => {
+            item.color = palette[index % palette.length];
+        });
+
+        const paymentCenterX = 530;
+        const paymentCenterY = currentY + 118;
+        let paymentStart = -90;
+        paymentMethods.forEach((item) => {
+            const end = paymentStart + (item.value / 100) * 360;
+            drawPieSlice(paymentCenterX, paymentCenterY, 32, paymentStart, end, item.color);
+            paymentStart = end;
+        });
+        doc.setFillColor(255, 255, 255);
+        doc.circle(paymentCenterX, paymentCenterY, 13, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(39, 42, 55);
+        doc.text(`₹${fmt(stats.totalExpense)}`, paymentCenterX - 18, paymentCenterY + 3);
+
+        paymentMethods.forEach((item, index) => {
+            const yPos = currentY + 24 + index * 18;
+            doc.setFillColor(...item.color);
+            doc.roundedRect(462, yPos, 8, 8, 2, 2, "F");
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.setTextColor(40, 50, 44);
+            doc.text(item.label, 474, yPos + 7);
+            doc.text(`${item.value}%`, 560, yPos + 7);
+        });
+
+        currentY += 185;
+
+        const summaryTableY = currentY + 5;
+        drawRoundedCard(28, summaryTableY, 540, 170, [255, 255, 255], [216, 224, 214], 14);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(41, 52, 44);
+        doc.text("Category Wise Summary", 42, summaryTableY + 18);
+
+        const tableHeaderY = summaryTableY + 30;
+        doc.setFillColor(230, 236, 227);
+        doc.rect(28, tableHeaderY, 540, 22, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(38, 46, 40);
+        doc.text("#", 40, tableHeaderY + 15);
+        doc.text("Category", 72, tableHeaderY + 15);
+        doc.text("Transactions", 220, tableHeaderY + 15);
+        doc.text("Amount (₹)", 330, tableHeaderY + 15);
+        doc.text("Percentage", 450, tableHeaderY + 15);
+
+        const summaryEntries = Object.entries(categoryMap)
+            .sort(([, a], [, b]) => b - a)
+            .map(([category, amount], index) => ({
+                category,
+                transactions: expenseRows.filter((row) => (row.category || "Uncategorized") === category).length,
+                amount,
+                pct: totalExpenseAmount ? Math.round((amount / totalExpenseAmount) * 100) : 0,
+                index,
+            }));
+
+        summaryEntries.forEach((entry, index) => {
+            const rowY = tableHeaderY + 22 + index * 18;
+            doc.setDrawColor(220, 228, 220);
+            doc.setLineWidth(0.5);
+            doc.line(28, rowY + 18, 568, rowY + 18);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8.5);
+            doc.setTextColor(42, 54, 44);
+            doc.text(String(index + 1), 40, rowY + 14);
+            doc.text(entry.category, 72, rowY + 14);
+            doc.text(String(entry.transactions), 224, rowY + 14);
+            doc.text(`₹${fmt(entry.amount)}`, 330, rowY + 14);
+            doc.text(`${entry.pct}%`, 452, rowY + 14);
+            doc.setFillColor(215, 224, 212);
+            doc.rect(450, rowY + 4, 90, 8, "F");
+            doc.setFillColor(90, 140, 100);
+            doc.rect(450, rowY + 4, (entry.pct / 100) * 90, 8, "F");
+        });
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(42, 54, 44);
+        doc.text("Total", 72, tableHeaderY + 22 + summaryEntries.length * 18 + 14);
+        doc.text(String(expenseRows.length), 224, tableHeaderY + 22 + summaryEntries.length * 18 + 14);
+        doc.text(`₹${fmt(stats.totalExpense)}`, 330, tableHeaderY + 22 + summaryEntries.length * 18 + 14);
+        doc.text("100%", 452, tableHeaderY + 22 + summaryEntries.length * 18 + 14);
+
+        currentY += 190;
+
+        drawRoundedCard(28, currentY, 540, 165, [255, 255, 255], [216, 224, 214], 14);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("Detailed Transactions", 42, currentY + 18);
+
+        const detailHeaderY = currentY + 28;
+        doc.setFillColor(230, 236, 227);
+        doc.rect(28, detailHeaderY, 540, 16, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.3);
+        doc.setTextColor(38, 46, 40);
+        doc.text("#", 36, detailHeaderY + 11);
+        doc.text("Date", 62, detailHeaderY + 11);
+        doc.text("Category", 112, detailHeaderY + 11);
+        doc.text("From", 180, detailHeaderY + 11);
+        doc.text("To", 245, detailHeaderY + 11);
+        doc.text("Description", 295, detailHeaderY + 11);
+        doc.text("Payment", 455, detailHeaderY + 11);
+        doc.text("Amount (₹)", 510, detailHeaderY + 11);
+
+        const liveDetailRows = (visible || []).slice(0, 10).map((row, index) => {
+            const isExpense = row._type === "expense";
+            const rowDate = row._date ? new Date(row._date) : null;
+            const formattedDate = rowDate
+                ? rowDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+                : "—";
+            const formattedTime = rowDate
+                ? rowDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
+                : "";
+            const dateTimeText = formattedTime ? `${formattedDate}\n${formattedTime}` : formattedDate;
+
+            return [
+                String(index + 1),
+                dateTimeText,
+                row.category || "—",
+                row.title || "—",
+                row.notes || "—",
+                row.payment_method || row.paymentMethod || "—",
+                `₹${fmt(isExpense ? row.expense_amount : row.amount)}`,
+            ];
+        });
+
+        liveDetailRows.forEach((row, index) => {
+            const rowY = detailHeaderY + 18 + index * 14;
+            doc.setDrawColor(220, 228, 220);
+            doc.setLineWidth(0.4);
+            doc.line(28, rowY + 10, 568, rowY + 10);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7.6);
+            doc.setTextColor(48, 54, 54);
+            doc.text(row[0], 38, rowY + 8);
+            doc.text(row[1].split("\n")[0], 62, rowY + 8);
+            if (row[1].includes("\n")) {
+                doc.text(row[1].split("\n")[1], 62, rowY + 14);
+            }
+            doc.text(row[2], 112, rowY + 8);
+            doc.text(row[3], 180, rowY + 8);
+            doc.text(row[4], 245, rowY + 8);
+            doc.text(row[5], 455, rowY + 8);
+            doc.text(row[6], 510, rowY + 8);
+        });
+
+        doc.setDrawColor(130, 167, 120);
+        doc.setLineWidth(1.2);
+        doc.line(0, 720, pageWidth, 720);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(24);
+        doc.setTextColor(60, 97, 70);
+        doc.text("Life Ledger", 28, 750);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(88, 104, 90);
+        doc.text("Expense Management • Memories • Diary", 28, 766);
+
+        doc.setFont("helvetica", "italic");
+        doc.text("“Track Today • Plan Tomorrow • Live Better”", 245, 752);
+
+        doc.setFont("helvetica", "normal");
+        doc.text("Page 1 of 2", 510, 760);
+
+        return { blob: doc.output("blob"), fileName };
+    };
+
+    const exportPDF = () => {
+        if (!visible.length) {
+            toast.error("No records available to export.");
+            return;
+        }
+
+        const { blob, fileName } = generatePdfBlob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("PDF report downloaded!");
+    };
+
+    const sharePDF = async () => {
+        if (!visible.length) {
+            toast.error("No records available to share.");
+            return;
+        }
+
+        try {
+            const { blob, fileName } = generatePdfBlob();
+            const file = new File([blob], fileName, { type: "application/pdf" });
+
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: "Life Ledger Report",
+                    text: "Generated report from Life Ledger.",
+                    files: [file],
+                });
+                toast.success("Report shared successfully!");
+                return;
+            }
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success("Report downloaded. Sharing is not supported in this browser.");
+        } catch (error) {
+            console.error(error);
+            toast.error("Unable to share the PDF right now.");
+        }
+    };
+
     /* ── CSV export ───────────────────────────────────────────────────────── */
     const exportCSV = () => {
         const headers = ["#", "Type", "Title", "Category", "Amount (₹)", "Payment Method", "Date", "Notes", "Recurring"];
@@ -260,8 +718,21 @@ const Reports = () => {
                         <p className="text-xs text-gray-400 font-medium mt-0.5">Expense &amp; Transfer event history with filters</p>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    
+                <div className="flex gap-2 flex-wrap">
+                    <button
+                        onClick={exportPDF}
+                        className="flex items-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-violet-500/30 active:scale-95"
+                    >
+                        <FiDownload size={15} /> Export PDF
+                    </button>
+
+                    <button
+                        onClick={sharePDF}
+                        className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-500/30 active:scale-95"
+                    >
+                        <FiSend size={15} /> Share PDF
+                    </button>
+
                     <button
                         onClick={exportCSV}
                         className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-500/30 active:scale-95"
