@@ -22,6 +22,7 @@ const emptyForm = () => ({
     to: "",
     payment_method: "Cash",
     date: new Date().toISOString().split("T")[0],
+    time: "09:00",
     notes: "",
     attachment: null,
 });
@@ -138,6 +139,7 @@ const AllExpensive = () => {
             to: expense.to || "",
             payment_method: expense.payment_method || "Cash",
             date: expense.expense_date ? String(expense.expense_date).split("T")[0] : new Date().toISOString().split("T")[0],
+            time: expense.expense_time ? String(expense.expense_time).slice(0, 5) : "09:00",
             notes: expense.notes || "",
             attachment: null,
         });
@@ -700,7 +702,7 @@ const AllExpensive = () => {
                                                 const remStr = remAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 });
                                                 return (
                                                     <option key={t.id} value={t.id} disabled={remAmt <= 0}>
-                                                        {t.title} — ₹{remStr} remaining{dateStr ? `  (${dateStr})` : ""}
+                                                        {t.title} — ₹{remStr} 
                                                     </option>
                                                 );
                                             })}
@@ -809,17 +811,28 @@ const AllExpensive = () => {
                                 </div>
                             )}
 
-                            {/* Date */}
-                            <Field label="Date *" icon={<FiCalendar />}>
-                                <input
-                                    type="date"
-                                    name="date"
-                                    required
-                                    value={form.date}
-                                    onChange={handleChange}
-                                    className={inputCls}
-                                />
-                            </Field>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Field label="Date *" icon={<FiCalendar />}>
+                                    <input
+                                        type="date"
+                                        name="date"
+                                        required
+                                        value={form.date}
+                                        onChange={handleChange}
+                                        className={inputCls}
+                                    />
+                                </Field>
+
+                                <Field label="Time" icon={<FiCalendar />}>
+                                    <input
+                                        type="time"
+                                        name="time"
+                                        value={form.time || "09:00"}
+                                        onChange={handleChange}
+                                        className={inputCls}
+                                    />
+                                </Field>
+                            </div>
 
                             {/* Notes */}
                             <Field label="Description / Notes" icon={<FiFileText />}>
