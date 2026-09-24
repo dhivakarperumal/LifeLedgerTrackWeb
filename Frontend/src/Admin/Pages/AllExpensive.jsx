@@ -302,8 +302,8 @@ const AllExpensive = () => {
             </div>
 
             {/* ── FILTER BAR ── */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
-                <div className="relative flex-1 min-w-[200px]">
+            <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm md:flex-row md:flex-wrap md:items-center">
+                <div className="relative w-full md:min-w-[200px] md:flex-1">
                     <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
                     <input
                         type="text"
@@ -313,16 +313,18 @@ const AllExpensive = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none hover:border-[#7b2cbf] transition-all cursor-pointer"
-                >
-                    <option value="All">All Categories</option>
-                    {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <div className="flex items-center gap-3">
-                    <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+
+                <div className="flex w-full items-center gap-3 md:w-auto">
+                    <select
+                        value={categoryFilter}
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-slate-600 outline-none hover:border-[#7b2cbf] transition-all cursor-pointer md:w-auto"
+                    >
+                        <option value="All">All Categories</option>
+                        {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+
+                    <div className="flex items-center rounded-xl border border-gray-200 bg-gray-100 p-1">
                         <button onClick={() => setViewMode("table")} className={`p-2 rounded-lg transition-all ${viewMode === "table" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}>
                             <FiList size={17} />
                         </button>
@@ -330,13 +332,14 @@ const AllExpensive = () => {
                             <FiGrid size={17} />
                         </button>
                     </div>
-                    <button
-                        onClick={openCreateModal}
-                        className="flex items-center gap-2 bg-gradient-to-r from-[#240046] to-[#7b2cbf] hover:from-[#10002b] hover:to-[#5a189a] text-white px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-purple-900/30 active:scale-95"
-                    >
-                        <FiPlus size={16} /> Add Expense
-                    </button>
                 </div>
+
+                <button
+                    onClick={openCreateModal}
+                    className="flex w-full items-center justify-center gap-2 bg-gradient-to-r from-[#240046] to-[#7b2cbf] hover:from-[#10002b] hover:to-[#5a189a] text-white px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-purple-900/30 active:scale-95 md:w-auto"
+                >
+                    <FiPlus size={16} /> Add Expense
+                </button>
             </div>
 
             {/* ── CONTENT ── */}
