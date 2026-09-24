@@ -538,7 +538,7 @@ const AllExpensive = () => {
             {/* ════════════════════════════════════════════════════════════════
                 ADD EXPENSE MODAL
             ════════════════════════════════════════════════════════════════ */}
-            {viewExpense && (
+            {viewExpense && createPortal(
                 <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
                     <div className="absolute inset-0" onClick={() => setViewExpense(null)} />
                     <div className="relative z-10 w-full max-w-xl bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
@@ -597,7 +597,8 @@ const AllExpensive = () => {
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {isOpen && createPortal(
