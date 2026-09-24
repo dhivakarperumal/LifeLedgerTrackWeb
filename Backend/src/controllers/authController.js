@@ -15,11 +15,11 @@ exports.register = async (req, res) => {
 
     const [result] = await db.query(
       `INSERT INTO users (
-        user_id, username, name, email, phone, role, password,
+        user_id, username, name, email, phone, role, status, password,
         street_address, city, district, state, country, zip_code
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
       [
-        userId, username, name || username, email, phone, normalizedRole, hashedPassword,
+        userId, username, name || username, email, phone, normalizedRole, "Active", hashedPassword,
         street_address || null, city || null, district || null, state || null, country || "India", zip_code || null
       ]
     );
