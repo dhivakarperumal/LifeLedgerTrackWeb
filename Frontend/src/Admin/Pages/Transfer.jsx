@@ -296,9 +296,7 @@ const Transfer = () => {
                         className={`rounded-lg p-2 transition-all ${viewMode === "grid" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}
                     ><FiGrid size={17} /></button>
                 </div>
-                <button type="button" onClick={loadAll} title="Refresh"
-                    className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-slate-500 hover:border-[#7b2cbf] hover:text-[#7b2cbf]"
-                ><FiRefreshCw size={16} /></button>
+              
                 <button type="button" onClick={openAddTransfer}
                     className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/30 transition-all hover:from-[#10002b] hover:to-[#5a189a] active:scale-95"
                 >

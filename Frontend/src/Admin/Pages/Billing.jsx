@@ -285,8 +285,8 @@ const Billing = () => {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-            <div className="relative min-w-[220px] flex-1">
+          <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm md:flex-row md:flex-wrap md:items-center">
+            <div className="relative w-full md:min-w-[220px] md:flex-1">
               <FiSearch
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                 size={16}
@@ -299,32 +299,36 @@ const Billing = () => {
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white"
               />
             </div>
-            <select
-              value={incomeFilter}
-              onChange={(event) => setIncomeFilter(event.target.value)}
-              className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf]"
-            >
-              <option>All Income</option>
-              <option>Recurring</option>
-              <option>One-time</option>
-            </select>
-            <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
-              <button
-                type="button"
-                aria-label="List view"
-                onClick={() => setViewMode("table")}
-                className={`rounded-lg p-2 transition-all ${viewMode === "table" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}
+
+            <div className="flex w-full items-center gap-3 md:w-auto">
+              <select
+                value={incomeFilter}
+                onChange={(event) => setIncomeFilter(event.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf] md:w-auto"
               >
-                <FiList size={17} />
-              </button>
-              <button
-                type="button"
-                aria-label="Grid view"
-                onClick={() => setViewMode("grid")}
-                className={`rounded-lg p-2 transition-all ${viewMode === "grid" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}
-              >
-                <FiGrid size={17} />
-              </button>
+                <option>All Income</option>
+                <option>Recurring</option>
+                <option>One-time</option>
+              </select>
+
+              <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
+                <button
+                  type="button"
+                  aria-label="List view"
+                  onClick={() => setViewMode("table")}
+                  className={`rounded-lg p-2 transition-all ${viewMode === "table" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}
+                >
+                  <FiList size={17} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Grid view"
+                  onClick={() => setViewMode("grid")}
+                  className={`rounded-lg p-2 transition-all ${viewMode === "grid" ? "bg-white text-[#7b2cbf] shadow-sm" : "text-gray-400 hover:text-slate-600"}`}
+                >
+                  <FiGrid size={17} />
+                </button>
+              </div>
             </div>
 
             <button
@@ -333,14 +337,14 @@ const Billing = () => {
                 setBudgetDraft(String(monthlyBudget));
                 setIsBudgetModalOpen(true);
               }}
-              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:from-[#1e40af] hover:to-[#1d4ed8] active:scale-95"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:from-[#1e40af] hover:to-[#1d4ed8] active:scale-95 md:w-auto"
             >
               <FiPlus size={15} /> Set Monthly Budget
             </button>
             <button
               type="button"
               onClick={openAddIncome}
-              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/30 transition-all hover:from-[#10002b] hover:to-[#5a189a] active:scale-95"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/30 transition-all hover:from-[#10002b] hover:to-[#5a189a] active:scale-95 md:w-auto"
             >
               <FiPlus size={16} /> Add New Income
             </button>
