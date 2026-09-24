@@ -238,7 +238,7 @@ exports.googleLogin = async (req, res) => {
       try {
         const [result] = await db.query(
           "INSERT INTO users (user_id, username, name, email, phone, role) VALUES (?, ?, ?, ?, ?, ?)",
-          [userId, username, name, email, "", "Customer"]
+          [userId, username, name, email, "", "admin"]
         );
 
         user = {
@@ -246,7 +246,7 @@ exports.googleLogin = async (req, res) => {
           user_id: userId,
           username: username,
           email: email,
-          role: "Customer"
+          role: "admin"
         };
       } catch (insertErr) {
         console.error("Insert Error:", insertErr);

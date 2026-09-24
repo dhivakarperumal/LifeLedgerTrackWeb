@@ -36,6 +36,7 @@ function Register() {
         username: form.username,
         email: form.email,
         phone: form.phone,
+        role: "admin",
         password: form.password,
       });
       toast.success("Registration successful! Please login.");
