@@ -930,12 +930,6 @@ const Reports = () => {
                     <div className="w-10 h-10 border-4 border-[#7b2cbf]/20 border-t-[#7b2cbf] rounded-full animate-spin mb-4" />
                     <p className="text-gray-400 font-bold text-sm">Loading report data...</p>
                 </div>
-            ) : visible.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                    <FiAlertCircle size={40} className="text-gray-300 mb-3" />
-                    <p className="text-gray-400 font-bold text-sm">No records found</p>
-                    <p className="text-gray-300 text-xs mt-1">Try adjusting your filters</p>
-                </div>
             ) : viewMode === "table" ? (
 
                 /* ═══════════════ TABLE VIEW ═══════════════ */
@@ -950,7 +944,15 @@ const Reports = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {paginatedRecords.map((r, i) => {
+                                {paginatedRecords.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={9} className="px-4 py-16 text-center">
+                                            <FiAlertCircle size={40} className="mx-auto text-gray-300 mb-3" />
+                                            <p className="text-gray-400 font-bold text-sm">No records found</p>
+                                            <p className="text-gray-300 text-xs mt-1">Try adjusting your filters</p>
+                                        </td>
+                                    </tr>
+                                ) : paginatedRecords.map((r, i) => {
                                     const isExp    = r._type === "expense";
                                     const amount   = isExp ? r.expense_amount : r.amount;
                                     const payment  = r.payment_method || r.paymentMethod || "—";
@@ -1037,6 +1039,12 @@ const Reports = () => {
                     </div>
                 </div>
 
+            ) : visible.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-32 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                    <FiAlertCircle size={40} className="text-gray-300 mb-3" />
+                    <p className="text-gray-400 font-bold text-sm">No records found</p>
+                    <p className="text-gray-300 text-xs mt-1">Try adjusting your filters</p>
+                </div>
             ) : (
 
                 /* ═══════════════ GRID VIEW ═══════════════ */
