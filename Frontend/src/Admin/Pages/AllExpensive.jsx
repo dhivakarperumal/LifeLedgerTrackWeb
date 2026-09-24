@@ -255,7 +255,7 @@ const AllExpensive = () => {
             <Toaster position="top-right" />
 
             {/* ── STAT CARDS ── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
                 {[
                     {
                         label: "Total Expenses",
@@ -286,14 +286,16 @@ const AllExpensive = () => {
                         gradient: "from-emerald-400 to-teal-500",
                     },
                 ].map((s, i) => (
-                    <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 hover:shadow-md transition-all">
-                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${s.gradient} flex items-center justify-center text-white shadow-lg shrink-0`}>
-                            {s.icon}
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-400 font-medium">{s.label}</p>
-                            <p className="text-2xl font-black text-slate-800 leading-none my-0.5">{s.value}</p>
-                            <p className="text-[10px] text-gray-400">{s.sub}</p>
+                    <div key={i} className="min-w-0 rounded-[22px] border border-gray-100 bg-white p-3 shadow-sm transition-all hover:shadow-md sm:p-4 md:min-h-[122px]">
+                        <div className="flex h-full items-center gap-3 sm:gap-4">
+                            <div className={`h-12 w-12 shrink-0 rounded-2xl bg-gradient-to-br ${s.gradient} flex items-center justify-center text-white shadow-lg sm:h-14 sm:w-14`}>
+                                {s.icon}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-[10px] font-medium text-gray-400 sm:text-xs">{s.label}</p>
+                                <p className="my-0.5 text-lg font-black leading-tight text-slate-800 sm:text-2xl">{s.value}</p>
+                                <p className="text-[9px] leading-snug text-gray-400 sm:text-[10px]">{s.sub}</p>
+                            </div>
                         </div>
                     </div>
                 ))}
