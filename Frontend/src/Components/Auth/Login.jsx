@@ -103,7 +103,7 @@ function Login() {
         >
           <img
             src="/login.png"
-            alt="Premium Sarees"
+            alt="Life Ledger dashboard"
             className="w-full h-full object-cover opacity-90 transition-transform duration-1000 hover:scale-105 origin-left"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-black/20 to-transparent pointer-events-none" />

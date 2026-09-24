@@ -198,7 +198,7 @@ const Dashboard = () => {
 
     const getStatIcon = (iconStr) => {
         switch (iconStr) {
-            case "saree": return <FaTshirt className="text-white" size={22} />;
+            case "expenses": return <FaRupeeSign className="text-white" size={22} />;
             case "bag": return <FiShoppingBag className="text-white" size={22} />;
             case "rupee": return <FaRupeeSign className="text-white" size={22} />;
             case "pending": return <FiClock className="text-white" size={22} />;

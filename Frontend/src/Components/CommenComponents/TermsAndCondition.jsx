@@ -7,217 +7,110 @@ const TermsAndConditions = () => {
       <PageHeader title="Terms & Conditions" />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-gray-700 leading-relaxed space-y-8">
-
         <section>
-          <h1 className="text-3xl font-bold text-primary-dark mb-4">
-            Terms & Conditions
-          </h1>
+          <h1 className="text-3xl font-bold text-primary-dark mb-4">Terms & Conditions</h1>
 
           <p>
-            Welcome to our online saree store. By accessing, browsing, or using
-            this website, you agree to comply with the following Terms &
-            Conditions. These terms apply to all visitors, customers, and users
-            of our website and services.
+            Welcome to Life Ledger, your personal finance and memory management platform. By using this website,
+            you agree to the following Terms & Conditions. These terms apply to all visitors, registered users,
+            and anyone using our services to manage expenses, memories, diaries, reminders, and related records.
           </p>
 
           <p className="mt-3">
-            If you do not agree with these terms, please refrain from using the
-            website. We reserve the right to update or modify these terms at any
-            time without prior notice.
+            If you do not agree with these terms, please do not continue using the platform. We may update these
+            terms from time to time, and continued use after updates indicates your acceptance of the revised terms.
           </p>
         </section>
 
-        {/* Website Usage */}
         <section>
-          <h2 className="text-xl font-semibold mb-2">1. Website Usage</h2>
+          <h2 className="text-xl font-semibold mb-2">1. Platform Usage</h2>
           <p>
-            Users agree to access this website only for lawful purposes and not
-            to engage in activities that may harm, disrupt, or compromise the
-            functionality or security of the website.
-          </p>
-
-          <p className="mt-2">
-            Any attempt to gain unauthorized access to the website, servers, or
-            databases associated with the platform is strictly prohibited.
+            Users may use Life Ledger for lawful personal financial tracking, memory recording, diary entries,
+            reminders, and related management tasks. You agree not to misuse the platform or interfere with its
+            performance, security, or availability.
           </p>
         </section>
 
-        {/* User Accounts */}
         <section>
           <h2 className="text-xl font-semibold mb-2">2. User Accounts</h2>
-
           <p>
-            Customers may create an account to place orders and track their
-            purchases. Users are responsible for maintaining the confidentiality
-            of their account credentials.
-          </p>
-
-          <p className="mt-2">
-            Any activity performed under your account will be considered your
-            responsibility.
+            To access certain features, users may create an account. You are responsible for securing your login
+            details and maintaining the accuracy of the information you provide. Any activity carried out through
+            your account is your responsibility.
           </p>
         </section>
 
-        {/* Product Information */}
         <section>
-          <h2 className="text-xl font-semibold mb-2">3. Product Information</h2>
-
+          <h2 className="text-xl font-semibold mb-2">3. Expense & Record Information</h2>
           <p>
-            We make every effort to ensure product descriptions, images, and
-            pricing are accurate. However, slight variations may occur due to
-            fabric textures, weaving methods, and lighting conditions used
-            during photography.
-          </p>
-
-          <p className="mt-2">
-            Handwoven sarees and traditional fabrics may have natural
-            irregularities that reflect the authenticity of the craft and
-            should not be considered defects.
+            We strive to keep your expense records, memory entries, calendar data, and related information accurate.
+            However, some details may vary due to manual input, device settings, time zones, or syncing behavior.
           </p>
         </section>
 
-        {/* Color Disclaimer */}
         <section>
-          <h2 className="text-xl font-semibold mb-2">4. Color Variation Disclaimer</h2>
-
+          <h2 className="text-xl font-semibold mb-2">4. Data Accuracy</h2>
           <p>
-            The color of sarees displayed on our website may vary slightly from
-            the actual product due to differences in screen resolution,
-            lighting conditions, and device display settings.
+            The application helps organize finances and memories, but the final responsibility for the correctness of
+            entered information lies with the user. We recommend reviewing submitted data before relying on reports or
+            summaries generated by the platform.
           </p>
         </section>
 
-        {/* Pricing */}
         <section>
-          <h2 className="text-xl font-semibold mb-2">5. Pricing & Payments</h2>
-
+          <h2 className="text-xl font-semibold mb-2">5. Privacy & Data Protection</h2>
           <p>
-            All prices listed on the website are in Indian Rupees (₹) unless
-            otherwise stated. Prices are subject to change without prior notice.
-          </p>
-
-          <p className="mt-2">
-            Payment must be completed during checkout using secure payment
-            methods. Orders will only be processed after successful payment
-            confirmation.
+            Personal data entered into Life Ledger is handled with care and used only to provide the requested service,
+            improve user experience, and support account functionality. We do not sell personal information to third parties.
           </p>
         </section>
 
-        {/* Product Availability */}
         <section>
-          <h2 className="text-xl font-semibold mb-2">6. Product Availability</h2>
-
+          <h2 className="text-xl font-semibold mb-2">6. Content Ownership</h2>
           <p>
-            While we strive to maintain accurate inventory levels, certain
-            products may become unavailable due to high demand or technical
-            errors. In such cases, customers will be notified and refunded if
-            payment has already been made.
+            You retain ownership of the content you add to the platform, including expense records, diary entries,
+            memories, uploads, and notes. By storing them in Life Ledger, you provide us permission to process and store
+            them only as needed to deliver the service.
           </p>
         </section>
 
-        {/* Order Confirmation */}
         <section>
-          <h2 className="text-xl font-semibold mb-2">7. Order Confirmation</h2>
-
+          <h2 className="text-xl font-semibold mb-2">7. Service Availability</h2>
           <p>
-            After placing an order, customers will receive an order confirmation
-            via email or SMS. This confirmation does not guarantee acceptance of
-            the order.
-          </p>
-
-          <p className="mt-2">
-            We reserve the right to cancel orders due to product unavailability,
-            payment verification issues, or suspected fraudulent activity.
+            We aim to keep the service available and functional, but interruptions may occur due to updates, maintenance,
+            technical issues, or external factors beyond our control. We do not guarantee uninterrupted access.
           </p>
         </section>
 
-        {/* Order Cancellation */}
         <section>
-          <h2 className="text-xl font-semibold mb-2">8. Order Cancellation</h2>
-
+          <h2 className="text-xl font-semibold mb-2">8. Account Suspension</h2>
           <p>
-            Customers may cancel orders before the product is shipped. Once the
-            product has been dispatched, cancellations may not be possible.
+            We reserve the right to suspend or restrict access if a user violates these terms, misuses the platform,
+            attempts unauthorized access, or engages in fraudulent or harmful activity.
           </p>
         </section>
 
-        {/* Shipping */}
         <section>
-          <h2 className="text-xl font-semibold mb-2">9. Shipping Policy</h2>
-
+          <h2 className="text-xl font-semibold mb-2">9. Limitation of Liability</h2>
           <p>
-            Orders are usually processed within 1–2 business days after payment
-            confirmation.
-          </p>
-
-          <ul className="list-disc pl-6 mt-2 space-y-1">
-            <li>Domestic delivery: 3–7 business days</li>
-            <li>International delivery: 7–15 business days</li>
-            <li>Tracking details will be provided once the order is shipped</li>
-          </ul>
-
-          <p className="mt-2">
-            Delivery timelines may vary depending on courier services and
-            location.
+            Life Ledger is provided on an “as is” basis. We are not liable for losses arising from inaccurate data entry,
+            lost records, sync delays, or service disruptions unrelated to our direct control.
           </p>
         </section>
 
-        {/* Returns */}
         <section>
-          <h2 className="text-xl font-semibold mb-2">10. Return & Refund Policy</h2>
-
+          <h2 className="text-xl font-semibold mb-2">10. Contact</h2>
           <p>
-            Returns are accepted only for damaged or incorrect products reported
-            within 48 hours of delivery.
-          </p>
-
-          <ul className="list-disc pl-6 mt-2 space-y-1">
-            <li>Product must be unused and unwashed</li>
-            <li>Original packaging and tags must be intact</li>
-            <li>Clear photos of the issue must be provided</li>
-          </ul>
-
-          <p className="mt-2">
-            Refunds will be processed within 5–7 business days after inspection
-            of the returned item.
+            For questions or concerns regarding these terms or your account, please contact the platform administrator
+            or support team through the official communication channels provided within the app.
           </p>
         </section>
+      </div>
+    </>
+  );
+};
 
-        {/* Privacy */}
-        <section>
-          <h2 className="text-xl font-semibold mb-2">11. Privacy Policy</h2>
-
-          <p>
-            We respect your privacy and are committed to protecting your
-            personal information. Customer data is used only for order
-            processing, delivery, and improving user experience.
-          </p>
-
-          <ul className="list-disc pl-6 mt-2 space-y-1">
-            <li>Customer details such as name, phone number, and address are collected.</li>
-            <li>Information is used only for order processing and delivery.</li>
-            <li>We do not sell or share personal data with third parties.</li>
-          </ul>
-        </section>
-
-        {/* Fraud */}
-        <section>
-          <h2 className="text-xl font-semibold mb-2">12. Fraud Prevention</h2>
-
-          <p>
-            We reserve the right to cancel orders if fraudulent activity,
-            unauthorized payment methods, or suspicious transactions are
-            detected.
-          </p>
-        </section>
-
-        {/* Intellectual Property */}
-        <section>
-          <h2 className="text-xl font-semibold mb-2">13. Intellectual Property</h2>
-
-          <p>
-            All website content including images, designs, logos, graphics, and
-            text are the property of our brand and protected by copyright laws.
+export default TermsAndConditions;
           </p>
         </section>
 
