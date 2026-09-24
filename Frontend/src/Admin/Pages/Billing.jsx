@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   FiPlus,
@@ -49,10 +49,16 @@ const Billing = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [incomeFilter, setIncomeFilter] = useState("All Income");
   const [viewMode, setViewMode] = useState("table");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   useEffect(() => {
     localStorage.setItem("lifeLedgerMonthlyBudget", String(monthlyBudget));
   }, [monthlyBudget]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, incomeFilter]);
 
   useEffect(() => {
     if (!isIncomePage) return;
@@ -210,16 +216,31 @@ const Billing = () => {
   const recurringIncome = incomes
     .filter((income) => income.recurring === "Yes")
     .reduce((total, income) => total + Number(income.amount || 0), 0);
-  const visibleIncomes = incomes.filter((income) => {
-    const searchValue =
-      `${income.title || ""} ${income.category || ""} ${income.payment_method || ""}`.toLowerCase();
-    const matchesSearch = searchValue.includes(searchTerm.toLowerCase());
-    const matchesFilter =
-      incomeFilter === "All Income" ||
-      (incomeFilter === "Recurring" && income.recurring === "Yes") ||
-      (incomeFilter === "One-time" && income.recurring !== "Yes");
-    return matchesSearch && matchesFilter;
-  });
+  const filteredIncomes = useMemo(() => {
+    return incomes.filter((income) => {
+      const searchValue =
+        `${income.title || ""} ${income.category || ""} ${income.payment_method || ""}`.toLowerCase();
+      const matchesSearch = searchValue.includes(searchTerm.toLowerCase());
+      const matchesFilter =
+        incomeFilter === "All Income" ||
+        (incomeFilter === "Recurring" && income.recurring === "Yes") ||
+        (incomeFilter === "One-time" && income.recurring !== "Yes");
+      return matchesSearch && matchesFilter;
+    });
+  }, [incomes, searchTerm, incomeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredIncomes.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedIncomes = filteredIncomes.slice(
+    (safeCurrentPage - 1) * pageSize,
+    safeCurrentPage * pageSize,
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   return (
     <div className="space-y-6 pb-20">
@@ -366,9 +387,11 @@ const Billing = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {visibleIncomes.map((income, index) => (
+                    {paginatedIncomes.map((income, index) => (
                       <tr key={income.id} className="text-slate-700">
-                        <td className="px-4 py-4 font-bold text-slate-500">{index + 1}</td>
+                        <td className="px-4 py-4 font-bold text-slate-500">
+                          {(safeCurrentPage - 1) * pageSize + index + 1}
+                        </td>
                         <td className="px-6 py-4 font-bold">{income.title}</td>
                         <td className="px-6 py-4">{income.category}</td>
                         <td className="px-6 py-4 font-bold">
@@ -426,7 +449,7 @@ const Billing = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
-                {visibleIncomes.map((income) => (
+                {paginatedIncomes.map((income) => (
                   <div
                     key={income.id}
                     className="rounded-xl border border-slate-100 bg-slate-50 p-4"
@@ -492,12 +515,56 @@ const Billing = () => {
                 ))}
               </div>
             )}
-            {visibleIncomes.length === 0 && (
+            {filteredIncomes.length === 0 && (
               <p className="p-8 text-center text-sm font-semibold text-slate-400">
                 No income records found.
               </p>
             )}
           </div>
+
+          {filteredIncomes.length > 0 && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-semibold text-slate-600">
+                Showing {Math.min((safeCurrentPage - 1) * pageSize + 1, filteredIncomes.length)}-
+                {Math.min(safeCurrentPage * pageSize, filteredIncomes.length)} of {filteredIncomes.length}
+              </p>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={safeCurrentPage === 1}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Prev
+                </button>
+
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNumber)}
+                    className={`h-9 w-9 rounded-lg text-sm font-bold transition-all ${
+                      pageNumber === safeCurrentPage
+                        ? "bg-[#4b0b78] text-white shadow-md"
+                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={safeCurrentPage === totalPages}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
