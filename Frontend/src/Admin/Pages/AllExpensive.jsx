@@ -12,6 +12,11 @@ import {
 } from "react-icons/fi";
 
 // ─── empty form factory ───────────────────────────────────────────────────────
+const getCurrentTime = () => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+};
+
 const emptyForm = () => ({
     title: "",
     expense_amount: "",
@@ -22,7 +27,7 @@ const emptyForm = () => ({
     to: "",
     payment_method: "Cash",
     date: new Date().toISOString().split("T")[0],
-    time: "09:00",
+    time: getCurrentTime(),
     notes: "",
     attachment: null,
 });
@@ -139,7 +144,7 @@ const AllExpensive = () => {
             to: expense.to || "",
             payment_method: expense.payment_method || "Cash",
             date: expense.expense_date ? String(expense.expense_date).split("T")[0] : new Date().toISOString().split("T")[0],
-            time: expense.expense_time ? String(expense.expense_time).slice(0, 5) : "09:00",
+            time: expense.expense_time ? String(expense.expense_time).slice(0, 5) : getCurrentTime(),
             notes: expense.notes || "",
             attachment: null,
         });
@@ -827,7 +832,7 @@ const AllExpensive = () => {
                                     <input
                                         type="time"
                                         name="time"
-                                        value={form.time || "09:00"}
+                                        value={form.time || getCurrentTime()}
                                         onChange={handleChange}
                                         className={inputCls}
                                     />
