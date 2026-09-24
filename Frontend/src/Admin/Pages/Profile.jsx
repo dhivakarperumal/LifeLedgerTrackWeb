@@ -1,14 +1,57 @@
+import { useState } from "react";
+import { LockKeyhole, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
+import api from "../../api";
 import { useAuth } from "../../PrivateRouter/AuthContext";
-import { Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
 
 const Profile = () => {
-  const { profileName, email, phone, role } = useAuth();
+  const { user, profileName, email, phone, role } = useAuth();
+  const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
+  const [passwordStatus, setPasswordStatus] = useState({ type: "", message: "" });
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
 
   const profile = {
     name: profileName || "Admin User",
     email: email || "admin@lifelink.com",
     phone: phone || "Not provided",
     role: role || "Admin",
+  };
+
+  const handlePasswordChange = async (event) => {
+    event.preventDefault();
+    setPasswordStatus({ type: "", message: "" });
+
+    if (passwords.next.length < 6) {
+      setPasswordStatus({ type: "error", message: "New password must be at least 6 characters." });
+      return;
+    }
+
+    if (passwords.next !== passwords.confirm) {
+      setPasswordStatus({ type: "error", message: "New password and confirm password do not match." });
+      return;
+    }
+
+    const userId = user?.id || user?.user_id;
+    if (!userId) {
+      setPasswordStatus({ type: "error", message: "Unable to identify your account. Please sign in again." });
+      return;
+    }
+
+    try {
+      setIsSavingPassword(true);
+      const response = await api.put(`/auth/profile/${userId}/password`, {
+        currentPassword: passwords.current,
+        newPassword: passwords.next,
+      });
+      setPasswords({ current: "", next: "", confirm: "" });
+      setPasswordStatus({ type: "success", message: response.data?.message || "Password changed successfully." });
+    } catch (error) {
+      setPasswordStatus({
+        type: "error",
+        message: error.response?.data?.message || "Unable to change password. Please try again.",
+      });
+    } finally {
+      setIsSavingPassword(false);
+    }
   };
 
   return (
@@ -59,9 +102,76 @@ const Profile = () => {
           </div>
         </section>
       </div>
+
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_55px_rgba(15,23,42,0.06)] sm:p-9">
+        <div className="flex flex-col gap-4 border-b border-slate-100 pb-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1F0A3C] text-white">
+              <LockKeyhole size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Security</p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Change password</h2>
+            </div>
+          </div>
+          <p className="max-w-sm text-sm leading-6 text-slate-500 sm:text-right">Use a strong password with at least 6 characters to keep your account protected.</p>
+        </div>
+
+        <form onSubmit={handlePasswordChange} className="mt-7 grid gap-5 md:grid-cols-3">
+          <PasswordField
+            label="Current password"
+            value={passwords.current}
+            onChange={(value) => setPasswords((current) => ({ ...current, current: value }))}
+            autoComplete="current-password"
+          />
+          <PasswordField
+            label="New password"
+            value={passwords.next}
+            onChange={(value) => setPasswords((current) => ({ ...current, next: value }))}
+            autoComplete="new-password"
+            minLength={6}
+          />
+          <PasswordField
+            label="Confirm password"
+            value={passwords.confirm}
+            onChange={(value) => setPasswords((current) => ({ ...current, confirm: value }))}
+            autoComplete="new-password"
+            minLength={6}
+          />
+
+          <div className="flex flex-col gap-3 md:col-span-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className={`text-sm font-semibold ${passwordStatus.type === "error" ? "text-red-600" : "text-emerald-600"}`} aria-live="polite">
+              {passwordStatus.message}
+            </p>
+            <button
+              type="submit"
+              disabled={isSavingPassword || !passwords.current || !passwords.next || !passwords.confirm}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1F0A3C] px-6 py-3 text-sm font-bold text-white shadow-lg transition-all hover:brightness-125 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <LockKeyhole size={16} />
+              {isSavingPassword ? "Updating..." : "Update password"}
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   );
 };
+
+const PasswordField = ({ label, value, onChange, autoComplete, minLength }) => (
+  <label className="block">
+    <span className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-500">{label}</span>
+    <input
+      type="password"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      autoComplete={autoComplete}
+      minLength={minLength}
+      required
+      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-[#1F0A3C] focus:bg-white focus:ring-4 focus:ring-[#1F0A3C]/10"
+    />
+  </label>
+);
 
 const ProfileDetail = ({ icon, label, value, wide = false }) => (
   <div className={`rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-[#1F0A3C]/30 ${wide ? "md:col-span-2" : ""}`}>
