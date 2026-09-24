@@ -101,7 +101,9 @@ const MemoriesManagement = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [viewMode, setViewMode] = useState("table");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const pageSize = 10;
   const [loading, setLoading] = useState(true);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -230,6 +232,10 @@ const MemoriesManagement = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedCategory, favoriteOnly]);
+
   const memoryCategories = useMemo(() => {
     return categories.filter((category) => {
       const typeValue = String(category?.type || category?.catType || category?.category_type || "").toLowerCase();
@@ -263,6 +269,19 @@ const MemoriesManagement = () => {
       return matchesSearch && matchesCategory && matchesFavorite;
     });
   }, [memories, search, selectedCategory, favoriteOnly]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredMemories.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedMemories = filteredMemories.slice(
+    (safeCurrentPage - 1) * pageSize,
+    safeCurrentPage * pageSize,
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const openNewMemory = () => {
     setEditingId(null);
@@ -599,15 +618,15 @@ const MemoriesManagement = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredMemories.length === 0 ? (
+                {paginatedMemories.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-4 py-12 text-center text-sm font-medium text-slate-400">
                       No memories found.
                     </td>
                   </tr>
-                ) : filteredMemories.map((memory, index) => (
+                ) : paginatedMemories.map((memory, index) => (
                   <tr key={memory.id} className="bg-white hover:bg-violet-50/40">
-                    <td className="px-4 py-4 font-bold text-slate-700">{index + 1}</td>
+                    <td className="px-4 py-4 font-bold text-slate-700">{(safeCurrentPage - 1) * pageSize + index + 1}</td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-14 w-20 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-violet-600">
@@ -671,7 +690,7 @@ const MemoriesManagement = () => {
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {filteredMemories.map((memory) => (
+          {paginatedMemories.map((memory) => (
             <div key={memory.id} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
               <div className="relative h-52 overflow-hidden bg-slate-100">
                 {memory.media_url ? (
@@ -728,6 +747,50 @@ const MemoriesManagement = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {filteredMemories.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-slate-600">
+            Showing {Math.min((safeCurrentPage - 1) * pageSize + 1, filteredMemories.length)}-
+            {Math.min(safeCurrentPage * pageSize, filteredMemories.length)} of {filteredMemories.length}
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={safeCurrentPage === 1}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Prev
+            </button>
+
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+              <button
+                key={pageNumber}
+                type="button"
+                onClick={() => setCurrentPage(pageNumber)}
+                className={`h-9 w-9 rounded-lg text-sm font-bold transition-all ${
+                  pageNumber === safeCurrentPage
+                    ? "bg-[#4b0b78] text-white shadow-md"
+                    : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {pageNumber}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={safeCurrentPage === totalPages}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 

@@ -100,6 +100,7 @@ const DiaryManagement = () => {
   const [selectedMood, setSelectedMood] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState("list");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -347,6 +348,24 @@ const DiaryManagement = () => {
       return matchesFilter && categoryMatch && moodMatch && dateMatch && searchMatch;
     });
   }, [entries, search, selectedFilter, selectedMood, selectedCategory, selectedDate]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedFilter, selectedMood, selectedCategory, selectedDate]);
+
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedEntries = filteredEntries.slice(
+    (safeCurrentPage - 1) * pageSize,
+    safeCurrentPage * pageSize,
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const applyFormat = (command, value = null) => {
     document.execCommand(command, false, value);
@@ -696,13 +715,6 @@ const DiaryManagement = () => {
         <div className="space-y-4">
           {loading ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center text-slate-500 shadow-sm">Loading diary entries...</div>
-          ) : filteredEntries.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 text-3xl text-violet-600">📖</div>
-              <h3 className="mt-5 text-2xl font-bold text-slate-900">Your Diary Is Empty</h3>
-              <p className="mt-2 text-slate-500">Start writing about your day, thoughts and special moments.</p>
-              <button onClick={openNewEntry} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/20 hover:from-[#10002b] hover:to-[#5a189a]"> <FiPlus /> Add Diary Entry </button>
-            </div>
           ) : viewMode === "list" ? (
             <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
@@ -718,10 +730,19 @@ const DiaryManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {filteredEntries.map((entry, index) => (
+                    {paginatedEntries.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-12 text-center">
+                          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-violet-100 text-2xl text-violet-600">📖</div>
+                          <p className="mt-4 font-bold text-slate-900">No diary entries found</p>
+                          <p className="mt-1 text-sm text-slate-500">Start writing about your day, thoughts and special moments.</p>
+                          <button onClick={openNewEntry} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-900/20 hover:from-[#10002b] hover:to-[#5a189a]"><FiPlus /> Add Diary Entry</button>
+                        </td>
+                      </tr>
+                    ) : paginatedEntries.map((entry, index) => (
                       <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap text-center font-bold text-slate-400">
-                          {index + 1}
+                          {(safeCurrentPage - 1) * pageSize + index + 1}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="text-slate-800 font-bold">{formatDate(entry.entry_date)}</div>
@@ -756,9 +777,16 @@ const DiaryManagement = () => {
                 </table>
               </div>
             </div>
+          ) : filteredEntries.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 text-3xl text-violet-600">📖</div>
+              <h3 className="mt-5 text-2xl font-bold text-slate-900">Your Diary Is Empty</h3>
+              <p className="mt-2 text-slate-500">Start writing about your day, thoughts and special moments.</p>
+              <button onClick={openNewEntry} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/20 hover:from-[#10002b] hover:to-[#5a189a]"> <FiPlus /> Add Diary Entry </button>
+            </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredEntries.map((entry) => (
+              {paginatedEntries.map((entry) => (
                 <div key={entry.id} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -798,6 +826,50 @@ const DiaryManagement = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {filteredEntries.length > 0 && (
+            <div className="mt-6 flex flex-col items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm md:flex-row">
+              <div className="text-sm text-slate-500">
+                Showing {Math.min((safeCurrentPage - 1) * pageSize + 1, filteredEntries.length)}-
+                {Math.min(safeCurrentPage * pageSize, filteredEntries.length)} of {filteredEntries.length}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={safeCurrentPage === 1}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <FiArrowLeft size={15} />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNumber)}
+                    className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-semibold transition ${
+                      safeCurrentPage === pageNumber
+                        ? "bg-gradient-to-r from-[#240046] to-[#7b2cbf] text-white shadow-md"
+                        : "border border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-700"
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={safeCurrentPage === totalPages}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <FiArrowRight size={15} />
+                </button>
+              </div>
             </div>
           )}
         </div>

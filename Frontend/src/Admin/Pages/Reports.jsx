@@ -6,7 +6,7 @@ import {
     FiBarChart2, FiSearch, FiFilter, FiDownload,
     FiTrendingDown, FiSend, FiRepeat, FiCalendar,
     FiTag, FiCreditCard, FiRefreshCw, FiX, FiList, FiGrid,
-    FiChevronDown, FiCheckCircle, FiAlertCircle,
+    FiChevronDown, FiChevronLeft, FiChevronRight, FiCheckCircle, FiAlertCircle,
 } from "react-icons/fi";
 import { FaRupeeSign } from "react-icons/fa";
 
@@ -42,6 +42,7 @@ const Reports = () => {
     const [dateFrom, setDateFrom]           = useState("");
     const [dateTo, setDateTo]               = useState("");
     const [viewMode, setViewMode]           = useState("table"); // table | grid
+    const [currentPage, setCurrentPage]     = useState(1);
 
     /* ── fetch ────────────────────────────────────────────────────────────── */
     const fetchAll = async () => {
@@ -194,6 +195,24 @@ const Reports = () => {
             return matchSearch && matchCat && matchPayment && matchFrom && matchTo;
         });
     }, [allRecords, searchTerm, categoryFilter, paymentFilter, activeDateRange]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [reportType, searchTerm, categoryFilter, paymentFilter, datePreset, dateFrom, dateTo]);
+
+    const pageSize = 10;
+    const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+    const paginatedRecords = visible.slice(
+        (safeCurrentPage - 1) * pageSize,
+        safeCurrentPage * pageSize,
+    );
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
 
     /* ── summary stats (from visible rows) ───────────────────────────────── */
     const stats = useMemo(() => {
@@ -931,14 +950,14 @@ const Reports = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {visible.map((r, i) => {
+                                {paginatedRecords.map((r, i) => {
                                     const isExp    = r._type === "expense";
                                     const amount   = isExp ? r.expense_amount : r.amount;
                                     const payment  = r.payment_method || r.paymentMethod || "—";
 
                                     return (
                                         <tr key={`${r._type}-${r.id}`} className="hover:bg-[#240046]/5 transition-colors">
-                                            <td className="px-4 py-3.5 text-gray-500 font-medium text-xs">{i + 1}</td>
+                                            <td className="px-4 py-3.5 text-gray-500 font-medium text-xs">{(safeCurrentPage - 1) * pageSize + i + 1}</td>
 
                                             {/* Type badge */}
                                             <td className="px-4 py-3.5">
@@ -1022,7 +1041,7 @@ const Reports = () => {
 
                 /* ═══════════════ GRID VIEW ═══════════════ */
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {visible.map((r) => {
+                    {paginatedRecords.map((r) => {
                         const isExp   = r._type === "expense";
                         const amount  = isExp ? r.expense_amount : r.amount;
                         const payment = r.payment_method || r.paymentMethod || "—";
@@ -1082,6 +1101,52 @@ const Reports = () => {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {visible.length > 0 && (
+                <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm md:flex-row">
+                    <div className="text-sm text-slate-500">
+                        Showing {Math.min((safeCurrentPage - 1) * pageSize + 1, visible.length)}-
+                        {Math.min(safeCurrentPage * pageSize, visible.length)} of {visible.length}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                            disabled={safeCurrentPage === 1}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Previous page"
+                        >
+                            <FiChevronLeft size={16} />
+                        </button>
+
+                        {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                            <button
+                                key={pageNumber}
+                                type="button"
+                                onClick={() => setCurrentPage(pageNumber)}
+                                className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-semibold transition ${
+                                    safeCurrentPage === pageNumber
+                                        ? "bg-gradient-to-r from-[#240046] to-[#7b2cbf] text-white shadow-md"
+                                        : "border border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-700"
+                                }`}
+                            >
+                                {pageNumber}
+                            </button>
+                        ))}
+
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                            disabled={safeCurrentPage === totalPages}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Next page"
+                        >
+                            <FiChevronRight size={16} />
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
