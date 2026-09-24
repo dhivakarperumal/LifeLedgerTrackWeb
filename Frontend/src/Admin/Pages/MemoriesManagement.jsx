@@ -593,7 +593,7 @@ const MemoriesManagement = () => {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] text-[#FCD34D]">
-                  {['#', 'Title', 'Category', 'Date', 'Location', 'Mood', 'Tags', 'Favorite', 'Action'].map((header) => (
+                  {['S No', 'Title', 'Category', 'Date', 'Location', 'Mood', 'Tags', 'Favorite', 'Action'].map((header) => (
                     <th key={header} className="whitespace-nowrap px-4 py-4 text-[11px] font-bold uppercase tracking-wider">{header}</th>
                   ))}
                 </tr>

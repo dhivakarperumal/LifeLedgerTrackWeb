@@ -356,7 +356,7 @@ const AllExpensive = () => {
                         <table className="w-full text-left text-sm">
                             <thead>
                                 <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c]">
-                                    {["#", "Title", "Category", "Expense Amt", "Transfer Amt", "Remaining", "Payment", "Date", "Recurring", "Action"].map((h) => (
+                                    {["S No", "Title", "Category", "Expense Amt", "Transfer Amt", "Remaining", "Payment", "Date", "Recurring", "Action"].map((h) => (
                                         <th key={h} className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider whitespace-nowrap">{h}</th>
                                     ))}
                                 </tr>
