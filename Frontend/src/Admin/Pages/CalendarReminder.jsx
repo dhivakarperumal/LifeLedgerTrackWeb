@@ -116,35 +116,13 @@ const defaultReminderForm = {
   repeat: "",
 };
 
-const CALENDAR_CATEGORY_FALLBACK = [
-  "Birthday",
-  "Anniversary",
-  "Family",
-  "Personal",
-  "Work",
-  "Meeting",
-  "Appointment",
-  "Payment",
-  "Bill Due",
-  "Travel",
-  "Shopping",
-  "Education",
-  "Health",
-  "Festival",
-  "Holiday",
-  "Important",
-  "Other",
-];
-
 const CalendarReminder = () => {
   const [viewMode, setViewMode] = useState("month");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarMonth, setCalendarMonth] = useState(startOfMonth(new Date()));
   const [events, setEvents] = useState([]);
   const [reminders, setReminders] = useState([]);
-  const [calendarCategoryOptions, setCalendarCategoryOptions] = useState(
-    CALENDAR_CATEGORY_FALLBACK,
-  );
+  const [calendarCategoryOptions, setCalendarCategoryOptions] = useState([]);
   const [summary, setSummary] = useState({
     todayEvents: 0,
     todayReminders: 0,
@@ -197,38 +175,13 @@ const CalendarReminder = () => {
           : [];
 
       const mappedCategories = categoryList
-        .filter((category) => {
-          const typeValue = String(
-            category?.catType ||
-              category?.type ||
-              category?.category_type ||
-              "",
-          )
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g, "");
-
-          return (
-            [
-              "calendarevent",
-              "calendar",
-              "event",
-              "events",
-              "reminder",
-              "reminders",
-            ].includes(typeValue) ||
-            typeValue.includes("calendarevent") ||
-            typeValue.includes("calendar")
-          );
-        })
-        .map((category) => category.name)
-        .filter(Boolean);
+        .map((category) => category?.name)
+        .filter(Boolean)
+        .filter((name, index, arr) => arr.indexOf(name) === index);
 
       setEvents(eventList);
       setReminders(reminderList);
-      setCalendarCategoryOptions(
-        mappedCategories.length ? mappedCategories : CALENDAR_CATEGORY_FALLBACK,
-      );
+      setCalendarCategoryOptions(mappedCategories);
       setSummary({
         todayEvents: Number(summaryData.todayEvents || 0),
         todayReminders: Number(summaryData.todayReminders || 0),
@@ -239,7 +192,7 @@ const CalendarReminder = () => {
       });
     } catch (error) {
       console.error("Calendar fetch failed", error);
-      setCalendarCategoryOptions(CALENDAR_CATEGORY_FALLBACK);
+      setCalendarCategoryOptions([]);
       setEvents([]);
       setReminders([]);
       setSummary({
@@ -261,6 +214,18 @@ const CalendarReminder = () => {
   useEffect(() => {
     fetchCalendar();
   }, []);
+
+  useEffect(() => {
+    if (!calendarCategoryOptions.length) return;
+
+    if (!calendarCategoryOptions.includes(eventForm.category)) {
+      setEventForm((prev) => ({ ...prev, category: calendarCategoryOptions[0] }));
+    }
+
+    if (!calendarCategoryOptions.includes(reminderForm.category)) {
+      setReminderForm((prev) => ({ ...prev, category: calendarCategoryOptions[0] }));
+    }
+  }, [calendarCategoryOptions]);
 
   const monthDays = useMemo(
     () => getDaysInMonthGrid(calendarMonth),
@@ -1254,13 +1219,18 @@ const CalendarReminder = () => {
                       onChange={(e) =>
                         onChangeEventForm("category", e.target.value)
                       }
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white"
+                      disabled={!calendarCategoryOptions.length}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {calendarCategoryOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
+                      {calendarCategoryOptions.length ? (
+                        calendarCategoryOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="">No categories available</option>
+                      )}
                     </select>
                   </div>
                   <div>
@@ -1413,13 +1383,18 @@ const CalendarReminder = () => {
                       onChange={(e) =>
                         onChangeReminderForm("category", e.target.value)
                       }
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white"
+                      disabled={!calendarCategoryOptions.length}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {calendarCategoryOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
+                      {calendarCategoryOptions.length ? (
+                        calendarCategoryOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="">No categories available</option>
+                      )}
                     </select>
                   </div>
                   <div>
