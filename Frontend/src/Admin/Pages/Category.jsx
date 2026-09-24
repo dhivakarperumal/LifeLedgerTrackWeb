@@ -443,11 +443,11 @@ const Category = () => {
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => openEditModal(cat)} className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 transition-colors" title="Edit">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button onClick={() => openEditModal(cat)} className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-50 text-blue-500" title="Edit">
                                                             <FiEdit2 size={14} />
                                                         </button>
-                                                        <button onClick={() => handleDeleteCategory(cat.catId)} className="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Delete">
+                                                        <button onClick={() => handleDeleteCategory(cat.catId)} className="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-500" title="Delete">
                                                             <FiTrash2 size={14} />
                                                         </button>
                                                     </div>
@@ -509,10 +509,10 @@ const Category = () => {
                                     </div>
 
                                     <div className="mt-4 flex items-center justify-end gap-2">
-                                        <button onClick={() => openEditModal(cat)} className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100" title="Edit">
+                                        <button onClick={() => openEditModal(cat)} className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-500" title="Edit">
                                             <FiEdit2 size={14} />
                                         </button>
-                                        <button onClick={() => handleDeleteCategory(cat.catId)} className="flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100" title="Delete">
+                                        <button onClick={() => handleDeleteCategory(cat.catId)} className="flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-red-500" title="Delete">
                                             <FiTrash2 size={14} />
                                         </button>
                                     </div>
@@ -565,10 +565,10 @@ const Category = () => {
                                 </div>
 
                                 <div className="mt-auto pt-4 border-t border-gray-50 flex items-center gap-2 shrink-0">
-                                    <button onClick={() => openEditModal(cat)} className="flex-1 py-1.5 flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 text-blue-500 hover:bg-blue-50 transition-colors text-xs font-bold">
+                                    <button onClick={() => openEditModal(cat)} className="flex-1 py-1.5 flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 text-blue-500 text-xs font-bold">
                                         <FiEdit2 size={12} /> Edit
                                     </button>
-                                    <button onClick={() => handleDeleteCategory(cat.catId)} className="flex-1 py-1.5 flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 text-red-500 hover:bg-red-50 transition-colors text-xs font-bold">
+                                    <button onClick={() => handleDeleteCategory(cat.catId)} className="flex-1 py-1.5 flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 text-red-500 text-xs font-bold">
                                         <FiTrash2 size={12} /> Delete
                                     </button>
                                 </div>
