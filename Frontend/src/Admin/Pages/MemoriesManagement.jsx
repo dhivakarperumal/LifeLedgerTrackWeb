@@ -704,12 +704,13 @@ const MemoriesManagement = () => {
       )}
 
       {isEditorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 text-slate-800 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-slate-900">{editingId ? "Edit Memory" : "Create Memory"}</h2>
-              <button onClick={() => setIsEditorOpen(false)} className="rounded-full bg-slate-100 p-2 text-slate-600 hover:bg-slate-200"><FiX /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="mb-0 flex items-center justify-between border-b border-[#3c096c]/20 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white">
+              <h2 className="text-2xl font-bold text-white">{editingId ? "Edit Memory" : "Create Memory"}</h2>
+              <button onClick={() => setIsEditorOpen(false)} className="rounded-full bg-white/10 p-2 text-white/80 hover:bg-white/15 hover:text-white"><FiX /></button>
             </div>
+            <div className="p-6 text-slate-800">
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
@@ -848,6 +849,7 @@ const MemoriesManagement = () => {
                 </div>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}

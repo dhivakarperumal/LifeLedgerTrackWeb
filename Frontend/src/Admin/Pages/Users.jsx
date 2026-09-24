@@ -549,14 +549,14 @@ const Users = ({ initialTab = "All" }) => {
                 {isModalOpen && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
                         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-                            <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
+                            <div className="flex items-center justify-between border-b border-[#3c096c]/20 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white shrink-0">
                                 <div>
-                                    <h2 className="text-xl font-bold text-slate-800">{isEditing ? 'Modify Domain Privileges' : 'Register New Customer'}</h2>
-                                    <p className="text-xs text-gray-500 mt-1">{isEditing ? `Updating permissions for ID: ${editUserId}` : 'Add a new customer to your system'}</p>
+                                    <h2 className="text-xl font-bold text-white">{isEditing ? 'Modify Domain Privileges' : 'Register New Customer'}</h2>
+                                    <p className="mt-1 text-xs text-white/70">{isEditing ? `Updating permissions for ID: ${editUserId}` : 'Add a new customer to your system'}</p>
                                 </div>
                                 <button
                                     onClick={() => setIsModalOpen(false)}
-                                    className="p-2 text-gray-400 hover:bg-gray-50 rounded-full transition-colors"
+                                    className="rounded-full bg-white/10 p-2 text-white/80 transition-colors hover:bg-white/15 hover:text-white"
                                 >
                                     <FiX className="text-xl" />
                                 </button>

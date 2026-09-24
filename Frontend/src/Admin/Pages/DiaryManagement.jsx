@@ -808,9 +808,9 @@ const DiaryManagement = () => {
       {isEditorOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
           <div className="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 p-4">
-              <h2 className="text-xl font-bold text-slate-900">{editingId ? "Edit Diary" : "Add Diary Entry"}</h2>
-              <button onClick={closeEditor} className="rounded-full bg-slate-100 p-2 text-slate-600 hover:bg-slate-200"><FiX /></button>
+            <div className="flex items-center justify-between border-b border-[#3c096c]/20 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-5 py-4 text-white">
+              <h2 className="text-xl font-bold text-white">{editingId ? "Edit Diary" : "Add Diary Entry"}</h2>
+              <button onClick={closeEditor} className="rounded-full bg-white/10 p-2 text-white/80 hover:bg-white/15 hover:text-white"><FiX /></button>
             </div>
 
             <div className="p-4 md:p-6">
