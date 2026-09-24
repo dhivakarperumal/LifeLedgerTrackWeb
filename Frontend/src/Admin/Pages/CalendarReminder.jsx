@@ -1198,39 +1198,41 @@ const CalendarReminder = () => {
       </div>
 
       {panelOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/40 backdrop-blur-sm">
-          <div className="h-full w-full max-w-xl overflow-y-auto bg-white p-5 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-violet-600">
-                  {panelType === "event"
-                    ? editingItem
-                      ? "Edit event"
-                      : "Add event"
-                    : editingItem
-                      ? "Edit reminder"
-                      : "Add reminder"}
-                </p>
-                <h3 className="mt-2 text-2xl font-bold text-slate-900">
-                  {panelType === "event"
-                    ? editingItem
-                      ? "Update Calendar Event"
-                      : "New Calendar Event"
-                    : editingItem
-                      ? "Update Reminder"
-                      : "New Reminder"}
-                </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl">
+            <div className="shrink-0 border-b border-violet-500 bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-4 text-white">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#FCD34D]">
+                    {panelType === "event"
+                      ? editingItem
+                        ? "Edit event"
+                        : "Add event"
+                      : editingItem
+                        ? "Edit reminder"
+                        : "Add reminder"}
+                  </p>
+                  <h3 className="mt-2 text-2xl font-bold text-white">
+                    {panelType === "event"
+                      ? editingItem
+                        ? "Update Calendar Event"
+                        : "New Calendar Event"
+                      : editingItem
+                        ? "Update Reminder"
+                        : "New Reminder"}
+                  </h3>
+                </div>
+                <button
+                  onClick={closePanel}
+                  className="rounded-xl border border-white/20 bg-white/10 p-2 text-white transition hover:bg-white/20"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button
-                onClick={closePanel}
-                className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-slate-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
             </div>
 
             {panelType === "event" ? (
-              <div className="space-y-4">
+              <div className="flex-1 overflow-y-auto space-y-4 p-5">
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                     Title
@@ -1369,23 +1371,25 @@ const CalendarReminder = () => {
                     All Day Event
                   </label>
                 </div>
-                <div className="flex justify-end gap-3 pt-2">
-                  <button
-                    onClick={closePanel}
-                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreateEvent}
-                    className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-                  >
-                    {editingItem ? "Update Event" : "Save Event"}
-                  </button>
+                <div className="sticky bottom-[-10px] w-full mt-10 border-t border-slate-200 bg-white pt-4">
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={closePanel}
+                      className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateEvent}
+                      className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                    >
+                      {editingItem ? "Update Event" : "Save Event"}
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="flex-1 overflow-y-auto space-y-4 p-5">
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                     Title
@@ -1516,19 +1520,21 @@ const CalendarReminder = () => {
                     Send notification
                   </label>
                 </div>
-                <div className="flex justify-end gap-3 pt-2">
-                  <button
-                    onClick={closePanel}
-                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreateReminder}
-                    className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500"
-                  >
-                    {editingItem ? "Update Reminder" : "Save Reminder"}
-                  </button>
+                <div className="sticky bottom-0 mt-4 border-t border-slate-200 bg-white pt-4">
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={closePanel}
+                      className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateReminder}
+                      className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500"
+                    >
+                      {editingItem ? "Update Reminder" : "Save Reminder"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
