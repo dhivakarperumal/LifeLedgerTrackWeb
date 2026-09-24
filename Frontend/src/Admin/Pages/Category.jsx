@@ -54,11 +54,34 @@ const Category = () => {
     };
 
     // ---- View & Pagination State ----
-    const [viewMode, setViewMode] = useState("table"); 
+    const [viewMode, setViewMode] = useState("table");
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    useEffect(() => {
+        const handleResize = () => {
+            const mobile = window.innerWidth < 768;
+            setIsMobile(mobile);
+            if (mobile) {
+                setViewMode("grid");
+            }
+        };
+
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    const handleViewModeChange = (nextMode) => {
+        if (isMobile) {
+            setViewMode("grid");
+            return;
+        }
+        setViewMode(nextMode);
+    };
 
     // ---- Modal State ----
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -293,45 +316,56 @@ const Category = () => {
             </div>
 
             {/* Filter Bar */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex flex-wrap items-center justify-between gap-4 mb-6">
-                <div className="relative flex-1 max-w-md">
+            <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+                <div className="relative w-full">
                     <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
                     <input
                         type="text"
-                        placeholder="Search categories by name, ID..."
+                        placeholder="Search categories by name, ID."
                         value={searchQuery}
                         onChange={handleSearch}
-                        className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-700 outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 transition-all font-medium placeholder:text-gray-400"
+                        className="w-full rounded-full border border-gray-200 bg-[#f3f4f6] py-3 pl-11 pr-4 text-sm text-gray-700 outline-none transition-all placeholder:text-gray-400 focus:border-purple-300 focus:bg-white focus:ring-2 focus:ring-purple-100"
                     />
                 </div>
-                
+
                 <div className="flex items-center gap-3">
-                    <div className="relative">
+                    <div className="relative flex-1 min-w-0">
                         <select
                             value={statusFilter}
                             onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                            className="appearance-none bg-white border border-gray-200 text-sm font-bold text-gray-600 pl-4 pr-10 py-2.5 rounded-xl outline-none focus:border-purple-300 cursor-pointer"
+                            className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 py-3 pl-4 pr-10 text-sm font-semibold text-gray-700 outline-none transition-all focus:border-purple-300 focus:bg-white"
                         >
                             <option value="All">Select Status</option>
                             <option value="Active">Active</option>
                             <option value="Inactive">Inactive</option>
                         </select>
-                        <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     </div>
-                   
-                    <div className="flex items-center gap-3">
-                    <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
-                        <button onClick={() => setViewMode("table")} className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:text-slate-600'}`}>
+
+                    <div className="flex shrink-0 items-center rounded-xl border border-gray-200 bg-gray-50 p-1 shadow-sm">
+                        <button
+                            onClick={() => handleViewModeChange("table")}
+                            disabled={isMobile}
+                            className={`flex h-10 w-10 items-center justify-center rounded-lg transition-all ${viewMode === 'table' ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:text-slate-600'} ${isMobile ? 'cursor-not-allowed opacity-50' : ''}`}
+                        >
                             <FiList size={18} />
                         </button>
-                        <button onClick={() => setViewMode("grid")} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:text-slate-600'}`}>
+                        <button
+                            onClick={() => handleViewModeChange("grid")}
+                            className={`flex h-10 w-10 items-center justify-center rounded-lg transition-all ${viewMode === 'grid' ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:text-slate-600'}`}
+                        >
                             <FiGrid size={18} />
                         </button>
                     </div>
-                    <button onClick={openAddModal} className="flex items-center gap-2 py-3 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] hover:bg-[#7C3AED] text-white px-5  rounded-md text-sm font-bold transition-all shadow-md active:scale-95">
-                        <FiPlus size={18} /> Add New Category
+
+                    <button
+                        onClick={openAddModal}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] text-white shadow-md transition-all hover:brightness-110 active:scale-95"
+                        aria-label="Add new category"
+                        title="Add new category"
+                    >
+                        <FiPlus size={20} />
                     </button>
-                </div>
                 </div>
             </div>
 
