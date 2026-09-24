@@ -501,19 +501,19 @@ const Billing = () => {
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => setSelectedIncome(null)} />
           <div className="relative z-10 w-full max-w-xl rounded-[1.8rem] bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+            <div className="flex items-center justify-between border-b border-[#3c096c]/20 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
                   Income Details
                 </p>
-                <h2 className="mt-1 text-2xl font-black text-slate-800">
+                <h2 className="mt-1 text-2xl font-black text-white">
                   {selectedIncome.title}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedIncome(null)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-lg p-2 text-white/80 hover:bg-white/10 hover:text-white"
                 aria-label="Close income details"
               >
                 <FiX size={22} />
@@ -571,19 +571,19 @@ const Billing = () => {
       {isBudgetModalOpen && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+            <div className="flex items-center justify-between border-b border-[#3c096c]/20 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
                   Monthly Budget
                 </p>
-                <h2 className="mt-1 text-2xl font-black text-slate-800">
+                <h2 className="mt-1 text-2xl font-black text-white">
                   Set Budget
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setIsBudgetModalOpen(false)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-lg p-2 text-white/80 hover:bg-white/10 hover:text-white"
                 aria-label="Close monthly budget form"
               >
                 <FiX size={22} />
@@ -643,19 +643,19 @@ const Billing = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
           <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 sm:px-8">
+            <div className="flex items-center justify-between border-b border-[#3c096c]/20 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white sm:px-8">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
                   Income Management
                 </p>
-                <h2 className="mt-1 text-2xl font-black text-slate-800">
+                <h2 className="mt-1 text-2xl font-black text-white">
                   {editingIncomeId ? "Edit Income" : "Add Income"}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-lg p-2 text-white/80 hover:bg-white/10 hover:text-white"
                 aria-label="Close add income form"
               >
                 <FiX size={22} />
