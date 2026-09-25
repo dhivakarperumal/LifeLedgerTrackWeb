@@ -1,6 +1,6 @@
-require("dotenv").config();
-
 const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+
 const express = require("express");
 const cors = require("cors");
 const db = require("./src/config/db");
@@ -16,8 +16,14 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
   immutable: true,
 }));
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
+app.get("/api/health", async (req, res) => {
+  try {
+    await db.query("SELECT 1");
+    res.json({ status: "ok", database: "connected" });
+  } catch (error) {
+    console.error("Health check database error:", error.message);
+    res.status(503).json({ status: "error", database: "disconnected" });
+  }
 });
 
 app.use("/api/auth", require("./src/routes/authRoutes"));
@@ -39,7 +45,7 @@ const fs = require("fs");
 const startServer = async () => {
   try {
     await db.initializeDatabase();
-    app.listen(port, () => {
+    app.listen(port, "0.0.0.0", () => {
       console.log(`Backend server listening on port ${port}`);
     });
   } catch (error) {

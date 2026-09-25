@@ -1,0 +1,4 @@
+PassengerEnabled on
+PassengerAppType node
+PassengerStartupFile Backend/index.js
+Options -MultiViews
