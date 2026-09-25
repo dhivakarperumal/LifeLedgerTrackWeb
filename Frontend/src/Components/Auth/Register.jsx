@@ -110,12 +110,7 @@ function Register() {
 
           <div className="text-center mb-2"><div className="flex justify-center mb-1.5 relative">
               <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full scale-150" />
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" className="text-yellow-600 relative z-10">
-                <path d="M12 22C12 22 19 18 19 12C19 9 17 6.5 14.5 5.5C13.5 5.1 12.5 5 12 5C11.5 5 10.5 5.1 9.5 5.5C7 6.5 5 9 5 12C5 18 12 22 12 22Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M12 22C12 22 15.5 17 15.5 11C15.5 7.5 13.5 4 12 2C10.5 4 8.5 7.5 8.5 11C8.5 17 12 22 12 22Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M14.5 5.5C16.5 4.5 19 4.5 21 6C21 11 17 17 12 22" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M9.5 5.5C7.5 4.5 5 4.5 3 6C3 11 7 17 12 22" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <img src="/logo.png" alt="Life Ledger logo" className="w-15 h-15 object-contain relative z-10" />
             </div>
             
             <p className="text-[11px] text-yellow-700 font-bold tracking-[0.2em] uppercase">Life Ledger</p>
