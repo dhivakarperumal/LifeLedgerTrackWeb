@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   FiPlus,
@@ -14,6 +14,7 @@ import {
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import api from "../../api";
+import { StoreContext } from "../../PrivateRouter/StoreContext";
 
 const initialForm = {
   title: "",
@@ -28,18 +29,13 @@ const initialForm = {
 
 const Billing = () => {
   const location = useLocation();
+  const { monthlyBudget, setMonthlyBudget } = useContext(StoreContext);
   const isIncomePage =
     location.pathname.replace(/\/$/, "") === "/admin/more/income";
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [budgetDraft, setBudgetDraft] = useState("0");
-  const [monthlyBudget, setMonthlyBudget] = useState(() => {
-    const savedBudget = Number(
-      localStorage.getItem("lifeLedgerMonthlyBudget") || 0,
-    );
-    return Number.isFinite(savedBudget) ? savedBudget : 0;
-  });
   const [incomes, setIncomes] = useState([]);
   const [incomeCategoryOptions, setIncomeCategoryOptions] = useState([]);
   const [selectedIncome, setSelectedIncome] = useState(null);
@@ -53,7 +49,7 @@ const Billing = () => {
   const pageSize = 10;
 
   useEffect(() => {
-    localStorage.setItem("lifeLedgerMonthlyBudget", String(monthlyBudget));
+    setBudgetDraft(String(monthlyBudget));
   }, [monthlyBudget]);
 
   useEffect(() => {
@@ -66,6 +62,18 @@ const Billing = () => {
     if (location.state?.openAddIncome) {
       setIsModalOpen(true);
     }
+
+    const loadMonthlyBudget = async () => {
+      try {
+        const response = await api.get("/incomes/monthly-budget");
+        const nextValue = Number(response.data?.monthly_budget ?? 0);
+        if (Number.isFinite(nextValue)) {
+          setMonthlyBudget(nextValue);
+        }
+      } catch (error) {
+        console.error("Fetch Monthly Budget Error:", error);
+      }
+    };
 
     const loadIncome = async () => {
       try {
@@ -104,6 +112,7 @@ const Billing = () => {
       }
     };
 
+    loadMonthlyBudget();
     loadIncome();
   }, [isIncomePage]);
 
@@ -668,16 +677,23 @@ const Billing = () => {
             </div>
 
             <form
-              onSubmit={(event) => {
+              onSubmit={async (event) => {
                 event.preventDefault();
                 const value = Number(budgetDraft || 0);
                 if (!Number.isFinite(value) || value < 0) {
                   toast.error("Please enter a valid monthly budget amount.");
                   return;
                 }
-                setMonthlyBudget(value);
-                setIsBudgetModalOpen(false);
-                toast.success("Monthly budget updated successfully!");
+
+                try {
+                  await api.put("/incomes/monthly-budget", { monthly_budget: value });
+                  setMonthlyBudget(value);
+                  setIsBudgetModalOpen(false);
+                  toast.success("Monthly budget updated successfully!");
+                } catch (error) {
+                  console.error("Save Monthly Budget Error:", error);
+                  toast.error(error.response?.data?.message || "Failed to save monthly budget.");
+                }
               }}
               className="space-y-5 px-6 py-6"
             >

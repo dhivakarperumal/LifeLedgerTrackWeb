@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../PrivateRouter/AuthContext";
 import { useAdmin } from "../PrivateRouter/AdminContext";
+import { StoreContext } from "../PrivateRouter/StoreContext";
 import api from "../api";
 import { toast, Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -75,6 +76,7 @@ ChartJS.register(
 const Dashboard = () => {
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
+    const { monthlyBudget, setMonthlyBudget } = useContext(StoreContext);
     const { dashboardData, setDashboardCached } = useAdmin();
     const [loading, setLoading] = useState(!dashboardData);
     const [salesRange, setSalesRange] = useState("week");
@@ -91,6 +93,22 @@ const Dashboard = () => {
         fetchDashboardData("week");
         fetchRecentActivity();
     }, []);
+
+    useEffect(() => {
+        const loadMonthlyBudget = async () => {
+            try {
+                const response = await api.get("/incomes/monthly-budget");
+                const nextValue = Number(response.data?.monthly_budget ?? 0);
+                if (Number.isFinite(nextValue)) {
+                    setMonthlyBudget(nextValue);
+                }
+            } catch (error) {
+                console.error("Fetch Monthly Budget Error:", error);
+            }
+        };
+
+        loadMonthlyBudget();
+    }, [setMonthlyBudget]);
 
     const getLocalDateKey = (value) => {
         if (!value) return "";
@@ -338,10 +356,9 @@ const Dashboard = () => {
         { gradient: "from-[#7C3AED] to-[#6D28D9]", icon_bg: "bg-white/20" },
     ];
 
-    const savedMonthlyBudget = Number(localStorage.getItem("lifeLedgerMonthlyBudget") || 0);
     const dashboardStats = stats.map((stat) => {
         if (stat.label === "Monthly Budget") {
-            const budgetValue = Number.isFinite(savedMonthlyBudget) && savedMonthlyBudget > 0 ? savedMonthlyBudget : 0;
+            const budgetValue = Number.isFinite(monthlyBudget) && monthlyBudget > 0 ? monthlyBudget : 0;
             return {
                 ...stat,
                 value: `₹${budgetValue.toLocaleString("en-IN")}`,

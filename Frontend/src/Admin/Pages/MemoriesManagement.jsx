@@ -128,9 +128,6 @@ const MemoriesManagement = () => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) {
-        setViewMode("grid");
-      }
     };
 
     handleResize();
@@ -139,10 +136,6 @@ const MemoriesManagement = () => {
   }, []);
 
   const handleViewModeChange = (nextMode) => {
-    if (isMobile) {
-      setViewMode("grid");
-      return;
-    }
     setViewMode(nextMode);
   };
 
@@ -581,8 +574,7 @@ const MemoriesManagement = () => {
           <div className="flex overflow-hidden rounded-[18px] border border-gray-200 bg-white shadow-sm self-start sm:self-auto">
             <button
               onClick={() => handleViewModeChange("table")}
-              disabled={isMobile}
-              className={`flex h-[46px] w-[46px] items-center justify-center transition-all ${viewMode === "table" ? "bg-[#f1e6ff] text-[#7b2cbf]" : "bg-white text-slate-500 hover:bg-slate-50"} ${isMobile ? "cursor-not-allowed opacity-50" : ""}`}
+              className={`flex h-[46px] w-[46px] items-center justify-center transition-all ${viewMode === "table" ? "bg-[#f1e6ff] text-[#7b2cbf]" : "bg-white text-slate-500 hover:bg-slate-50"}`}
               aria-label="Table view"
             >
               <FiList size={17} />
@@ -608,8 +600,8 @@ const MemoriesManagement = () => {
 
       {viewMode === "table" ? (
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="w-full overflow-x-auto overscroll-x-contain">
+            <table className="min-w-[1100px] w-full text-left text-sm">
               <thead>
                 <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] text-[#FCD34D]">
                   {['S No', 'Title', 'Category', 'Date', 'Location', 'Mood', 'Tags', 'Favorite', 'Action'].map((header) => (

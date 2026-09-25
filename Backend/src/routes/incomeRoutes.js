@@ -23,6 +23,9 @@ const upload = multer({
 
 router.use(requireAuth);
 
+router.get("/monthly-budget", incomeController.getMonthlyBudget);
+router.post("/monthly-budget", incomeController.saveMonthlyBudget);
+router.put("/monthly-budget", incomeController.saveMonthlyBudget);
 router.get("/", incomeController.getAllIncome);
 router.post("/", (req, res, next) => {
     upload.single("attachment")(req, res, (error) => {

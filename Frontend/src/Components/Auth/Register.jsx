@@ -80,7 +80,7 @@ function Register() {
       </svg>
 
       {/* MAIN CONTENT ROW: Image + Form */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
 
       {/* LEFT: Sticky Image */}
       <div className="hidden lg:block lg:w-5/12 flex-shrink-0 relative h-full">
@@ -105,7 +105,7 @@ function Register() {
       </div>
 
       {/* RIGHT: Scrollable Form */}
-      <div className="flex-1 flex flex-col justify-center items-center px-4 py-2 sm:px-8 lg:px-12 z-10 relative overflow-hidden">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-8 lg:justify-center lg:px-12 lg:py-2">
         <div className="w-full max-w-[460px]">
 
           <div className="text-center mb-2"><div className="flex justify-center mb-1.5 relative">
@@ -222,7 +222,7 @@ function Register() {
       </div>{/* end MAIN CONTENT ROW */}
 
      
-      <div className="w-full bg-primary border-t border-primary-light/30 shadow-[0_-4px_20px_rgba(0,0,0,0.2)] z-30 flex-shrink-0">
+      <div className="hidden w-full bg-primary border-t border-primary-light/30 shadow-[0_-4px_20px_rgba(0,0,0,0.2)] z-30 flex-shrink-0 sm:block">
         <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-evenly gap-4">
 
           {/* Premium Quality */}

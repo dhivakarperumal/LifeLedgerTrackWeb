@@ -75,6 +75,7 @@ const initializeDatabase = async () => {
       state VARCHAR(100),
       country VARCHAR(100) DEFAULT 'India',
       zip_code VARCHAR(50),
+      monthly_budget DECIMAL(12,2) NOT NULL DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS categories (
@@ -95,6 +96,7 @@ const initializeDatabase = async () => {
       title VARCHAR(255) NOT NULL,
       amount DECIMAL(12,2) NOT NULL,
       remaining_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+      monthly_budget DECIMAL(12,2) NOT NULL DEFAULT 0,
       category VARCHAR(100) NOT NULL,
       income_date DATE NOT NULL,
       payment_method VARCHAR(100),
@@ -311,12 +313,14 @@ const initializeDatabase = async () => {
     await pool.query("SET FOREIGN_KEY_CHECKS = 1");
   }
 
+  await ensureColumn("users", "monthly_budget", "DECIMAL(12,2) NOT NULL DEFAULT 0");
   await ensureColumn("memories", "media_gallery", "JSON NULL");
   await ensureColumn("memories", "media_type", "VARCHAR(50) DEFAULT 'image'");
   await ensureColumn("memories", "voice_note", "TEXT NULL");
   await ensureColumn("memories", "category_name", "VARCHAR(120) NULL");
   await ensureColumn("memories", "category_color", "VARCHAR(30) DEFAULT '#8B5CF6'");
   await ensureColumn("income", "user_id", "VARCHAR(50) NULL");
+  await ensureColumn("income", "monthly_budget", "DECIMAL(12,2) NOT NULL DEFAULT 0");
   await ensureColumn("income", "created_by", "VARCHAR(50) NULL");
   await ensureColumn("income", "updated_by", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "user_id", "VARCHAR(50) NULL");
