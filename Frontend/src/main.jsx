@@ -1,7 +1,7 @@
 import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createHashRouter, RouterProvider } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "./PrivateRouter/AuthContext.jsx";
 import { StoreProvider } from "./PrivateRouter/StoreContext.jsx";
@@ -34,7 +34,7 @@ const Reports = React.lazy(() => import("./Admin/Pages/Reports.jsx"));
 const CalendarReminder = React.lazy(() => import("./Admin/Pages/CalendarReminder.jsx"));
 const Profile = React.lazy(() => import("./Admin/Pages/Profile.jsx"));
 
-const router = createBrowserRouter([
+const router = createHashRouter([
   {
     path: "/",
     element: <Login />,
