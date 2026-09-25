@@ -132,11 +132,13 @@ function Login() {
           <div className="text-center mb-5">
             <div className="flex justify-center mb-2 relative">
               <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full scale-150" />
-              <img
-                src="/logo.png"
-                alt="Life Ledger logo"
-                className="w-15 h-15 object-contain relative z-10 drop-shadow-sm"
-              />
+              <div className="relative z-10 rounded-full border border-yellow-300/70 bg-white/80 p-2 shadow-[0_0_20px_rgba(251,191,36,0.18)] backdrop-blur-sm">
+                <img
+                  src="/logo.png"
+                  alt="Life Ledger logo"
+                  className="w-16 h-16 object-contain"
+                />
+              </div>
             </div>
             
             <p className="text-xs text-yellow-700 font-bold tracking-[0.2em] uppercase mb-4">Your personal life dashboard</p>
