@@ -6,6 +6,8 @@ const { requireAuth } = require("../middleware/auth");
 const memoryController = require("../controllers/memoryController");
 
 const router = express.Router();
+const MAX_MEDIA_FILES = 10;
+const MAX_MEDIA_FILE_SIZE = 30 * 1024 * 1024;
 const uploadDir = path.join(__dirname, "..", "..", "uploads", "memories");
 fs.mkdirSync(path.join(uploadDir, "images"), { recursive: true });
 fs.mkdirSync(path.join(uploadDir, "videos"), { recursive: true });
@@ -41,9 +43,23 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 30 * 1024 * 1024 },
+  limits: { fileSize: MAX_MEDIA_FILE_SIZE, files: MAX_MEDIA_FILES },
   fileFilter,
 });
+
+const handleUploadError = (error, req, res, next) => {
+  if (!(error instanceof multer.MulterError)) return next(error);
+
+  if (error.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ message: "Each media file must be 30 MB or smaller." });
+  }
+
+  if (error.code === "LIMIT_UNEXPECTED_FILE" || error.code === "LIMIT_FILE_COUNT") {
+    return res.status(400).json({ message: `A memory can have at most ${MAX_MEDIA_FILES} media files.` });
+  }
+
+  return res.status(400).json({ message: "The media upload exceeded the allowed limits." });
+};
 
 router.use(requireAuth);
 
@@ -54,8 +70,8 @@ router.delete("/categories/:id", memoryController.deleteMemoryCategory);
 
 router.get("/", memoryController.getMemories);
 router.get("/:id", memoryController.getMemoryById);
-router.post("/", upload.array("media", 10), memoryController.createMemory);
-router.put("/:id", upload.array("media", 10), memoryController.updateMemory);
+router.post("/", upload.array("media", MAX_MEDIA_FILES), handleUploadError, memoryController.createMemory);
+router.put("/:id", upload.array("media", MAX_MEDIA_FILES), handleUploadError, memoryController.updateMemory);
 router.patch("/:id/favorite", memoryController.toggleFavorite);
 router.delete("/:id", memoryController.deleteMemory);
 

@@ -25,6 +25,9 @@ import {
   FiClock,
 } from "react-icons/fi";
 
+const MAX_MEDIA_FILES = 10;
+const MAX_MEDIA_FILE_SIZE = 30 * 1024 * 1024;
+
 const formatDate = (value) => {
   if (!value) return "No date";
   const date = new Date(value);
@@ -342,8 +345,20 @@ const MemoriesManagement = () => {
       return;
     }
 
+    const filesToUpload = getAllNewFiles();
+    if (filesToUpload.length > MAX_MEDIA_FILES) {
+      toast.error(`Choose no more than ${MAX_MEDIA_FILES} new media files.`);
+      return;
+    }
+    const oversizedFile = filesToUpload.find((file) => file.size > MAX_MEDIA_FILE_SIZE);
+    if (oversizedFile) {
+      toast.error(`${oversizedFile.name} exceeds the 30 MB per-file limit.`);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
+      const isEditing = Boolean(editingId);
       const formData = new FormData();
 
       Object.entries(form).forEach(([key, value]) => {
@@ -363,18 +378,17 @@ const MemoriesManagement = () => {
       if (removedVideoIds.length) formData.append("removed_video_ids", JSON.stringify(removedVideoIds));
       if (removedAudioIds.length) formData.append("removed_audio_ids", JSON.stringify(removedAudioIds));
 
-      getAllNewFiles().forEach((file) => {
-        formData.append("media", file);
-      });
-
+      let response;
       if (editingId) {
-        await api.put(`/memories/${editingId}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
-        toast.success("Memory updated successfully.");
+        response = await api.put(`/memories/${editingId}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
       } else {
-        await api.post("/memories", formData, { headers: { "Content-Type": "multipart/form-data" } });
-        toast.success("Memory created successfully.");
+        response = await api.post("/memories", formData, { headers: { "Content-Type": "multipart/form-data" } });
       }
 
+      const savedMemory = response.data;
+      setMemories((previous) => isEditing
+        ? previous.map((memory) => memory.id === savedMemory.id ? savedMemory : memory)
+        : [savedMemory, ...previous]);
       setIsEditorOpen(false);
       setForm(initialForm);
       setExistingImages([]);
@@ -387,7 +401,32 @@ const MemoriesManagement = () => {
       setRemovedVideoIds([]);
       setRemovedAudioIds([]);
       setRecordedVoiceName("");
-      fetchData();
+
+      if (filesToUpload.length) {
+        const uploadToastId = `memory-upload-${savedMemory.id}`;
+        toast.loading("Memory saved. Uploading media... 0%", { id: uploadToastId });
+        const mediaFormData = new FormData();
+        filesToUpload.forEach((file) => mediaFormData.append("media", file));
+
+        api.put(`/memories/${savedMemory.id}`, mediaFormData, {
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: (event) => {
+            if (!event.total) return;
+            const percent = Math.round((event.loaded * 100) / event.total);
+            toast.loading(`Memory saved. Uploading media... ${percent}%`, { id: uploadToastId });
+          },
+        })
+          .then((uploadResponse) => {
+            const uploadedMemory = uploadResponse.data;
+            setMemories((previous) => previous.map((memory) => memory.id === uploadedMemory.id ? uploadedMemory : memory));
+            toast.success("Memory and media saved.", { id: uploadToastId });
+          })
+          .catch(() => {
+            toast.error("Memory saved, but media upload failed. Edit the memory to try again.", { id: uploadToastId });
+          });
+      } else {
+        toast.success(isEditing ? "Memory updated successfully." : "Memory created successfully.");
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong.");
     } finally {
@@ -874,6 +913,18 @@ const MemoriesManagement = () => {
                         multiple
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
+                          const mediaFiles = files.filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/") || file.type.startsWith("audio/"));
+                          const oversizedFile = mediaFiles.find((file) => file.size > MAX_MEDIA_FILE_SIZE);
+                          if (oversizedFile) {
+                            toast.error(`${oversizedFile.name} exceeds the 30 MB per-file limit.`);
+                            e.target.value = "";
+                            return;
+                          }
+                          if (mergeUniqueFiles(getAllNewFiles(), mediaFiles).length > MAX_MEDIA_FILES) {
+                            toast.error(`Choose no more than ${MAX_MEDIA_FILES} new media files.`);
+                            e.target.value = "";
+                            return;
+                          }
                           const imageFiles = files.filter((file) => file.type.startsWith("image/"));
                           const videoFiles = files.filter((file) => file.type.startsWith("video/"));
                           const audioFiles = files.filter((file) => file.type.startsWith("audio/"));
@@ -893,7 +944,7 @@ const MemoriesManagement = () => {
                       />
                     </label>
                     <span className="text-sm text-slate-500">
-                      {(newImages.length + newVideos.length + newAudios.length) ? `${newImages.length + newVideos.length + newAudios.length} new file(s) selected` : "No file chosen"}
+                      {(newImages.length + newVideos.length + newAudios.length) ? `${newImages.length + newVideos.length + newAudios.length} new file(s) selected` : "No file chosen"} (max 10 files, 30 MB each)
                     </span>
                   </div>
 
