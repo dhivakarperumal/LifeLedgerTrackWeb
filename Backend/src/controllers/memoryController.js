@@ -336,6 +336,7 @@ const updateMemory = async (req, res) => {
     const removedImageIds = parseJsonArray(req.body.removed_image_ids);
     const removedVideoIds = parseJsonArray(req.body.removed_video_ids);
     const removedAudioIds = parseJsonArray(req.body.removed_audio_ids);
+    const removedZipIds = parseJsonArray(req.body.removed_zip_ids);
 
     const existingGallery = normalizeGalleryEntries(normalizeMediaGallery(existing[0][0].media_gallery || existing[0][0].gallery || []));
     const remainingGallery = existingGallery.filter((entry) => {
@@ -343,9 +344,11 @@ const updateMemory = async (req, res) => {
         removedImageIds.includes(entry.id) ||
         removedVideoIds.includes(entry.id) ||
         removedAudioIds.includes(entry.id) ||
+        removedZipIds.includes(entry.id) ||
         removedImageIds.includes(entry.value) ||
         removedVideoIds.includes(entry.value) ||
-        removedAudioIds.includes(entry.value);
+        removedAudioIds.includes(entry.value) ||
+        removedZipIds.includes(entry.value);
       return !isRemoved;
     }).map((entry) => entry.value);
 

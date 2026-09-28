@@ -6,6 +6,7 @@ const { requireAuth } = require("../middleware/auth");
 const diaryController = require("../controllers/diaryController");
 
 const router = express.Router();
+const MAX_ATTACHMENT_FILE_SIZE = 100 * 1024 * 1024;
 const uploadDir = path.join(__dirname, "..", "..", "uploads", "diary");
 fs.mkdirSync(path.join(uploadDir, "images"), { recursive: true });
 fs.mkdirSync(path.join(uploadDir, "videos"), { recursive: true });
@@ -50,9 +51,19 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 15 * 1024 * 1024 },
+  limits: { fileSize: MAX_ATTACHMENT_FILE_SIZE },
   fileFilter,
 });
+
+const handleUploadError = (error, req, res, next) => {
+  if (!(error instanceof multer.MulterError)) return next(error);
+
+  if (error.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ message: "Each diary attachment must be 100 MB or smaller." });
+  }
+
+  return res.status(400).json({ message: "The diary attachment upload exceeded the allowed limits." });
+};
 
 router.use(requireAuth);
 
@@ -67,7 +78,7 @@ router.post("/", diaryController.createDiaryEntry);
 router.put("/:id", diaryController.updateDiaryEntry);
 router.delete("/:id", diaryController.deleteDiaryEntry);
 router.patch("/:id/favorite", diaryController.toggleFavorite);
-router.post("/:id/attachments", upload.single("file"), diaryController.addAttachment);
+router.post("/:id/attachments", upload.single("file"), handleUploadError, diaryController.addAttachment);
 router.delete("/attachments/:id", diaryController.deleteAttachment);
 
 module.exports = router;

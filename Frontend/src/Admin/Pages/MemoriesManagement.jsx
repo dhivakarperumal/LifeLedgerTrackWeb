@@ -68,7 +68,8 @@ const getFileTypeFromName = (fileName = "", fallbackType = "application/octet-st
     return `image/${extension === "jpg" ? "jpeg" : extension}`;
   }
 
-  if (["mp4", "webm", "ogg", "mov", "m4v"].includes(extension)) {
+  if (["mp4", "webm", "ogg", "mov", "m4v", "mkv", "avi", "mpeg", "mpg", "3gp", "3g2", "wmv", "flv"].includes(extension)) {
+    if (["mkv", "avi", "mpeg", "mpg", "3gp", "3g2", "wmv", "flv"].includes(extension)) return "video/mp4";
     return `video/${extension === "m4v" ? "mp4" : extension}`;
   }
 
@@ -79,8 +80,23 @@ const getFileTypeFromName = (fileName = "", fallbackType = "application/octet-st
   if (name.endsWith(".pdf")) return "application/pdf";
   if (name.endsWith(".doc") || name.endsWith(".docx")) return "application/msword";
   if (name.endsWith(".xls") || name.endsWith(".xlsx")) return "application/vnd.ms-excel";
+  if (name.endsWith(".zip")) return "application/zip";
+  if (name.endsWith(".rar")) return "application/x-rar-compressed";
 
   return fallbackType || "application/octet-stream";
+};
+
+const getUploadMediaCategory = (file) => {
+  const mimeType = String(file?.type || "").toLowerCase();
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+
+  const inferredType = getFileTypeFromName(file?.name);
+  if (inferredType.startsWith("image/")) return "image";
+  if (inferredType.startsWith("video/")) return "video";
+  if (inferredType.startsWith("audio/")) return "audio";
+  return "";
 };
 
 const initialForm = {
@@ -110,18 +126,23 @@ const MemoriesManagement = () => {
   const [loading, setLoading] = useState(true);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [isUploadFinalizing, setIsUploadFinalizing] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [existingImages, setExistingImages] = useState([]);
   const [existingVideos, setExistingVideos] = useState([]);
   const [existingAudios, setExistingAudios] = useState([]);
+  const [existingZips, setExistingZips] = useState([]);
   const [newImages, setNewImages] = useState([]);
   const [newVideos, setNewVideos] = useState([]);
   const [newAudios, setNewAudios] = useState([]);
+  const [newZips, setNewZips] = useState([]);
   const [removedImageIds, setRemovedImageIds] = useState([]);
   const [removedVideoIds, setRemovedVideoIds] = useState([]);
   const [removedAudioIds, setRemovedAudioIds] = useState([]);
+  const [removedZipIds, setRemovedZipIds] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVoiceName, setRecordedVoiceName] = useState("");
   const mediaRecorderRef = useRef(null);
@@ -154,7 +175,7 @@ const MemoriesManagement = () => {
     return URL.createObjectURL(file);
   };
 
-  const getAllNewFiles = () => [...newImages, ...newVideos, ...newAudios];
+  const getAllNewFiles = () => [...newImages, ...newVideos, ...newAudios, ...newZips];
 
   const normalizeExistingMedia = (memoryItem) => {
     const gallery = Array.isArray(memoryItem?.media_gallery) && memoryItem.media_gallery.length
@@ -185,6 +206,7 @@ const MemoriesManagement = () => {
     const images = [];
     const videos = [];
     const audios = [];
+    const zips = [];
 
     mediaList.forEach((item) => {
       const lowerType = String(item?.type || item?.file_type || "").toLowerCase();
@@ -192,33 +214,44 @@ const MemoriesManagement = () => {
       const isImage = lowerType.startsWith("image/") || lowerType.includes("image") || /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(fileName);
       const isVideo = lowerType.startsWith("video/") || lowerType.includes("video") || /\.(mp4|webm|mov|m4v|ogg)$/i.test(fileName);
       const isAudio = lowerType.startsWith("audio/") || lowerType.includes("audio") || /\.(mp3|wav|m4a|aac)$/i.test(fileName);
+      const isZip = lowerType.includes("zip") || lowerType.includes("compressed") || /\.(zip|rar|7z)$/i.test(fileName);
 
       if (isImage) images.push(item);
-      if (isVideo) videos.push(item);
-      if (isAudio) audios.push(item);
+      else if (isVideo) videos.push(item);
+      else if (isAudio) audios.push(item);
+      else zips.push(item);
     });
 
-    return { images, videos, audios };
+    return { images, videos, audios, zips };
   };
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [memoriesRes, categoriesRes] = await Promise.all([
+      const [memoriesResult, categoriesResult] = await Promise.allSettled([
         api.get("/memories"),
         api.get("/categories"),
       ]);
 
-      const sharedCategories = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
+      if (memoriesResult.status === "rejected") throw memoriesResult.reason;
+
+      const sharedCategories = categoriesResult.status === "fulfilled" && Array.isArray(categoriesResult.value.data)
+        ? categoriesResult.value.data
+        : [];
       const memoryOnlyCategories = sharedCategories.filter((category) => {
         const typeValue = String(category?.catType || category?.type || category?.category_type || "").trim().toLowerCase();
         return !typeValue || typeValue === "memory" || typeValue === "memories";
       });
 
-      setMemories(Array.isArray(memoriesRes.data) ? memoriesRes.data : []);
+      setMemories(Array.isArray(memoriesResult.value.data) ? memoriesResult.value.data : []);
       setCategories(memoryOnlyCategories);
+      if (categoriesResult.status === "rejected") {
+        console.error("Failed to load memory categories:", categoriesResult.reason);
+        toast.error("Memories loaded, but categories could not be loaded.");
+      }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load memories.");
+      console.error("Failed to load memories:", error);
+      toast.error(error.response?.data?.message || `Failed to load memories: ${error.message || "server error"}`);
     } finally {
       setLoading(false);
     }
@@ -285,12 +318,15 @@ const MemoriesManagement = () => {
     setExistingImages([]);
     setExistingVideos([]);
     setExistingAudios([]);
+    setExistingZips([]);
     setNewImages([]);
     setNewVideos([]);
     setNewAudios([]);
+    setNewZips([]);
     setRemovedImageIds([]);
     setRemovedVideoIds([]);
     setRemovedAudioIds([]);
+    setRemovedZipIds([]);
     setRecordedVoiceName("");
     setForm({
       ...initialForm,
@@ -303,17 +339,20 @@ const MemoriesManagement = () => {
     setEditingId(memory.id);
     setSelectedMemory(memory);
     const normalized = normalizeExistingMedia(memory);
-    const { images, videos, audios } = splitExistingMedia(normalized);
+    const { images, videos, audios, zips } = splitExistingMedia(normalized);
 
     setExistingImages(images);
     setExistingVideos(videos);
     setExistingAudios(audios);
+    setExistingZips(zips);
     setNewImages([]);
     setNewVideos([]);
     setNewAudios([]);
+    setNewZips([]);
     setRemovedImageIds([]);
     setRemovedVideoIds([]);
     setRemovedAudioIds([]);
+    setRemovedZipIds([]);
     setRecordedVoiceName("");
     setForm({
       title: memory.title || "",
@@ -356,8 +395,11 @@ const MemoriesManagement = () => {
       return;
     }
 
+    let memorySaved = false;
     try {
       setIsSubmitting(true);
+      setUploadProgress(filesToUpload.length ? 0 : null);
+      setIsUploadFinalizing(false);
       const isEditing = Boolean(editingId);
       const formData = new FormData();
 
@@ -377,6 +419,7 @@ const MemoriesManagement = () => {
       if (removedImageIds.length) formData.append("removed_image_ids", JSON.stringify(removedImageIds));
       if (removedVideoIds.length) formData.append("removed_video_ids", JSON.stringify(removedVideoIds));
       if (removedAudioIds.length) formData.append("removed_audio_ids", JSON.stringify(removedAudioIds));
+      if (removedZipIds.length) formData.append("removed_zip_ids", JSON.stringify(removedZipIds));
 
       let response;
       if (editingId) {
@@ -386,51 +429,64 @@ const MemoriesManagement = () => {
       }
 
       const savedMemory = response.data;
+      memorySaved = true;
       setMemories((previous) => isEditing
         ? previous.map((memory) => memory.id === savedMemory.id ? savedMemory : memory)
         : [savedMemory, ...previous]);
-      setIsEditorOpen(false);
-      setForm(initialForm);
-      setExistingImages([]);
-      setExistingVideos([]);
-      setExistingAudios([]);
-      setNewImages([]);
-      setNewVideos([]);
-      setNewAudios([]);
-      setRemovedImageIds([]);
-      setRemovedVideoIds([]);
-      setRemovedAudioIds([]);
-      setRecordedVoiceName("");
 
       if (filesToUpload.length) {
+        setEditingId(savedMemory.id);
+        setSelectedMemory(savedMemory);
         const uploadToastId = `memory-upload-${savedMemory.id}`;
-        toast.loading("Memory saved. Uploading media... 0%", { id: uploadToastId });
+        toast.loading("Memory saved. Please wait while media uploads: 0%", { id: uploadToastId });
         const mediaFormData = new FormData();
         filesToUpload.forEach((file) => mediaFormData.append("media", file));
 
-        api.put(`/memories/${savedMemory.id}`, mediaFormData, {
+        const uploadResponse = await api.put(`/memories/${savedMemory.id}`, mediaFormData, {
           headers: { "Content-Type": "multipart/form-data" },
           onUploadProgress: (event) => {
             if (!event.total) return;
             const percent = Math.round((event.loaded * 100) / event.total);
-            toast.loading(`Memory saved. Uploading media... ${percent}%`, { id: uploadToastId });
+            setUploadProgress(percent);
+            setIsUploadFinalizing(percent >= 100);
+            toast.loading(
+              percent >= 100
+                ? "Upload sent. Please wait while media is finalized..."
+                : `Memory saved. Please wait while media uploads: ${percent}%`,
+              { id: uploadToastId }
+            );
           },
-        })
-          .then((uploadResponse) => {
-            const uploadedMemory = uploadResponse.data;
-            setMemories((previous) => previous.map((memory) => memory.id === uploadedMemory.id ? uploadedMemory : memory));
-            toast.success("Memory and media saved.", { id: uploadToastId });
-          })
-          .catch(() => {
-            toast.error("Memory saved, but media upload failed. Edit the memory to try again.", { id: uploadToastId });
-          });
+        });
+        const uploadedMemory = uploadResponse.data;
+        setMemories((previous) => previous.map((memory) => memory.id === uploadedMemory.id ? uploadedMemory : memory));
+        openEditMemory(uploadedMemory);
+        toast.success("Memory and media saved.", { id: uploadToastId });
       } else {
         toast.success(isEditing ? "Memory updated successfully." : "Memory created successfully.");
+        setIsEditorOpen(false);
+        setForm(initialForm);
+        setExistingImages([]);
+        setExistingVideos([]);
+        setExistingAudios([]);
+        setExistingZips([]);
+        setNewImages([]);
+        setNewVideos([]);
+        setNewAudios([]);
+        setNewZips([]);
+        setRemovedImageIds([]);
+        setRemovedVideoIds([]);
+        setRemovedAudioIds([]);
+        setRemovedZipIds([]);
+        setRecordedVoiceName("");
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Something went wrong.");
+      console.error("Memory save/upload failed:", error);
+      const message = error.response?.data?.message || error.message || "Unexpected error.";
+      toast.error(memorySaved ? `Memory saved, but media upload failed: ${message}` : message);
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
+      setIsUploadFinalizing(false);
     }
   };
 
@@ -514,6 +570,7 @@ const MemoriesManagement = () => {
     const isVideo = fileType.startsWith("video/");
     const isAudio = fileType.startsWith("audio/");
     const isPdf = fileType === "application/pdf" || String(item?.name || "").toLowerCase().endsWith(".pdf");
+    const isZip = fileType.includes("zip") || fileType.includes("compressed") || String(item?.name || "").match(/\.(zip|rar|7z)$/i);
 
     return (
       <div key={item?.id || `${item?.name || "media"}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
@@ -528,6 +585,11 @@ const MemoriesManagement = () => {
             </div>
           ) : isPdf ? (
             <iframe src={previewUrl} title={item?.name || "PDF preview"} className="h-44 w-full border-0 bg-white" />
+          ) : isZip ? (
+            <div className="flex h-44 flex-col items-center justify-center bg-slate-200 px-3 text-center text-sm font-medium text-slate-700">
+              <span className="mb-1 text-3xl">🗜️</span>
+              <span className="line-clamp-2">{item?.name || "Archive file"}</span>
+            </div>
           ) : (
             <div className="flex h-44 flex-col items-center justify-center bg-slate-200 px-3 text-center text-sm font-medium text-slate-700">
               <span className="mb-1 text-xl">📄</span>
@@ -830,11 +892,12 @@ const MemoriesManagement = () => {
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
             <div className="mb-0 flex items-center justify-between border-b border-[#3c096c]/20 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white">
               <h2 className="text-2xl font-bold text-white">{editingId ? "Edit Memory" : "Create Memory"}</h2>
-              <button onClick={() => setIsEditorOpen(false)} className="rounded-full bg-white/10 p-2 text-white/80 hover:bg-white/15 hover:text-white"><FiX /></button>
+              <button type="button" onClick={() => setIsEditorOpen(false)} disabled={isSubmitting} className="rounded-full bg-white/10 p-2 text-white/80 hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"><FiX /></button>
             </div>
             <div className="p-6 text-slate-800">
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              <fieldset disabled={isSubmitting} className="contents">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="md:col-span-2">
                   <label className="mb-2 block text-sm font-medium text-slate-700">Title</label>
@@ -913,7 +976,7 @@ const MemoriesManagement = () => {
                         multiple
                         onChange={(e) => {
                           const files = Array.from(e.target.files || []);
-                          const mediaFiles = files.filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/") || file.type.startsWith("audio/"));
+                          const mediaFiles = files.filter((file) => getUploadMediaCategory(file));
                           const oversizedFile = mediaFiles.find((file) => file.size > MAX_MEDIA_FILE_SIZE);
                           if (oversizedFile) {
                             toast.error(`${oversizedFile.name} exceeds the 100 MB per-file limit.`);
@@ -925,9 +988,9 @@ const MemoriesManagement = () => {
                             e.target.value = "";
                             return;
                           }
-                          const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-                          const videoFiles = files.filter((file) => file.type.startsWith("video/"));
-                          const audioFiles = files.filter((file) => file.type.startsWith("audio/"));
+                          const imageFiles = files.filter((file) => getUploadMediaCategory(file) === "image");
+                          const videoFiles = files.filter((file) => getUploadMediaCategory(file) === "video");
+                          const audioFiles = files.filter((file) => getUploadMediaCategory(file) === "audio");
 
                           setNewImages((prevFiles) => mergeUniqueFiles(prevFiles, imageFiles));
                           setNewVideos((prevFiles) => mergeUniqueFiles(prevFiles, videoFiles));
@@ -948,7 +1011,7 @@ const MemoriesManagement = () => {
                     </span>
                   </div>
 
-                  {((existingImages.length > 0 || existingVideos.length > 0 || existingAudios.length > 0 || newImages.length > 0 || newVideos.length > 0 || newAudios.length > 0) && (
+                  {((existingImages.length > 0 || existingVideos.length > 0 || existingAudios.length > 0 || existingZips.length > 0 || newImages.length > 0 || newVideos.length > 0 || newAudios.length > 0 || newZips.length > 0) && (
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       {existingImages.map((item, index) => renderMediaPreviewCard(item, index, () => {
                         setRemovedImageIds((prev) => [...new Set([...prev, item.id])]);
@@ -962,11 +1025,58 @@ const MemoriesManagement = () => {
                         setRemovedAudioIds((prev) => [...new Set([...prev, item.id])]);
                         setExistingAudios((prev) => prev.filter((audio) => audio.id !== item.id));
                       }))}
+                      {existingZips.map((item, index) => renderMediaPreviewCard(item, index, () => {
+                        setRemovedZipIds((prev) => [...new Set([...prev, item.id])]);
+                        setExistingZips((prev) => prev.filter((zip) => zip.id !== item.id));
+                      }))}
                       {newImages.map((file, index) => renderMediaPreviewCard(file, index, () => setNewImages((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))))}
                       {newVideos.map((file, index) => renderMediaPreviewCard(file, index, () => setNewVideos((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))))}
                       {newAudios.map((file, index) => renderMediaPreviewCard(file, index, () => setNewAudios((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))))}
+                      {newZips.map((file, index) => renderMediaPreviewCard(file, index, () => setNewZips((prevFiles) => prevFiles.filter((_, itemIndex) => itemIndex !== index))))}
                     </div>
                   ))}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Upload ZIP files</label>
+                  <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3">
+                    <label className="cursor-pointer rounded-xl bg-slate-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
+                      Choose ZIPs
+                      <input
+                        type="file"
+                        accept=".zip,.rar,.7z"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          const zipFiles = files.filter((file) => 
+                            file.name.endsWith('.zip') || 
+                            file.name.endsWith('.rar') || 
+                            file.name.endsWith('.7z') ||
+                            file.type === 'application/zip' ||
+                            file.type === 'application/x-zip-compressed'
+                          );
+                          const oversizedFile = zipFiles.find((file) => file.size > MAX_MEDIA_FILE_SIZE);
+                          if (oversizedFile) {
+                            toast.error(`${oversizedFile.name} exceeds the 100 MB per-file limit.`);
+                            e.target.value = "";
+                            return;
+                          }
+                          if (mergeUniqueFiles(getAllNewFiles(), zipFiles).length > MAX_MEDIA_FILES) {
+                            toast.error(`Choose no more than ${MAX_MEDIA_FILES} total files.`);
+                            e.target.value = "";
+                            return;
+                          }
+                          
+                          setNewZips((prevFiles) => mergeUniqueFiles(prevFiles, zipFiles));
+                          e.target.value = "";
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-sm text-slate-500">
+                      {newZips.length ? `${newZips.length} new zip(s) selected` : "No zip chosen"} (max 10 total files, 100 MB each)
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -978,10 +1088,17 @@ const MemoriesManagement = () => {
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setIsEditorOpen(false)} className="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-200">Cancel</button>
                   <button type="submit" disabled={isSubmitting} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-70">
-                    <FiSave /> {isSubmitting ? "Saving..." : editingId ? "Update" : "Create"}
+                    <FiSave /> {isSubmitting
+                      ? uploadProgress === null
+                        ? "Saving..."
+                        : isUploadFinalizing
+                          ? "Finishing upload..."
+                          : `Uploading ${uploadProgress}%`
+                      : editingId ? "Update" : "Create"}
                   </button>
                 </div>
               </div>
+              </fieldset>
             </form>
             </div>
           </div>

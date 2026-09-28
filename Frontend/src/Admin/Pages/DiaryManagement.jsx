@@ -11,6 +11,8 @@ import {
   FiGrid, FiList, FiChevronLeft, FiChevronRight,
 } from "react-icons/fi";
 
+const MAX_ATTACHMENT_FILE_SIZE = 100 * 1024 * 1024;
+
 const defaultMoodOptions = [
   { value: "Happy", emoji: "😊" },
   { value: "Excited", emoji: "😍" },
@@ -134,12 +136,15 @@ const DiaryManagement = () => {
   const [existingImages, setExistingImages] = useState([]);
   const [existingVideos, setExistingVideos] = useState([]);
   const [existingAudios, setExistingAudios] = useState([]);
+  const [existingZips, setExistingZips] = useState([]);
   const [newImages, setNewImages] = useState([]);
   const [newVideos, setNewVideos] = useState([]);
   const [newAudios, setNewAudios] = useState([]);
+  const [newZips, setNewZips] = useState([]);
   const [removedImageIds, setRemovedImageIds] = useState([]);
   const [removedVideoIds, setRemovedVideoIds] = useState([]);
   const [removedAudioIds, setRemovedAudioIds] = useState([]);
+  const [removedZipIds, setRemovedZipIds] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -168,12 +173,15 @@ const DiaryManagement = () => {
     setExistingImages([]);
     setExistingVideos([]);
     setExistingAudios([]);
+    setExistingZips([]);
     setNewImages([]);
     setNewVideos([]);
     setNewAudios([]);
+    setNewZips([]);
     setRemovedImageIds([]);
     setRemovedVideoIds([]);
     setRemovedAudioIds([]);
+    setRemovedZipIds([]);
   };
 
   const normalizeExistingDiaryMedia = (entry) => {
@@ -474,24 +482,39 @@ const DiaryManagement = () => {
     setFormState((prev) => ({ ...prev, content: editorRef.current?.innerHTML || "" }));
   };
 
-  const uploadAttachmentFiles = async (entryId, pendingFiles = []) => {
+  const uploadAttachmentFiles = async (entryId, pendingFiles = [], toastId) => {
     const validFiles = (pendingFiles || []).filter((file) => file instanceof File || file instanceof Blob);
     if (!entryId || !validFiles.length) return;
 
-    await Promise.all(
-      validFiles.map(async (file) => {
-        const formData = new FormData();
-        formData.append("file", file);
-        await api.post(`/diary/${entryId}/attachments`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      })
-    );
+    for (const [index, file] of validFiles.entries()) {
+      const formData = new FormData();
+      formData.append("file", file);
+      await api.post(`/diary/${entryId}/attachments`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (event) => {
+          if (!toastId || !event.total) return;
+          const percent = Math.round((event.loaded * 100) / event.total);
+          toast.loading(`Diary saved. Uploading ${index + 1}/${validFiles.length}: ${percent}%`, { id: toastId });
+        },
+      });
+    }
   };
 
   const handleSubmit = async (saveStatus = "published") => {
     if (!formState.title.trim() || !formState.content.trim()) {
       toast.error("Title and diary content are required.");
+      return;
+    }
+
+    const newUploadFiles = mergeUniqueFiles([], [
+      ...newImages,
+      ...newVideos,
+      ...newAudios,
+      ...files.filter((file) => file instanceof File || file instanceof Blob),
+    ]);
+    const oversizedFile = newUploadFiles.find((file) => file.size > MAX_ATTACHMENT_FILE_SIZE);
+    if (oversizedFile) {
+      toast.error(`${oversizedFile.name || "Attachment"} exceeds the 100 MB per-file limit.`);
       return;
     }
 
@@ -516,18 +539,11 @@ const DiaryManagement = () => {
       let response;
       if (editingId) {
         response = await api.put(`/diary/${editingId}`, payload, config);
-        toast.success("Diary updated successfully.");
       } else {
         response = await api.post("/diary", payload, config);
-        toast.success("Diary saved successfully.");
       }
 
       const savedEntryId = response?.data?.id || editingId;
-      const newUploadFiles = [...newImages, ...newVideos, ...newAudios, ...files.filter((file) => file instanceof File || file instanceof Blob)];
-      if (newUploadFiles.length) {
-        await uploadAttachmentFiles(savedEntryId, newUploadFiles);
-      }
-
       localStorage.removeItem("diary-draft-temp");
       setEditingId(savedEntryId);
       setSelectedEntry(response.data || selectedEntry);
@@ -545,6 +561,21 @@ const DiaryManagement = () => {
       setDraftSaved(true);
       await fetchData();
       closeEditor();
+
+      if (newUploadFiles.length) {
+        const uploadToastId = `diary-upload-${savedEntryId}`;
+        toast.loading("Diary saved. Uploading attachments... 0%", { id: uploadToastId });
+        void uploadAttachmentFiles(savedEntryId, newUploadFiles, uploadToastId)
+          .then(async () => {
+            toast.success("Diary attachments uploaded.", { id: uploadToastId });
+            await fetchData();
+          })
+          .catch((error) => {
+            toast.error(error.response?.data?.message || "Diary saved, but an attachment failed to upload.", { id: uploadToastId });
+          });
+      } else {
+        toast.success(editingId ? "Diary updated successfully." : "Diary saved successfully.");
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || "Unable to save diary entry.");
     }
@@ -573,6 +604,12 @@ const DiaryManagement = () => {
 
   const handleFiles = (e) => {
     const selectedFiles = Array.from(e.target.files || []);
+    const oversizedFile = selectedFiles.find((file) => file.size > MAX_ATTACHMENT_FILE_SIZE);
+    if (oversizedFile) {
+      toast.error(`${oversizedFile.name} exceeds the 100 MB per-file limit.`);
+      e.target.value = "";
+      return;
+    }
     const imageFiles = selectedFiles.filter((file) => file.type.startsWith("image/"));
     const videoFiles = selectedFiles.filter((file) => file.type.startsWith("video/"));
     const audioFiles = selectedFiles.filter((file) => file.type.startsWith("audio/"));
@@ -1057,7 +1094,7 @@ const DiaryManagement = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-slate-700">Attach media</p>
-                      <p className="text-xs text-slate-500">Images, videos and files</p>
+                      <p className="text-xs text-slate-500">Images, videos and files | Up to 100 MB each</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
