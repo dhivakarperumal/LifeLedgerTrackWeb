@@ -27,6 +27,8 @@ const initialForm = {
   attachment: null,
 };
 
+const formatDateOnly = (date) => (date ? String(date).split("T")[0] : "-");
+
 const Billing = () => {
   const location = useLocation();
   const { monthlyBudget, setMonthlyBudget } = useContext(StoreContext);
@@ -211,6 +213,10 @@ const Billing = () => {
     (total, income) => total + Number(income.amount || 0),
     0,
   );
+  const remainingIncome = incomes.reduce(
+    (total, income) => total + Number(income.remaining_amount ?? income.amount ?? 0),
+    0,
+  );
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   const monthlyIncome = incomes
@@ -273,12 +279,11 @@ const Billing = () => {
               iconStyle="text-[1.8rem]"
             />
             <IncomeStatCard
-              label="Recurring Income"
-              value={recurringIncome}
-              caption="Recurring entries"
-              color="bg-[#f59e0b]"
-              icon="↻"
-              iconStyle="text-[1.8rem]"
+              label="Remaining Income"
+              value={remainingIncome}
+              caption="Available after transfers"
+              color="bg-[#00897b]"
+              icon="₹"
             />
             <IncomeStatCard
               label="Income Records"
@@ -417,7 +422,7 @@ const Billing = () => {
                             minimumFractionDigits: 2,
                           })}
                         </td>
-                        <td className="px-6 py-4">{income.income_date}</td>
+                        <td className="px-6 py-4">{formatDateOnly(income.income_date)}</td>
                         <td className="px-6 py-4">
                           {income.payment_method || "-"}
                         </td>
@@ -490,7 +495,7 @@ const Billing = () => {
                       </div>
                     </div>
                     <p className="mt-4 text-xs text-slate-500">
-                      {income.income_date} · {income.payment_method || "-"}
+                      {formatDateOnly(income.income_date)} · {income.payment_method || "-"}
                     </p>
                     <div className="mt-4 flex items-center justify-end gap-2">
                       {income.attachment && (
@@ -621,7 +626,7 @@ const Billing = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-xl bg-slate-50 p-3">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Date</p>
-                  <p className="mt-2 font-bold text-slate-800">{selectedIncome.income_date || "-"}</p>
+                  <p className="mt-2 font-bold text-slate-800">{formatDateOnly(selectedIncome.income_date)}</p>
                 </div>
                 <div className="rounded-xl bg-slate-50 p-3">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Payment</p>
