@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import {
     FiSearch,
@@ -31,6 +32,7 @@ const mapUser = (user) => ({
 });
 
 const Users = ({ initialTab = "All" }) => {
+    const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedTab, setSelectedTab] = useState(initialTab);
@@ -49,7 +51,6 @@ const Users = ({ initialTab = "All" }) => {
 
     // ---- Modal State for Registering/Editing User ----
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editUserId, setEditUserId] = useState(null);
     const [formData, setFormData] = useState({
@@ -390,7 +391,7 @@ const Users = ({ initialTab = "All" }) => {
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center justify-center gap-2">
-                                                                <button type="button" onClick={() => setSelectedUser(user)} aria-label={`View ${user.name}`} title="View user" className="p-1.5 border border-gray-200 rounded hover:bg-gray-100 text-[#4318FF] transition-colors shadow-sm">
+                                                                <button type="button" onClick={() => navigate(`/admin/users/all/${user.id}`)} aria-label={`View ${user.name}`} title="View user" className="p-1.5 border border-gray-200 rounded hover:bg-gray-100 text-[#4318FF] transition-colors shadow-sm">
                                                                     <FiEye size={14} />
                                                                 </button>
                                                                 <button
@@ -463,7 +464,7 @@ const Users = ({ initialTab = "All" }) => {
                                                     {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User'}
                                                 </span>
                                                 <div className="flex items-center gap-2">
-                                                    <button type="button" onClick={() => setSelectedUser(user)} aria-label={`View ${user.name}`} title="View user" className="p-1.5 border border-gray-200 rounded hover:bg-gray-100 text-[#4318FF] transition-colors shadow-sm">
+                                                    <button type="button" onClick={() => navigate(`/admin/users/all/${user.id}`)} aria-label={`View ${user.name}`} title="View user" className="p-1.5 border border-gray-200 rounded hover:bg-gray-100 text-[#4318FF] transition-colors shadow-sm">
                                                         <FiEye size={14} />
                                                     </button>
                                                     <button
@@ -645,37 +646,6 @@ const Users = ({ initialTab = "All" }) => {
                     </div>
                 )}
 
-                {selectedUser && (
-                    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onMouseDown={(event) => {
-                        if (event.target === event.currentTarget) setSelectedUser(null);
-                    }}>
-                        <section role="dialog" aria-modal="true" aria-labelledby="user-details-title" className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
-                            <div className="flex items-center justify-between bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white">
-                                <div>
-                                    <h2 id="user-details-title" className="text-xl font-bold">User details</h2>
-                                    <p className="mt-1 text-xs text-white/70">{selectedUser.user_id || selectedUser.id}</p>
-                                </div>
-                                <button type="button" onClick={() => setSelectedUser(null)} aria-label="Close user details" className="rounded-full bg-white/10 p-2 text-white/80 transition-colors hover:bg-white/15 hover:text-white">
-                                    <FiX size={20} />
-                                </button>
-                            </div>
-                            <dl className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
-                                <div><dt className="text-xs font-bold uppercase text-gray-400">Name</dt><dd className="mt-1 font-semibold text-slate-800">{selectedUser.name}</dd></div>
-                                <div><dt className="text-xs font-bold uppercase text-gray-400">Username</dt><dd className="mt-1 font-semibold text-slate-800">{selectedUser.username || "-"}</dd></div>
-                                <div><dt className="text-xs font-bold uppercase text-gray-400">Email</dt><dd className="mt-1 break-all font-semibold text-slate-800">{selectedUser.email || "-"}</dd></div>
-                                <div><dt className="text-xs font-bold uppercase text-gray-400">Phone</dt><dd className="mt-1 font-semibold text-slate-800">{selectedUser.phone || "-"}</dd></div>
-                                <div><dt className="text-xs font-bold uppercase text-gray-400">Role</dt><dd className="mt-1 font-semibold capitalize text-slate-800">{selectedUser.role}</dd></div>
-                                <div><dt className="text-xs font-bold uppercase text-gray-400">Status</dt><dd className="mt-1 font-semibold text-slate-800">{selectedUser.status}</dd></div>
-                                <div><dt className="text-xs font-bold uppercase text-gray-400">Joined</dt><dd className="mt-1 font-semibold text-slate-800">{selectedUser.joined}</dd></div>
-                            </dl>
-                            <div className="flex justify-end border-t border-gray-100 p-4">
-                                <button type="button" onClick={() => { setSelectedUser(null); openEditModal(selectedUser); }} className="flex items-center gap-2 rounded-lg bg-[#4318FF] px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-800">
-                                    <FiEdit2 size={15} /> Edit user
-                                </button>
-                            </div>
-                        </section>
-                    </div>
-                )}
             </div>
         </div>
     );

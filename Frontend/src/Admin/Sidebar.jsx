@@ -69,7 +69,9 @@ const navItems = [
 
 /* ================= SIDEBAR ================= */
 const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
-  const { profileName } = useAuth();
+  const { profileName, user } = useAuth();
+  const showAccountProfile =
+    String(user?.email || "").trim().toLowerCase() === "dhivakarp305@gmail.com";
   const location = useLocation();
   const [orderCounts, setOrderCounts] = useState({
     all: 0,
@@ -181,7 +183,9 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
 
         {/* ========== NAVIGATION ========== */}
         <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto hide-scrollbar">
-          {navItems.map((item) => {
+          {navItems
+            .filter((item) => item.label !== "Customers" || showAccountProfile)
+            .map((item) => {
             const Icon = item.icon;
 
             /* ===== DROPDOWN ITEM ===== */
@@ -311,24 +315,27 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
                 )}
               </NavLink>
             );
-          })}
+            })}
         </nav>
 
         {/* ========== FOOTER / PROFILE ========== */}
-        {!collapsed && (
+        {!collapsed && showAccountProfile && (
           <div className="p-4 mx-3 mb-6 bg-[#21094E]/50 rounded-2xl border border-white/10 relative">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
                 <p className="font-bold text-black text-lg">
-                  {(profileName || "Admin User").charAt(0).toUpperCase()}
+                  {(user?.name || profileName || "Admin User").charAt(0).toUpperCase()}
                 </p>
               </div>
               <div className="overflow-hidden flex-1">
                 <p className="text-sm font-semibold text-white truncate">
-                  {profileName || "Admin User"}
+                  {user?.name || profileName || "Admin User"}
                 </p>
                 <p className="text-[10px] text-gray-400 font-medium truncate">
-                  Super Admin
+                  {user.email}
+                </p>
+                <p className="text-[10px] text-gray-400 font-medium truncate">
+                  {user.phone || "No phone number"}
                 </p>
               </div>
               <ChevronDown className="w-4 h-4 text-white/50" />

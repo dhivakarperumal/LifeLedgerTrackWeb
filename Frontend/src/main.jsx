@@ -26,6 +26,7 @@ const MemoriesManagement = React.lazy(() => import("./Admin/Pages/MemoriesManage
 const MemoryDetails = React.lazy(() => import("./Admin/Pages/MemoryDetails.jsx"));
 
 const Users = React.lazy(() => import("./Admin/Pages/Users.jsx"));
+const UserDetails = React.lazy(() => import("./Admin/Pages/UserDetails.jsx"));
 
 const ErrorPage = React.lazy(() => import("./Admin/Pages/ErrorPage.jsx"));
 const Transfer = React.lazy(() => import("./Admin/Pages/Transfer.jsx"));
@@ -58,6 +59,7 @@ const router = createHashRouter([
       { path: "expensive/all", element: <AllExpensive /> },
       { path: "expensive/category", element: <Category /> },
       { path: "users/all", element: <Users initialTab="All" /> },
+      { path: "users/all/:id", element: <UserDetails /> },
       { path: "users/new", element: <Users initialTab="New" /> },
       { path: "users/diary", element: <DiaryManagement /> },
       { path: "users/diary/:id", element: <DiaryDetails /> },

@@ -218,6 +218,66 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
+exports.getUserRecords = async (req, res) => {
+  try {
+    if (String(req.user?.role || "").trim().toLowerCase() !== "admin") {
+      return res.status(403).json({ message: "Administrator access required." });
+    }
+
+    const [userRows] = await db.query(
+      "SELECT id, user_id, username, name, email, phone, role, status, created_at FROM users WHERE id = ?",
+      [req.params.id]
+    );
+    const user = userRows[0];
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    const userId = user.user_id;
+    const [expenses, incomes, transfers, memories, diary, events] = await Promise.all([
+      db.query(
+        "SELECT id, title, expense_amount, category, payment_method, expense_date, expense_time, notes, transfer_id, recurring FROM expenses WHERE user_id = ? ORDER BY expense_date DESC, created_at DESC",
+        [userId]
+      ),
+      db.query(
+        "SELECT id, title, amount, remaining_amount, category, income_date, payment_method, notes, recurring FROM income WHERE user_id = ? ORDER BY income_date DESC, created_at DESC",
+        [userId]
+      ),
+      db.query(
+        `SELECT t.id, t.title, t.amount, t.category, t.transfer_date, t.payment_method, t.notes,
+                COALESCE((SELECT SUM(e.expense_amount) FROM expenses e WHERE e.transfer_id = t.id), 0) AS total_expense
+         FROM transfers t WHERE t.user_id = ? ORDER BY t.transfer_date DESC, t.created_at DESC`,
+        [userId]
+      ),
+      db.query(
+        "SELECT id, title, description, category_name, memory_date, location, mood, status, media_url, media_type FROM memories WHERE user_id = ? ORDER BY memory_date DESC, created_at DESC",
+        [userId]
+      ),
+      db.query(
+        "SELECT id, title, content, category_name, entry_date, entry_time, mood, status, is_private FROM diary_entries WHERE user_id = ? ORDER BY entry_date DESC, entry_time DESC, created_at DESC",
+        [userId]
+      ),
+      db.query(
+        "SELECT id, title, category, start_date, start_time, end_date, status, location, description FROM calendar_events WHERE user_id = ? ORDER BY start_date DESC, start_time DESC",
+        [userId]
+      ),
+    ]);
+
+    return res.json({
+      user,
+      records: {
+        expenses: expenses[0],
+        incomes: incomes[0],
+        transfers: transfers[0],
+        memories: memories[0],
+        diary: diary[0],
+        events: events[0],
+      },
+    });
+  } catch (err) {
+    console.error("Fetch User Records Error:", err);
+    return res.status(500).json({ message: "Failed to fetch user records", error: err.message });
+  }
+};
+
 exports.googleLogin = async (req, res) => {
   try {
     const { name, email, picture, googleId } = req.body;
