@@ -7,7 +7,7 @@ const memoryController = require("../controllers/memoryController");
 
 const router = express.Router();
 const MAX_MEDIA_FILES = 10;
-const MAX_MEDIA_FILE_SIZE = 30 * 1024 * 1024;
+const MAX_MEDIA_FILE_SIZE = 100 * 1024 * 1024;
 const uploadDir = path.join(__dirname, "..", "..", "uploads", "memories");
 fs.mkdirSync(path.join(uploadDir, "images"), { recursive: true });
 fs.mkdirSync(path.join(uploadDir, "videos"), { recursive: true });
@@ -51,7 +51,7 @@ const handleUploadError = (error, req, res, next) => {
   if (!(error instanceof multer.MulterError)) return next(error);
 
   if (error.code === "LIMIT_FILE_SIZE") {
-    return res.status(413).json({ message: "Each media file must be 30 MB or smaller." });
+    return res.status(413).json({ message: "Each media file must be 100 MB or smaller." });
   }
 
   if (error.code === "LIMIT_UNEXPECTED_FILE" || error.code === "LIMIT_FILE_COUNT") {

@@ -26,7 +26,7 @@ import {
 } from "react-icons/fi";
 
 const MAX_MEDIA_FILES = 10;
-const MAX_MEDIA_FILE_SIZE = 30 * 1024 * 1024;
+const MAX_MEDIA_FILE_SIZE = 100 * 1024 * 1024;
 
 const formatDate = (value) => {
   if (!value) return "No date";
@@ -352,7 +352,7 @@ const MemoriesManagement = () => {
     }
     const oversizedFile = filesToUpload.find((file) => file.size > MAX_MEDIA_FILE_SIZE);
     if (oversizedFile) {
-      toast.error(`${oversizedFile.name} exceeds the 30 MB per-file limit.`);
+      toast.error(`${oversizedFile.name} exceeds the 100 MB per-file limit.`);
       return;
     }
 
@@ -916,7 +916,7 @@ const MemoriesManagement = () => {
                           const mediaFiles = files.filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/") || file.type.startsWith("audio/"));
                           const oversizedFile = mediaFiles.find((file) => file.size > MAX_MEDIA_FILE_SIZE);
                           if (oversizedFile) {
-                            toast.error(`${oversizedFile.name} exceeds the 30 MB per-file limit.`);
+                            toast.error(`${oversizedFile.name} exceeds the 100 MB per-file limit.`);
                             e.target.value = "";
                             return;
                           }
@@ -944,7 +944,7 @@ const MemoriesManagement = () => {
                       />
                     </label>
                     <span className="text-sm text-slate-500">
-                      {(newImages.length + newVideos.length + newAudios.length) ? `${newImages.length + newVideos.length + newAudios.length} new file(s) selected` : "No file chosen"} (max 10 files, 30 MB each)
+                      {(newImages.length + newVideos.length + newAudios.length) ? `${newImages.length + newVideos.length + newAudios.length} new file(s) selected` : "No file chosen"} (max 10 files, 100 MB each)
                     </span>
                   </div>
 
