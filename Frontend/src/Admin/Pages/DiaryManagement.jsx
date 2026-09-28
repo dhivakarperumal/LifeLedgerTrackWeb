@@ -126,6 +126,9 @@ const DiaryManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState("list");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [isUploadFinalizing, setIsUploadFinalizing] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draftSaved, setDraftSaved] = useState(true);
@@ -136,14 +139,14 @@ const DiaryManagement = () => {
   const [existingImages, setExistingImages] = useState([]);
   const [existingVideos, setExistingVideos] = useState([]);
   const [existingAudios, setExistingAudios] = useState([]);
-  const [existingZips, setExistingZips] = useState([]);
   const [newImages, setNewImages] = useState([]);
   const [newVideos, setNewVideos] = useState([]);
   const [newAudios, setNewAudios] = useState([]);
-  const [newZips, setNewZips] = useState([]);
   const [removedImageIds, setRemovedImageIds] = useState([]);
   const [removedVideoIds, setRemovedVideoIds] = useState([]);
   const [removedAudioIds, setRemovedAudioIds] = useState([]);
+  const [existingZips, setExistingZips] = useState([]);
+  const [newZips, setNewZips] = useState([]);
   const [removedZipIds, setRemovedZipIds] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
@@ -151,7 +154,12 @@ const DiaryManagement = () => {
 
   const mergeUniqueFiles = (existingFiles, incomingFiles) => {
     const seen = new Set(existingFiles.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
-    const uniqueFiles = incomingFiles.filter((file) => !seen.has(`${file.name}-${file.size}-${file.lastModified}`));
+    const uniqueFiles = incomingFiles.filter((file) => {
+      const key = `${file.name}-${file.size}-${file.lastModified}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     return [...existingFiles, ...uniqueFiles];
   };
 
@@ -229,6 +237,7 @@ const DiaryManagement = () => {
     const images = [];
     const videos = [];
     const audios = [];
+    const zips = [];
 
     mediaList.forEach((item) => {
       const type = String(item?.type || item?.file_type || "").toLowerCase();
@@ -237,13 +246,15 @@ const DiaryManagement = () => {
       const isImage = type.startsWith("image/") || type === "image" || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
       const isVideo = type.startsWith("video/") || type === "video" || /\.(mp4|webm|mov|m4v|ogg)$/i.test(name);
       const isAudio = type.startsWith("audio/") || type === "audio" || /\.(mp3|wav|m4a|aac)$/i.test(name);
+      const isZip = type.includes("zip") || type.includes("compressed") || /\.(zip|rar|7z)$/i.test(name);
 
       if (isImage) images.push(item);
-      if (isVideo) videos.push(item);
-      if (isAudio) audios.push(item);
+      else if (isVideo) videos.push(item);
+      else if (isAudio) audios.push(item);
+      else if (isZip) zips.push(item);
     });
 
-    return { images, videos, audios };
+    return { images, videos, audios, zips };
   };
 
   const [formState, setFormState] = useState({
@@ -432,7 +443,7 @@ const DiaryManagement = () => {
 
   const openEditEntry = (entry) => {
     const normalizedMedia = normalizeExistingDiaryMedia(entry);
-    const { images, videos, audios } = splitExistingDiaryMedia(normalizedMedia);
+    const { images, videos, audios, zips } = splitExistingDiaryMedia(normalizedMedia);
 
     resetDiaryMediaState();
     setEditingId(entry.id);
@@ -441,6 +452,7 @@ const DiaryManagement = () => {
     setExistingImages(images);
     setExistingVideos(videos);
     setExistingAudios(audios);
+    setExistingZips(zips);
     setFormState({
       title: entry.title || "",
       content: entry.content || "",
@@ -486,6 +498,8 @@ const DiaryManagement = () => {
     const validFiles = (pendingFiles || []).filter((file) => file instanceof File || file instanceof Blob);
     if (!entryId || !validFiles.length) return;
 
+    const totalBytes = validFiles.reduce((total, file) => total + (file.size || 0), 0);
+    let uploadedBytes = 0;
     for (const [index, file] of validFiles.entries()) {
       const formData = new FormData();
       formData.append("file", file);
@@ -493,14 +507,24 @@ const DiaryManagement = () => {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (event) => {
           if (!toastId || !event.total) return;
-          const percent = Math.round((event.loaded * 100) / event.total);
+          const currentFileBytes = Math.min(event.loaded, file.size || event.loaded);
+          const percent = Math.min(99, Math.round(((uploadedBytes + currentFileBytes) * 100) / (totalBytes || 1)));
+          setUploadProgress(percent);
           toast.loading(`Diary saved. Uploading ${index + 1}/${validFiles.length}: ${percent}%`, { id: toastId });
         },
       });
+      uploadedBytes += file.size || 0;
+      setFiles((previous) => previous.filter((pendingFile) => pendingFile !== file));
+      setNewImages((previous) => previous.filter((pendingFile) => pendingFile !== file));
+      setNewVideos((previous) => previous.filter((pendingFile) => pendingFile !== file));
+      setNewAudios((previous) => previous.filter((pendingFile) => pendingFile !== file));
     }
+    setUploadProgress(100);
+    setIsUploadFinalizing(true);
   };
 
   const handleSubmit = async (saveStatus = "published") => {
+    if (isSubmitting) return;
     if (!formState.title.trim() || !formState.content.trim()) {
       toast.error("Title and diary content are required.");
       return;
@@ -510,6 +534,7 @@ const DiaryManagement = () => {
       ...newImages,
       ...newVideos,
       ...newAudios,
+      ...newZips,
       ...files.filter((file) => file instanceof File || file instanceof Blob),
     ]);
     const oversizedFile = newUploadFiles.find((file) => file.size > MAX_ATTACHMENT_FILE_SIZE);
@@ -528,13 +553,20 @@ const DiaryManagement = () => {
       removed_image_ids: removedImageIds,
       removed_video_ids: removedVideoIds,
       removed_audio_ids: removedAudioIds,
+      removed_zip_ids: removedZipIds,
     };
 
     if (!removedImageIds.length) delete payload.removed_image_ids;
     if (!removedVideoIds.length) delete payload.removed_video_ids;
     if (!removedAudioIds.length) delete payload.removed_audio_ids;
+    if (!removedZipIds.length) delete payload.removed_zip_ids;
 
+    let savedEntryId = editingId;
+    let entrySaved = false;
     try {
+      setIsSubmitting(true);
+      setUploadProgress(newUploadFiles.length ? 0 : null);
+      setIsUploadFinalizing(false);
       const config = { headers: { "Content-Type": "application/json" } };
       let response;
       if (editingId) {
@@ -543,41 +575,36 @@ const DiaryManagement = () => {
         response = await api.post("/diary", payload, config);
       }
 
-      const savedEntryId = response?.data?.id || editingId;
+      savedEntryId = response?.data?.id || editingId;
+      entrySaved = true;
       localStorage.removeItem("diary-draft-temp");
       setEditingId(savedEntryId);
       setSelectedEntry(response.data || selectedEntry);
-      setFiles([]);
-      setExistingFiles([]);
-      setExistingImages([]);
-      setExistingVideos([]);
-      setExistingAudios([]);
-      setNewImages([]);
-      setNewVideos([]);
-      setNewAudios([]);
-      setRemovedImageIds([]);
-      setRemovedVideoIds([]);
-      setRemovedAudioIds([]);
       setDraftSaved(true);
-      await fetchData();
-      closeEditor();
 
       if (newUploadFiles.length) {
         const uploadToastId = `diary-upload-${savedEntryId}`;
-        toast.loading("Diary saved. Uploading attachments... 0%", { id: uploadToastId });
-        void uploadAttachmentFiles(savedEntryId, newUploadFiles, uploadToastId)
-          .then(async () => {
-            toast.success("Diary attachments uploaded.", { id: uploadToastId });
-            await fetchData();
-          })
-          .catch((error) => {
-            toast.error(error.response?.data?.message || "Diary saved, but an attachment failed to upload.", { id: uploadToastId });
-          });
+        toast.loading("Diary saved. Please wait while attachments upload: 0%", { id: uploadToastId });
+        await uploadAttachmentFiles(savedEntryId, newUploadFiles, uploadToastId);
+        const entryResponse = await api.get(`/diary/${savedEntryId}`);
+        setEntries((previous) => editingId
+          ? previous.map((entry) => String(entry.id) === String(savedEntryId) ? entryResponse.data : entry)
+          : [entryResponse.data, ...previous]);
+        openEditEntry(entryResponse.data);
+        toast.success("Diary and attachments saved.", { id: uploadToastId });
       } else {
+        await fetchData();
+        closeEditor();
         toast.success(editingId ? "Diary updated successfully." : "Diary saved successfully.");
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Unable to save diary entry.");
+      console.error("Diary save/upload failed:", error);
+      const message = error.response?.data?.message || error.message || "Unexpected error.";
+      toast.error(entrySaved ? `Diary saved, but an attachment upload failed: ${message}` : message);
+    } finally {
+      setIsSubmitting(false);
+      setUploadProgress(null);
+      setIsUploadFinalizing(false);
     }
   };
 
@@ -821,9 +848,9 @@ const DiaryManagement = () => {
 
            <button
             onClick={openNewEntry}
-            className="inline-flex items-center justify-center gap-2 rounded-[18px] bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-purple-900/20 transition hover:from-[#10002b] hover:to-[#5a189a]"
+              className="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[18px] bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-purple-900/20 transition hover:from-[#10002b] hover:to-[#5a189a]"
           >
-            <FiPlus size={18} />
+              <FiPlus size={18} className="shrink-0" />
             Add New Diary
           </button>
         </div>
@@ -1000,10 +1027,11 @@ const DiaryManagement = () => {
           <div className="max-h-[90vh] w-full max-w-4xl overflow-auto rounded-3xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-[#3c096c]/20 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-5 py-4 text-white">
               <h2 className="text-xl font-bold text-white">{editingId ? "Edit Diary" : "Add Diary Entry"}</h2>
-              <button onClick={closeEditor} className="rounded-full bg-white/10 p-2 text-white/80 hover:bg-white/15 hover:text-white"><FiX /></button>
+              <button type="button" onClick={closeEditor} disabled={isSubmitting} className="rounded-full bg-white/10 p-2 text-white/80 hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"><FiX /></button>
             </div>
 
             <div className="p-4 md:p-6">
+              <fieldset disabled={isSubmitting} className="contents">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-slate-700">Diary Title *</label>
@@ -1110,7 +1138,7 @@ const DiaryManagement = () => {
                       </label>
                     </div>
                   </div>
-                  {(existingImages.length > 0 || existingVideos.length > 0 || existingAudios.length > 0 || newImages.length > 0 || newVideos.length > 0 || newAudios.length > 0) && (
+                  {(existingImages.length > 0 || existingVideos.length > 0 || existingAudios.length > 0 || existingZips.length > 0 || newImages.length > 0 || newVideos.length > 0 || newAudios.length > 0 || newZips.length > 0) && (
                     <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       {existingImages.map((file, index) => (
                         <div key={`${file.id || file.name}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -1175,6 +1203,28 @@ const DiaryManagement = () => {
                         </div>
                       ))}
 
+                      {existingZips.map((file, index) => (
+                        <div key={`${file.id || file.name}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                          <div className="flex h-40 flex-col items-center justify-center bg-slate-100">
+                            <span className="text-3xl">🗜️</span>
+                            <span className="mt-2 truncate px-2 text-xs font-medium text-slate-600">{file.name}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 px-3 py-2">
+                            <span className="truncate text-[11px] text-slate-600">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRemovedZipIds((prev) => [...new Set([...prev, String(file.id)])]);
+                                setExistingZips((prev) => prev.filter((item) => String(item.id) !== String(file.id)));
+                              }}
+                              className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-600"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
                       {newImages.map((file, index) => (
                         <div key={`${file.name}-${file.size}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                           <div className="max-h-40 overflow-hidden bg-slate-100">
@@ -1210,15 +1260,77 @@ const DiaryManagement = () => {
                           </div>
                         </div>
                       ))}
+
+                      {newZips.map((file, index) => (
+                        <div key={`${file.name}-${file.size}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                          <div className="flex h-40 flex-col items-center justify-center bg-slate-100">
+                            <span className="text-3xl">🗜️</span>
+                            <span className="mt-2 truncate px-2 text-xs font-medium text-slate-600">{file.name}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 px-3 py-2">
+                            <span className="truncate text-[11px] text-slate-600">{file.name}</span>
+                            <button type="button" onClick={() => { setNewZips((prev) => prev.filter((_, itemIndex) => itemIndex !== index)); setFiles((prev) => prev.filter((f) => f.name !== file.name)); }} className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-600">Remove</button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
+                  )}
+                </div>
+
+                <div className="md:col-span-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700">Upload ZIP / Archive files</p>
+                      <p className="text-xs text-slate-500">.zip, .rar, .7z | Up to 100 MB each</p>
+                    </div>
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800">
+                      🗜️ Choose ZIPs
+                      <input
+                        type="file"
+                        className="hidden"
+                        multiple
+                        accept=".zip,.rar,.7z"
+                        onChange={(e) => {
+                          const selectedFiles = Array.from(e.target.files || []);
+                          const zipFiles = selectedFiles.filter((file) =>
+                            file.name.endsWith(".zip") ||
+                            file.name.endsWith(".rar") ||
+                            file.name.endsWith(".7z") ||
+                            file.type === "application/zip" ||
+                            file.type === "application/x-zip-compressed"
+                          );
+                          const oversizedFile = zipFiles.find((file) => file.size > MAX_ATTACHMENT_FILE_SIZE);
+                          if (oversizedFile) {
+                            toast.error(`${oversizedFile.name} exceeds the 100 MB per-file limit.`);
+                            e.target.value = "";
+                            return;
+                          }
+                          setNewZips((prev) => mergeUniqueFiles(prev, zipFiles));
+                          setFiles((prev) => mergeUniqueFiles(prev, zipFiles));
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {newZips.length > 0 && (
+                    <p className="mt-2 text-xs text-slate-500">{newZips.length} zip file(s) selected</p>
                   )}
                 </div>
               </div>
 
               <div className="mt-6 flex items-center justify-end gap-3">
-                <button onClick={() => handleSubmit("draft")} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Save Draft</button>
-                <button onClick={() => handleSubmit("published")} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-700">Save Entry</button>
+                <button type="button" onClick={() => handleSubmit("draft")} disabled={isSubmitting} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">
+                  {isSubmitting
+                    ? uploadProgress === null ? "Saving..." : isUploadFinalizing ? "Finishing upload..." : `Uploading ${uploadProgress}%`
+                    : "Save Draft"}
+                </button>
+                <button type="button" onClick={() => handleSubmit("published")} disabled={isSubmitting} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60">
+                  {isSubmitting
+                    ? uploadProgress === null ? "Saving..." : isUploadFinalizing ? "Finishing upload..." : `Uploading ${uploadProgress}%`
+                    : "Save Entry"}
+                </button>
               </div>
+              </fieldset>
             </div>
           </div>
         </div>

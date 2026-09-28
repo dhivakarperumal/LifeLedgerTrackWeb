@@ -8,6 +8,38 @@ const diaryController = require("../controllers/diaryController");
 const router = express.Router();
 const MAX_ATTACHMENT_FILE_SIZE = 100 * 1024 * 1024;
 const uploadDir = path.join(__dirname, "..", "..", "uploads", "diary");
+const MIME_TYPES_BY_EXTENSION = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".bmp": "image/bmp",
+  ".mp4": "video/mp4",
+  ".m4v": "video/mp4",
+  ".mov": "video/quicktime",
+  ".webm": "video/webm",
+  ".mkv": "video/x-matroska",
+  ".avi": "video/x-msvideo",
+  ".mpeg": "video/mpeg",
+  ".mpg": "video/mpeg",
+  ".3gp": "video/3gpp",
+  ".3g2": "video/3gpp2",
+  ".wmv": "video/x-ms-wmv",
+  ".flv": "video/x-flv",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".m4a": "audio/mp4",
+  ".aac": "audio/aac",
+  ".ogg": "audio/ogg",
+  ".pdf": "application/pdf",
+  ".doc": "application/msword",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".xls": "application/vnd.ms-excel",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".txt": "text/plain",
+  ".zip": "application/zip",
+};
 fs.mkdirSync(path.join(uploadDir, "images"), { recursive: true });
 fs.mkdirSync(path.join(uploadDir, "videos"), { recursive: true });
 fs.mkdirSync(path.join(uploadDir, "audio"), { recursive: true });
@@ -27,12 +59,27 @@ const fileFilter = (req, file, cb) => {
     "application/zip",
   ];
 
-  const allowed = [...allowedImage, ...allowedVideo, ...allowedAudio, ...allowedDocs];
-  if (allowed.includes(file.mimetype)) {
+  const originalMimeType = String(file.mimetype || "").toLowerCase();
+  const extension = path.extname(file.originalname).toLowerCase();
+  const inferredMimeType = MIME_TYPES_BY_EXTENSION[extension];
+  if (inferredMimeType && originalMimeType !== inferredMimeType) {
+    file.mimetype = inferredMimeType;
+  }
+
+  const mimeType = String(file.mimetype || "").toLowerCase();
+  if (
+    allowedImage.includes(mimeType) ||
+    allowedVideo.includes(mimeType) ||
+    mimeType.startsWith("video/") ||
+    allowedAudio.includes(mimeType) ||
+    allowedDocs.includes(mimeType)
+  ) {
     return cb(null, true);
   }
 
-  cb(new Error("Unsupported file type. Allowed: images, videos, and documents."));
+  const error = new Error("Unsupported attachment type. Choose an image, video, audio, document, text, or ZIP file.");
+  error.code = "UNSUPPORTED_FILE_TYPE";
+  cb(error);
 };
 
 const storage = multer.diskStorage({
@@ -56,7 +103,12 @@ const upload = multer({
 });
 
 const handleUploadError = (error, req, res, next) => {
-  if (!(error instanceof multer.MulterError)) return next(error);
+  if (!(error instanceof multer.MulterError)) {
+    if (error.code === "UNSUPPORTED_FILE_TYPE") {
+      return res.status(400).json({ message: error.message });
+    }
+    return next(error);
+  }
 
   if (error.code === "LIMIT_FILE_SIZE") {
     return res.status(413).json({ message: "Each diary attachment must be 100 MB or smaller." });
