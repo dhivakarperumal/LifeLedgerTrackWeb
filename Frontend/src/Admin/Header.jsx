@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
-  Menu,
   Search,
   Bell,
   Settings,
@@ -315,12 +314,18 @@ const Header = ({ onMenuClick }) => {
         {/* LEFT */}
         <div className="flex items-center gap-4 min-w-0">
           <button
+            type="button"
             onClick={onMenuClick}
-            className="lg:hidden p-2 rounded-xl 
+            aria-label="Open sidebar"
+            className="lg:hidden p-2 rounded-md 
             bg-white hover:bg-slate-50 
             text-slate-600 border border-slate-200 shadow-sm transition-all active:scale-95"
           >
-            <Menu className="w-6 h-6" />
+            <span aria-hidden="true" className="flex w-6 flex-col gap-[6px]">
+              <span className="h-[3px] w-6 rounded-full bg-current" />
+              <span className="h-[3px] w-4 rounded-full bg-current" />
+              <span className="h-[3px] w-2.5 rounded-full bg-current" />
+            </span>
           </button>
 
           <div className="hidden sm:flex flex-col">
@@ -582,12 +587,12 @@ const Header = ({ onMenuClick }) => {
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setShowDropdown(p => !p)}
-              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-2xl transition-all active:scale-95
+              className={`flex items-center gap-2.5  rounded-2xl transition-all active:scale-95
               ${showDropdown
-                ? 'bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-200 shadow-md'
-                : 'bg-slate-50 border border-slate-200 hover:bg-violet-50 hover:border-violet-200'}`}
+                ? 'bg-gradient-to-r from-violet-500/10 to-purple-500/10 shadow-md'
+                : 'bg-slate-50 hover:bg-violet-50'}`}
             >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-black shadow-md shadow-purple-500/30">
+              <div className="w-10 h-9.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-black shadow-md shadow-purple-500/30">
                 {userName.charAt(0).toUpperCase()}
               </div>
 

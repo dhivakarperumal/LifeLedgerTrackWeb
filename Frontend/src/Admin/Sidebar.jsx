@@ -175,7 +175,8 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
 
           <button
             onClick={onClose}
-            className="ml-auto p-2 rounded-xl text-white/40 hover:bg-white/5 lg:hidden border border-transparent hover:border-white/10 transition-all"
+            aria-label="Close sidebar"
+            className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white transition-all hover:bg-white/20 lg:hidden"
           >
             <X className="w-5 h-5" />
           </button>
