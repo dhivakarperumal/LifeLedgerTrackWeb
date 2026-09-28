@@ -2,28 +2,33 @@ import React, { useState, useEffect } from "react";
 import api from "../../api";
 import {
     FiSearch,
-    FiFilter,
     FiUserPlus,
-    FiMoreVertical,
+    FiEye,
     FiMail,
     FiPhone,
     FiCalendar,
     FiUserX,
     FiX,
     FiEdit2,
+    FiTrash2,
     FiGrid,
     FiList
 } from "react-icons/fi";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
-
-const deriveUserStatus = (user, index = 0) => {
-    if (user?.status) {
-        return String(user.status).toLowerCase() === "inactive" ? "Inactive" : "Active";
-    }
-    const numericId = Number(user?.id ?? index + 1) || index + 1;
-    return numericId % 6 === 0 || numericId % 9 === 0 ? "Inactive" : "Active";
-};
+const mapUser = (user) => ({
+    ...user,
+    id: user.id,
+    name: user.name || user.username || "Unnamed user",
+    username: user.username || "",
+    email: user.email || "",
+    phone: user.phone || "",
+    role: String(user.role || "user").toLowerCase(),
+    status: String(user.status || "Active").toLowerCase() === "inactive" ? "Inactive" : "Active",
+    joined: user.created_at ? new Date(user.created_at).toLocaleDateString() : "N/A",
+    rawCreated_at: user.created_at,
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.username || "User")}&background=random`,
+});
 
 const Users = ({ initialTab = "All" }) => {
     const [users, setUsers] = useState([]);
@@ -44,6 +49,7 @@ const Users = ({ initialTab = "All" }) => {
 
     // ---- Modal State for Registering/Editing User ----
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editUserId, setEditUserId] = useState(null);
     const [formData, setFormData] = useState({
@@ -56,52 +62,22 @@ const Users = ({ initialTab = "All" }) => {
     });
     const [submitLoading, setSubmitLoading] = useState(false);
 
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const response = await api.get("/auth/users");
-                // Transform data if needed for UI
-                const fetchedUsers = response.data.map((u, index) => ({
-                    id: u.id || u.user_id,
-                    name: u.name || u.username,
-                    email: u.email,
-                    role: u.role ? u.role.toLowerCase() : 'user',
-                    status: deriveUserStatus(u, index),
-                    joined: u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A',
-                    rawCreated_at: u.created_at,
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || u.username)}&background=random`
-                }));
-                setUsers(fetchedUsers);
-            } catch (error) {
-                console.error("Failed to fetch users:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchUsers();
-    }, []);
-
     const fetchUsers = async () => {
         setLoading(true);
         try {
             const response = await api.get("/auth/users");
-            const fetchedUsers = response.data.map((u, index) => ({
-                id: u.id || u.user_id,
-                name: u.name || u.username,
-                email: u.email,
-                role: u.role ? u.role.toLowerCase() : 'user',
-                status: deriveUserStatus(u, index),
-                joined: u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A',
-                rawCreated_at: u.created_at,
-                avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || u.username)}&background=random`
-            }));
-            setUsers(fetchedUsers);
+            setUsers((response.data || []).map(mapUser));
         } catch (error) {
             console.error("Failed to fetch users:", error);
+            toast.error(error.response?.data?.message || "Failed to load users");
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
 
     const handleInputChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -137,10 +113,10 @@ const Users = ({ initialTab = "All" }) => {
         if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
         try {
             await api.delete(`/auth/users/${id}`);
-            toast.success("User eliminated from system.");
-            fetchUsers();
+            setUsers((current) => current.filter((user) => user.id !== id));
+            toast.success("User deleted successfully.");
         } catch (error) {
-            toast.error("Failed to delete user");
+            toast.error(error.response?.data?.message || "Failed to delete user");
         }
     };
 
@@ -157,25 +133,9 @@ const Users = ({ initialTab = "All" }) => {
         }
     };
 
-    const handleQuickRoleUpdate = async (id, newRole, user) => {
-        try {
-            const payload = {
-                username: user.username || user.name,
-                name: user.name,
-                email: user.email,
-                phone: user.phone || ""
-            };
-            await api.put(`/auth/users/${id}`, { ...payload, role: newRole.toLowerCase() });
-            toast.success(`Role updated to ${newRole.toLowerCase()}`);
-            fetchUsers();
-        } catch (error) {
-            toast.error("Failed to update role");
-        }
-    };
-
     const openEditModal = (user) => {
         setFormData({
-            username: user.username || user.name,
+            username: user.username,
             name: user.name,
             email: user.email,
             phone: user.phone || "",
@@ -387,23 +347,21 @@ const Users = ({ initialTab = "All" }) => {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            currentItems.map((user, idx) => {
-                                                const mockPhone = user.phone || "+91 98765 4321" + (idx % 10);
-
+                                            currentItems.map((user) => {
                                                 return (
                                                     <tr key={user.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
                                                         <td className="px-6 py-4">
                                                             <input type="checkbox" className="rounded border-gray-300 text-[#4318FF] focus:ring-[#4318FF]" />
                                                         </td>
                                                         <td className="px-6 py-4 text-[13px] font-black text-[#4318FF]">
-                                                            CUS{1000 + (parseInt(user.id) || idx + 1)}
+                                                            {user.user_id || user.id}
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center gap-3">
                                                                 <img src={user.avatar} alt="avatar" className="w-8 h-8 rounded-full shadow-sm shrink-0" />
                                                                 <div>
                                                                     <div className="text-[13px] font-bold text-[#2B3674]">{user.name}</div>
-                                                                    <div className="text-[11px] text-gray-400 font-medium mt-0.5">{mockPhone}</div>
+                                                                    <div className="text-[11px] text-gray-400 font-medium mt-0.5">{user.phone || "No phone number"}</div>
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -429,18 +387,23 @@ const Users = ({ initialTab = "All" }) => {
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="text-[12px] font-bold text-[#2B3674]">{user.joined}</div>
-                                                            <div className="text-[11px] text-gray-500 font-medium">10:30 AM</div>
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center justify-center gap-2">
-                                                                <button className="p-1.5 border border-gray-200 rounded hover:bg-gray-100 text-[#4318FF] transition-colors shadow-sm">
-                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                                                <button type="button" onClick={() => setSelectedUser(user)} aria-label={`View ${user.name}`} title="View user" className="p-1.5 border border-gray-200 rounded hover:bg-gray-100 text-[#4318FF] transition-colors shadow-sm">
+                                                                    <FiEye size={14} />
                                                                 </button>
                                                                 <button
+                                                                    type="button"
                                                                     onClick={() => openEditModal(user)}
+                                                                    aria-label={`Edit ${user.name}`}
+                                                                    title="Edit user"
                                                                     className="p-1.5 border border-gray-200 rounded hover:bg-gray-100 text-[#4318FF] transition-colors shadow-sm"
                                                                 >
-                                                                    <FiMoreVertical size={14} />
+                                                                    <FiEdit2 size={14} />
+                                                                </button>
+                                                                <button type="button" onClick={() => handleDeleteUser(user.id)} aria-label={`Delete ${user.name}`} title="Delete user" className="p-1.5 border border-red-100 rounded hover:bg-red-50 text-red-600 transition-colors shadow-sm">
+                                                                    <FiTrash2 size={14} />
                                                                 </button>
                                                             </div>
                                                         </td>
@@ -463,9 +426,7 @@ const Users = ({ initialTab = "All" }) => {
                                     No customers found.
                                 </div>
                             ) : (
-                                currentItems.map((user, idx) => {
-                                    const mockPhone = user.phone || "+91 98765 4321" + (idx % 10);
-
+                                currentItems.map((user) => {
                                     return (
                                         <article key={user.id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:-translate-y-0.5 hover:shadow-lg transition-all">
                                             <div className="flex items-start justify-between gap-3 pb-4 border-b border-gray-100">
@@ -474,7 +435,7 @@ const Users = ({ initialTab = "All" }) => {
                                                     <div>
                                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.16em]">Customer</p>
                                                         <h4 className="text-[15px] font-black text-[#2B3674] mt-1">{user.name}</h4>
-                                                        <p className="text-[11px] text-gray-500 mt-0.5">CUS{1000 + (parseInt(user.id) || idx + 1)}</p>
+                                                        <p className="text-[11px] text-gray-500 mt-0.5">{user.user_id || user.id}</p>
                                                     </div>
                                                 </div>
                                                 <button
@@ -489,7 +450,7 @@ const Users = ({ initialTab = "All" }) => {
 
                                             <div className="mt-5 space-y-3 text-[12px] text-gray-600">
                                                 <div className="flex items-center gap-3 min-w-0"><FiMail size={14} className="text-violet-500 shrink-0" /> <span className="truncate">{user.email}</span></div>
-                                                <div className="flex items-center gap-3"><FiPhone size={14} className="text-violet-500 shrink-0" /> {mockPhone}</div>
+                                                <div className="flex items-center gap-3"><FiPhone size={14} className="text-violet-500 shrink-0" /> {user.phone || "No phone number"}</div>
                                                 <div className="flex items-center gap-3"><FiCalendar size={14} className="text-violet-500 shrink-0" /> Joined {user.joined}</div>
                                             </div>
 
@@ -502,14 +463,20 @@ const Users = ({ initialTab = "All" }) => {
                                                     {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User'}
                                                 </span>
                                                 <div className="flex items-center gap-2">
-                                                    <button className="p-1.5 border border-gray-200 rounded hover:bg-gray-100 text-[#4318FF] transition-colors shadow-sm">
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                                    <button type="button" onClick={() => setSelectedUser(user)} aria-label={`View ${user.name}`} title="View user" className="p-1.5 border border-gray-200 rounded hover:bg-gray-100 text-[#4318FF] transition-colors shadow-sm">
+                                                        <FiEye size={14} />
                                                     </button>
                                                     <button
+                                                        type="button"
                                                         onClick={() => openEditModal(user)}
+                                                        aria-label={`Edit ${user.name}`}
+                                                        title="Edit user"
                                                         className="p-1.5 border border-gray-200 rounded hover:bg-gray-100 text-[#4318FF] transition-colors shadow-sm"
                                                     >
-                                                        <FiMoreVertical size={14} />
+                                                        <FiEdit2 size={14} />
+                                                    </button>
+                                                    <button type="button" onClick={() => handleDeleteUser(user.id)} aria-label={`Delete ${user.name}`} title="Delete user" className="p-1.5 border border-red-100 rounded hover:bg-red-50 text-red-600 transition-colors shadow-sm">
+                                                        <FiTrash2 size={14} />
                                                     </button>
                                                 </div>
                                             </div>
@@ -629,6 +596,19 @@ const Users = ({ initialTab = "All" }) => {
                                         className="w-full bg-white border border-gray-200 text-slate-800 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#4318FF] focus:border-[#4318FF] transition-all text-sm font-medium"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2">Role</label>
+                                    <select
+                                        name="role"
+                                        value={formData.role}
+                                        onChange={handleInputChange}
+                                        className="w-full bg-white border border-gray-200 text-slate-800 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#4318FF] focus:border-[#4318FF] transition-all text-sm font-medium"
+                                    >
+                                        <option value="user">User</option>
+                                        <option value="manager">Manager</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
                                 {!isEditing && (
                                     <div>
                                         <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2">Password *</label>
@@ -662,6 +642,38 @@ const Users = ({ initialTab = "All" }) => {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {selectedUser && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onMouseDown={(event) => {
+                        if (event.target === event.currentTarget) setSelectedUser(null);
+                    }}>
+                        <section role="dialog" aria-modal="true" aria-labelledby="user-details-title" className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+                            <div className="flex items-center justify-between bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white">
+                                <div>
+                                    <h2 id="user-details-title" className="text-xl font-bold">User details</h2>
+                                    <p className="mt-1 text-xs text-white/70">{selectedUser.user_id || selectedUser.id}</p>
+                                </div>
+                                <button type="button" onClick={() => setSelectedUser(null)} aria-label="Close user details" className="rounded-full bg-white/10 p-2 text-white/80 transition-colors hover:bg-white/15 hover:text-white">
+                                    <FiX size={20} />
+                                </button>
+                            </div>
+                            <dl className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
+                                <div><dt className="text-xs font-bold uppercase text-gray-400">Name</dt><dd className="mt-1 font-semibold text-slate-800">{selectedUser.name}</dd></div>
+                                <div><dt className="text-xs font-bold uppercase text-gray-400">Username</dt><dd className="mt-1 font-semibold text-slate-800">{selectedUser.username || "-"}</dd></div>
+                                <div><dt className="text-xs font-bold uppercase text-gray-400">Email</dt><dd className="mt-1 break-all font-semibold text-slate-800">{selectedUser.email || "-"}</dd></div>
+                                <div><dt className="text-xs font-bold uppercase text-gray-400">Phone</dt><dd className="mt-1 font-semibold text-slate-800">{selectedUser.phone || "-"}</dd></div>
+                                <div><dt className="text-xs font-bold uppercase text-gray-400">Role</dt><dd className="mt-1 font-semibold capitalize text-slate-800">{selectedUser.role}</dd></div>
+                                <div><dt className="text-xs font-bold uppercase text-gray-400">Status</dt><dd className="mt-1 font-semibold text-slate-800">{selectedUser.status}</dd></div>
+                                <div><dt className="text-xs font-bold uppercase text-gray-400">Joined</dt><dd className="mt-1 font-semibold text-slate-800">{selectedUser.joined}</dd></div>
+                            </dl>
+                            <div className="flex justify-end border-t border-gray-100 p-4">
+                                <button type="button" onClick={() => { setSelectedUser(null); openEditModal(selectedUser); }} className="flex items-center gap-2 rounded-lg bg-[#4318FF] px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-800">
+                                    <FiEdit2 size={15} /> Edit user
+                                </button>
+                            </div>
+                        </section>
                     </div>
                 )}
             </div>

@@ -249,8 +249,14 @@ const Transfer = () => {
 
     /* ── derived stats ────────────────────────────────────────────────── */
     const totalTransferred = transfers.reduce((s, t) => s + Number(t.amount || 0), 0);
-    const totalRemaining   = transfers.reduce((s, t) => s + Number(t.remaining_amount ?? t.amount ?? 0), 0);
     const totalExpense     = transfers.reduce((s, t) => s + Number(t.total_expense || 0), 0);
+    const totalRemaining   = transfers.reduce(
+        (sum, transfer) => sum + Math.max(
+            Number(transfer.amount || 0) - Number(transfer.total_expense || 0),
+            0,
+        ),
+        0,
+    );
 
     /* ── filtered list ────────────────────────────────────────────────── */
     const visible = useMemo(() => {
