@@ -25,6 +25,9 @@ import imageCompression from "browser-image-compression";
 import { toast, Toaster } from "react-hot-toast";
 import { useAuth } from "../../PrivateRouter/AuthContext";
 
+const getCategoryType = (category) =>
+    String(category.catType || category.category_type || category.type || "Expensive").trim();
+
 const Category = () => {
     const { user } = useAuth();
     // ---- Global State ----
@@ -58,6 +61,7 @@ const Category = () => {
     const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
+    const [typeFilter, setTypeFilter] = useState("Expensive");
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -105,9 +109,10 @@ const Category = () => {
                                   cat.catId.toLowerCase().includes(searchQuery.toLowerCase());
             const catStatus = cat.status || 'Active';
             const matchesStatus = statusFilter === 'All' || catStatus === statusFilter;
-            return matchesSearch && matchesStatus;
+            const matchesType = typeFilter === "All" || getCategoryType(cat).toLowerCase() === typeFilter.toLowerCase();
+            return matchesSearch && matchesStatus && matchesType;
         });
-    }, [categories, searchQuery, statusFilter]);
+    }, [categories, searchQuery, statusFilter, typeFilter]);
 
     const totalPages = Math.ceil(filteredCategories.length / itemsPerPage) || 1;
     const currentCategories = filteredCategories.slice(
@@ -339,6 +344,23 @@ const Category = () => {
                 <div className="flex w-full flex-col gap-3 md:ml-auto md:w-auto md:flex-row md:items-center">
                     <div className="relative w-full md:min-w-[180px]">
                         <select
+                            value={typeFilter}
+                            onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
+                            aria-label="Filter by category type"
+                            className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm font-semibold text-gray-700 outline-none transition-all focus:border-purple-300 focus:bg-white"
+                        >
+                            <option value="All">All Types</option>
+                            <option value="Expensive">Expenses</option>
+                            <option value="Income">Income</option>
+                            <option value="Transfer">Transfer</option>
+                            <option value="Memories">Memories</option>
+                            <option value="Diary">Diary</option>
+                        </select>
+                        <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    </div>
+
+                    <div className="relative w-full md:min-w-[180px]">
+                        <select
                             value={statusFilter}
                             onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
                             className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm font-semibold text-gray-700 outline-none transition-all focus:border-purple-300 focus:bg-white"
@@ -396,16 +418,15 @@ const Category = () => {
                 <>
                     <div className="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left whitespace-nowrap">
+                            <table className="w-full table-fixed text-left whitespace-nowrap">
                                 <thead>
                                     <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] border-b border-[#3c096c]">
-                                        <th className="px-4 py-4 w-12 text-center "><input type="checkbox" className="rounded accent-white w-4 h-4 border-violet-300" /></th>
-                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">S.NO.</th>
-                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">CATEGORY</th>
-                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">DESCRIPTION</th>
-                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">PRODUCTS</th>
-                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">STATUS</th>
-                                        <th className="px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider w-10">ACTIONS</th>
+                                        <th className="w-[5%] px-4 py-4 text-center"><input type="checkbox" className="rounded accent-white w-4 h-4 border-violet-300" /></th>
+                                        <th className="w-[8%] px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">S.NO.</th>
+                                        <th className="w-[48%] px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">CATEGORY</th>
+                                        <th className="w-[8%] px-2 py-4 text-center text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">TYPE</th>
+                                        <th className="w-[8%] px-2 py-4 text-center text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">STATUS</th>
+                                        <th className="w-[23%] px-4 py-4 text-center text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">ACTIONS</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -433,13 +454,12 @@ const Category = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-4 text-sm font-medium text-gray-500 max-w-[200px] truncate">
-                                                    {cat.description || "No description"}
+                                                <td className="px-2 py-4 text-center">
+                                                    <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${getCategoryType(cat).toLowerCase() === "income" ? "bg-emerald-50 text-emerald-700" : getCategoryType(cat).toLowerCase() === "transfer" ? "bg-blue-50 text-blue-700" : "bg-violet-50 text-violet-700"}`}>
+                                                        {getCategoryType(cat)}
+                                                    </span>
                                                 </td>
-                                                <td className="px-4 py-4 text-sm font-bold text-slate-800 text-center">
-                                                    {totalProds}
-                                                </td>
-                                                <td className="px-4 py-4 text-center">
+                                                <td className="px-2 py-4 text-center">
                                                     {status === 'Active' ? (
                                                         <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-600 text-[11px] font-bold rounded-lg">
                                                             Active
@@ -505,6 +525,10 @@ const Category = () => {
                                             <span className="font-semibold text-slate-700">{cat.catId || "N/A"}</span>
                                         </div>
                                         <div className="flex items-center justify-between gap-3">
+                                            <span className="font-medium text-gray-400">Type</span>
+                                            <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-700">{getCategoryType(cat)}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
                                             <span className="font-medium text-gray-400">Products</span>
                                             <span className="font-semibold text-slate-700">{totalProds}</span>
                                         </div>
@@ -557,6 +581,12 @@ const Category = () => {
                                     </p>
                                     
                                     <div className="flex items-center gap-4 mb-4">
+                                        <div>
+                                            <p className="text-[10px] text-gray-400 font-medium">Type</p>
+                                            <span className={`inline-block px-2 py-0.5 mt-0.5 rounded text-[10px] font-bold uppercase ${getCategoryType(cat).toLowerCase() === "income" ? "bg-emerald-50 text-emerald-700" : getCategoryType(cat).toLowerCase() === "transfer" ? "bg-blue-50 text-blue-700" : "bg-violet-50 text-violet-700"}`}>
+                                                {getCategoryType(cat)}
+                                            </span>
+                                        </div>
                                         <div>
                                             <p className="text-[10px] text-gray-400 font-medium">Products</p>
                                             <p className="text-sm font-bold text-gray-800">{totalProds}</p>
