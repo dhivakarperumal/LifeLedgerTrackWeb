@@ -11,6 +11,8 @@ import {
   FiTrendingDown,
   FiUser,
   FiActivity,
+  FiGrid,
+  FiList,
 } from "react-icons/fi";
 import api from "../../api";
 
@@ -77,6 +79,7 @@ const UserDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("expenses");
+  const [viewMode, setViewMode] = useState("card");
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -156,11 +159,11 @@ const UserDetails = () => {
                     type="button"
                     onClick={() => setActiveSection(section.id)}
                     aria-current={isActive ? "page" : undefined}
-                    className={`flex shrink-0 items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-semibold transition-colors lg:w-full ${isActive ? "bg-violet-50 text-violet-800" : "text-slate-600 hover:bg-slate-50"}`}
+                    className={`flex shrink-0 items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-semibold transition-colors lg:w-full ${isActive ? "bg-violet-600 text-white shadow-md" : "text-slate-600 hover:bg-slate-50"}`}
                   >
                     <Icon size={17} />
                     <span className="flex-1">{section.label}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs ${isActive ? "bg-white text-violet-800" : "bg-slate-100 text-slate-500"}`}>{(records[section.id] || []).length}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${isActive ? "bg-violet-500 text-white" : "bg-slate-100 text-slate-500"}`}>{(records[section.id] || []).length}</span>
                   </button>
                 );
               })}
@@ -175,7 +178,27 @@ const UserDetails = () => {
                     <p className="text-xs text-slate-500">{currentRecords.length} records</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-400"><FiActivity size={14} /> Account activity</div>
+                <div className="flex items-center gap-2">
+                  <div className="flex rounded-lg border border-slate-200 p-1 bg-slate-50">
+                    <button
+                      onClick={() => setViewMode("card")}
+                      className={`rounded-md p-1.5 transition-colors ${viewMode === "card" ? "bg-white text-violet-700 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                      title="Card View"
+                    >
+                      <FiGrid size={16} />
+                    </button>
+                    <button
+                      onClick={() => setViewMode("table")}
+                      className={`rounded-md p-1.5 transition-colors ${viewMode === "table" ? "bg-white text-violet-700 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                      title="Table View"
+                    >
+                      <FiList size={16} />
+                    </button>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-400 ml-2">
+                    <FiActivity size={14} /> Account activity
+                  </div>
+                </div>
               </div>
 
               {currentRecords.length === 0 ? (
@@ -184,7 +207,7 @@ const UserDetails = () => {
                   <p className="mt-3 font-semibold text-slate-700">No {currentSection.label.toLowerCase()} yet</p>
                   <p className="mt-1 text-sm text-slate-400">This account has no records in this section.</p>
                 </div>
-              ) : (
+              ) : viewMode === "card" ? (
                 <div className="divide-y divide-slate-100">
                   {currentRecords.map((record) => {
                     const description = typeof currentInfo.description === "function"
@@ -209,6 +232,48 @@ const UserDetails = () => {
                       </article>
                     );
                   })}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-600">
+                    <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                      <tr>
+                        <th className="px-5 py-3 font-semibold">Title</th>
+                        <th className="px-5 py-3 font-semibold">Category</th>
+                        <th className="px-5 py-3 font-semibold">Date</th>
+                        {currentInfo.amount && <th className="px-5 py-3 font-semibold text-right">Amount</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {currentRecords.map((record) => {
+                        const description = typeof currentInfo.description === "function"
+                          ? currentInfo.description(record)
+                          : record[currentInfo.description];
+                        const date = record[currentInfo.date];
+                        const category = record[currentInfo.category];
+                        const amount = currentInfo.amount ? record[currentInfo.amount] : null;
+                        return (
+                          <tr key={record.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-5 py-4">
+                              <p className="font-bold text-slate-800">{record.title || "Untitled record"}</p>
+                              {description && <p className="truncate max-w-[250px] mt-0.5 text-xs text-slate-500" title={description}>{description}</p>}
+                            </td>
+                            <td className="px-5 py-4">
+                              {category ? <span className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">{category}</span> : <span className="text-slate-400">-</span>}
+                            </td>
+                            <td className="px-5 py-4 text-xs font-medium text-slate-500 whitespace-nowrap">
+                              {formatDate(date)}
+                            </td>
+                            {currentInfo.amount && (
+                              <td className="px-5 py-4 text-right font-black text-slate-800 whitespace-nowrap">
+                                {formatCurrency(amount)}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
