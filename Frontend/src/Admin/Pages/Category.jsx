@@ -22,7 +22,7 @@ import {
     FiChevronDown
 } from "react-icons/fi";
 import imageCompression from "browser-image-compression";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { useAuth } from "../../PrivateRouter/AuthContext";
 
 const getCategoryType = (category) =>
@@ -290,10 +290,6 @@ const Category = () => {
     // ---- Renderers ----
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 min-h-screen pb-20 font-sans">
-            <Toaster position="top-right" />
-
-           
-
             {/* Stats Cards Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex items-center gap-5">

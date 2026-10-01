@@ -3,7 +3,7 @@ import { AuthContext } from "../PrivateRouter/AuthContext";
 import { useAdmin } from "../PrivateRouter/AdminContext";
 import { StoreContext } from "../PrivateRouter/StoreContext";
 import api from "../api";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
     FiShoppingBag,
@@ -369,8 +369,6 @@ const Dashboard = () => {
 
     return (
         <div className="space-y-6 pb-12 bg-slate-50 min-h-screen">
-            <Toaster position="top-right" />
-
             {/* Top Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {dashboardStats.map((stat, i) => {

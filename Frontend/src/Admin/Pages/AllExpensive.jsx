@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import api from "../../api";
 import Loader from "../../Components/CommenComponents/Loader";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { FaRupeeSign } from "react-icons/fa";
 import {
     FiPlus, FiSearch, FiTrash2, FiList, FiGrid,
@@ -34,7 +34,7 @@ const emptyForm = () => ({
 });
 
 const PAYMENT_METHODS = ["Cash", "UPI", "Bank Transfer", "Card", "Cheque", "Other"];
-const isTravelCategory = (value) => String(value || "").trim().toLowerCase() === "travel";
+const isTravelCategory = (value) => String(value || "").replace(/[^a-z]/gi, "").toLowerCase() === "travel";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 const fmt = (n) =>
@@ -273,8 +273,6 @@ const AllExpensive = () => {
     // ── render ────────────────────────────────────────────────────────────────
     return (
         <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700 min-h-screen pb-20">
-            <Toaster position="top-right" />
-
             {/* ── STAT CARDS ── */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
                 {[

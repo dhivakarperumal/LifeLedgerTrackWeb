@@ -1,5 +1,7 @@
 const db = require("../config/db");
 
+const isTravelCategory = (value) => String(value || "").replace(/[^a-z]/gi, "").toLowerCase() === "travel";
+
 exports.getAllExpenses = async (req, res) => {
     try {
         const userId = req.user?.user_id;
@@ -50,7 +52,7 @@ exports.createExpense = async (req, res) => {
             to,
         } = req.body;
 
-        const isTravelExpense = String(category || "").trim().toLowerCase() === "travel";
+        const isTravelExpense = isTravelCategory(category);
 
         if (!title || !expense_amount || !category || !date) {
             return res.status(400).json({
@@ -168,7 +170,7 @@ exports.updateExpense = async (req, res) => {
         }
 
         const effectiveCategory = category || existingExpense.category;
-        const isTravelExpense = String(effectiveCategory || "").trim().toLowerCase() === "travel";
+        const isTravelExpense = isTravelCategory(effectiveCategory);
         const numericExpense = expense_amount ? Number(expense_amount) : Number(existingExpense.expense_amount);
         const numericTransfer = transfer_amount ? Number(transfer_amount) : existingExpense.transfer_amount;
         const currentTransferId = existingExpense.transfer_id ? Number(existingExpense.transfer_id) : null;

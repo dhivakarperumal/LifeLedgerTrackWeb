@@ -82,7 +82,7 @@ const app = (
   <AuthProvider>
     <StoreProvider>
       <Toaster
-        position="top-left"
+        position="top-right"
         reverseOrder={false}
         toastOptions={{
           duration: 4500,
