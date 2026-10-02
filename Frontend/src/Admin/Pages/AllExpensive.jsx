@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import api from "../../api";
 import Loader from "../../Components/CommenComponents/Loader";
+import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
 import { toast } from "react-hot-toast";
 import { FaRupeeSign } from "react-icons/fa";
 import {
@@ -40,19 +41,6 @@ const isTravelCategory = (value) => String(value || "").replace(/[^a-z]/gi, "").
 // ─── helpers ─────────────────────────────────────────────────────────────────
 const fmt = (n) =>
     Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const dateKey = (value) => {
-    if (!value) return "";
-    if (typeof value === "string") return value.slice(0, 10);
-    const date = new Date(value);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-};
-
-const shiftDate = (date, days) => {
-    const shifted = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    shifted.setDate(shifted.getDate() + days);
-    return shifted;
-};
 
 const AllExpensive = () => {
     // ── list state ────────────────────────────────────────────────────────────
@@ -264,56 +252,7 @@ const AllExpensive = () => {
 
     // ── filtered list ─────────────────────────────────────────────────────────
     const visible = useMemo(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const dayOfWeek = (today.getDay() + 6) % 7;
-        const thisWeekStart = shiftDate(today, -dayOfWeek);
-        const lastWeekStart = shiftDate(thisWeekStart, -7);
-        const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const thisYearStart = new Date(today.getFullYear(), 0, 1);
-        const lastYearStart = new Date(today.getFullYear() - 1, 0, 1);
-        let rangeStart = "";
-        let rangeEnd = "";
-
-        switch (dateFilter) {
-            case "Today":
-                rangeStart = rangeEnd = dateKey(today);
-                break;
-            case "Yesterday":
-                rangeStart = rangeEnd = dateKey(shiftDate(today, -1));
-                break;
-            case "This Week":
-                rangeStart = dateKey(thisWeekStart);
-                rangeEnd = dateKey(shiftDate(thisWeekStart, 6));
-                break;
-            case "Last Week":
-                rangeStart = dateKey(lastWeekStart);
-                rangeEnd = dateKey(shiftDate(thisWeekStart, -1));
-                break;
-            case "This Month":
-                rangeStart = dateKey(thisMonthStart);
-                rangeEnd = dateKey(new Date(today.getFullYear(), today.getMonth() + 1, 0));
-                break;
-            case "Last Month":
-                rangeStart = dateKey(lastMonthStart);
-                rangeEnd = dateKey(new Date(today.getFullYear(), today.getMonth(), 0));
-                break;
-            case "This Year":
-                rangeStart = dateKey(thisYearStart);
-                rangeEnd = dateKey(new Date(today.getFullYear(), 11, 31));
-                break;
-            case "Last Year":
-                rangeStart = dateKey(lastYearStart);
-                rangeEnd = dateKey(new Date(today.getFullYear() - 1, 11, 31));
-                break;
-            case "Custom Date Range":
-                rangeStart = customStartDate;
-                rangeEnd = customEndDate;
-                break;
-            default:
-                break;
-        }
+        const dateRange = resolveDateRange(dateFilter, customStartDate, customEndDate);
 
         return expenses.filter((ex) => {
             const q = searchTerm.toLowerCase();
@@ -323,9 +262,7 @@ const AllExpensive = () => {
                 (ex.location || "").toLowerCase().includes(q) ||
                 (ex.notes || "").toLowerCase().includes(q);
             const matchCat = categoryFilter === "All" || ex.category === categoryFilter;
-            const expenseDate = dateKey(ex.expense_date);
-            const matchDate = (!rangeStart || expenseDate >= rangeStart)
-                && (!rangeEnd || expenseDate <= rangeEnd);
+            const matchDate = matchesDateRange(ex.expense_date, dateRange);
             return matchSearch && matchCat && matchDate;
         });
     }, [expenses, searchTerm, categoryFilter, dateFilter, customStartDate, customEndDate]);
@@ -432,7 +369,7 @@ const AllExpensive = () => {
                     aria-label="Filter expenses by date"
                     className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf] md:w-auto"
                 >
-                    {["All", "Today", "Yesterday", "This Week", "Last Week", "This Month", "Last Month", "This Year", "Last Year", "Custom Date Range"].map((option) => (
+                    {DATE_FILTER_OPTIONS.map((option) => (
                         <option key={option} value={option}>{option}</option>
                     ))}
                 </select>

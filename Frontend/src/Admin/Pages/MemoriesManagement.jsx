@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import Loader from "../../Components/CommenComponents/Loader";
 import { toast } from "react-hot-toast";
+import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
 import {
   FiImage,
   FiVideo,
@@ -118,6 +119,9 @@ const MemoriesManagement = () => {
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [dateFilter, setDateFilter] = useState("All");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [viewMode, setViewMode] = useState("table");
   const [currentPage, setCurrentPage] = useState(1);
@@ -263,7 +267,7 @@ const MemoriesManagement = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedCategory, favoriteOnly]);
+  }, [search, selectedCategory, favoriteOnly, dateFilter, customStartDate, customEndDate]);
 
   const memoryCategories = useMemo(() => {
     return categories.filter((category) => {
@@ -280,6 +284,7 @@ const MemoriesManagement = () => {
   }), [memories]);
 
   const filteredMemories = useMemo(() => {
+    const dateRange = resolveDateRange(dateFilter, customStartDate, customEndDate);
     return memories.filter((item) => {
       const haystack = [
         item.title,
@@ -295,9 +300,10 @@ const MemoriesManagement = () => {
       const matchesSearch = !search || haystack.includes(search.toLowerCase());
       const matchesCategory = selectedCategory === "all" || String(item.category_id) === String(selectedCategory);
       const matchesFavorite = !favoriteOnly || item.is_favorite;
-      return matchesSearch && matchesCategory && matchesFavorite;
+      const matchesDate = matchesDateRange(item.memory_date, dateRange);
+      return matchesSearch && matchesCategory && matchesFavorite && matchesDate;
     });
-  }, [memories, search, selectedCategory, favoriteOnly]);
+  }, [memories, search, selectedCategory, favoriteOnly, dateFilter, customStartDate, customEndDate]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMemories.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -671,6 +677,28 @@ const MemoriesManagement = () => {
             </select>
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
           </div>
+
+          <select
+            value={dateFilter}
+            onChange={(event) => setDateFilter(event.target.value)}
+            aria-label="Filter memories by date"
+            className="w-full appearance-none rounded-[18px] border border-gray-200 bg-white px-4 py-3.5 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-[#7b2cbf] sm:w-auto"
+          >
+            {DATE_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+
+          {dateFilter === "Custom Date Range" && (
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 md:w-auto">
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                From
+                <input type="date" value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} aria-label="Memory start date" className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#7b2cbf]" />
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                To
+                <input type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} aria-label="Memory end date" className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#7b2cbf]" />
+              </label>
+            </div>
+          )}
 
           <div className="flex overflow-hidden rounded-[18px] border border-gray-200 bg-white shadow-sm self-start sm:self-auto">
             <button

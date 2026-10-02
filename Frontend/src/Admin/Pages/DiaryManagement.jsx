@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../api";
 import { useAuth } from "../../PrivateRouter/AuthContext";
 import { toast } from "react-hot-toast";
+import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
 import {
   FiPlus, FiSearch, FiCalendar, FiHeart, FiEdit2, FiTrash2, FiStar, FiClock,
   FiFileText, FiImage, FiVideo, FiPaperclip, FiBookmark, FiCheck, FiX,
@@ -121,6 +122,9 @@ const DiaryManagement = () => {
   const [selectedMood, setSelectedMood] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
+  const [dateRangeFilter, setDateRangeFilter] = useState("All");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [currentPage, setCurrentPage] = useState(1);
@@ -357,6 +361,7 @@ const DiaryManagement = () => {
 
   const filteredEntries = useMemo(() => {
     const term = search.toLowerCase();
+    const dateRange = resolveDateRange(dateRangeFilter, customStartDate, customEndDate);
     return entries.filter((entry) => {
       const matchesFilter = (() => {
         if (selectedFilter === "favorites") return entry.is_favorite;
@@ -377,6 +382,7 @@ const DiaryManagement = () => {
       const categoryMatch = selectedCategory === "all" || String(entry.category_id) === String(selectedCategory) || (entry.category_name || "") === selectedCategory;
       const moodMatch = selectedMood === "all" || entry.mood === selectedMood;
       const dateMatch = !selectedDate || entry.entry_date === selectedDate;
+      const dateRangeMatch = matchesDateRange(entry.entry_date, dateRange);
       const searchMatch = !term || [
         entry.title,
         entry.content,
@@ -385,13 +391,13 @@ const DiaryManagement = () => {
         entry.category_name,
         (entry.tags || []).join(" "),
       ].join(" ").toLowerCase().includes(term);
-      return matchesFilter && categoryMatch && moodMatch && dateMatch && searchMatch;
+      return matchesFilter && categoryMatch && moodMatch && dateMatch && dateRangeMatch && searchMatch;
     });
-  }, [entries, search, selectedFilter, selectedMood, selectedCategory, selectedDate]);
+  }, [entries, search, selectedFilter, selectedMood, selectedCategory, selectedDate, dateRangeFilter, customStartDate, customEndDate]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedFilter, selectedMood, selectedCategory, selectedDate]);
+  }, [search, selectedFilter, selectedMood, selectedCategory, selectedDate, dateRangeFilter, customStartDate, customEndDate]);
 
   const pageSize = 10;
   const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize));
