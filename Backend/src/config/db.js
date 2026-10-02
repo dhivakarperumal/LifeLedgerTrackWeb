@@ -124,6 +124,22 @@ const initializeDatabase = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS transfer_allocations (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      transfer_id INT NOT NULL,
+      previous_amount DECIMAL(12,2) NOT NULL,
+      amount DECIMAL(12,2) NOT NULL,
+      remaining_amount DECIMAL(12,2) NOT NULL,
+      purpose VARCHAR(120) NOT NULL,
+      reason TEXT NULL,
+      transfer_date DATE NOT NULL,
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_transfer_allocation_owner (transfer_id, user_id, transfer_date)
+    )`,
     `CREATE TABLE IF NOT EXISTS expenses (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id VARCHAR(50) NULL,

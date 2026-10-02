@@ -33,6 +33,8 @@ router.use(requireAuth);
 
 router.get(   "/",    transferController.getAllTransfers);
 router.post(  "/",    upload.single("receipt"), transferController.createTransfer);
+router.get(   "/:id/history", transferController.getTransferHistory);
+router.post(  "/:id/history", transferController.createTransferHistory);
 router.put(   "/:id", upload.single("receipt"), transferController.updateTransfer);
 router.delete("/:id", transferController.deleteTransfer);
 

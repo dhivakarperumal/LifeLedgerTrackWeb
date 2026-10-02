@@ -2,6 +2,25 @@ const db = require("../config/db");
 
 const isTravelCategory = (value) => String(value || "").replace(/[^a-z]/gi, "").toLowerCase() === "travel";
 
+const getTransferRemaining = async (transferId, excludedExpenseId = null) => {
+    const expenseQuery = excludedExpenseId
+        ? "SELECT COALESCE(SUM(expense_amount), 0) AS total FROM expenses WHERE transfer_id = ? AND id != ?"
+        : "SELECT COALESCE(SUM(expense_amount), 0) AS total FROM expenses WHERE transfer_id = ?";
+    const expenseParams = excludedExpenseId ? [transferId, excludedExpenseId] : [transferId];
+    const [[transferRows], [expenseRows], [allocationRows]] = await Promise.all([
+        db.query("SELECT amount FROM transfers WHERE id = ?", [transferId]),
+        db.query(expenseQuery, expenseParams),
+        db.query("SELECT COALESCE(SUM(amount), 0) AS total FROM transfer_allocations WHERE transfer_id = ?", [transferId]),
+    ]);
+
+    if (!transferRows[0]) return null;
+
+    return Number(Math.max(
+        Number(transferRows[0].amount || 0) - Number(expenseRows[0].total || 0) - Number(allocationRows[0].total || 0),
+        0
+    ).toFixed(2));
+};
+
 exports.getAllExpenses = async (req, res) => {
     try {
         const userId = req.user?.user_id;
@@ -19,17 +38,8 @@ exports.getAllExpenses = async (req, res) => {
 const applyTransferBalanceDelta = async (transferId) => {
     if (!transferId) return;
 
-    // Recalculate remaining amount based on total expense amount for this transfer
-    const [transferRows] = await db.query("SELECT * FROM transfers WHERE id = ?", [transferId]);
-    if (!transferRows[0]) return;
-    const transferAmount = Number(transferRows[0].amount || 0);
-
-    const [expenseSumRows] = await db.query(
-        "SELECT COALESCE(SUM(expense_amount), 0) as total_expenses FROM expenses WHERE transfer_id = ?",
-        [transferId]
-    );
-    const totalExpenses = Number(expenseSumRows[0].total_expenses || 0);
-    const updatedRemaining = Number(Math.max(transferAmount - totalExpenses, 0).toFixed(2));
+    const updatedRemaining = await getTransferRemaining(transferId);
+    if (updatedRemaining === null) return;
 
     await db.query("UPDATE transfers SET remaining_amount = ? WHERE id = ?", [updatedRemaining, transferId]);
 };
@@ -86,7 +96,7 @@ exports.createExpense = async (req, res) => {
                 return res.status(400).json({ message: "Selected transfer record was not found." });
             }
 
-            const currentRemaining = Number(targetTransfer.remaining_amount ?? targetTransfer.amount ?? 0);
+            const currentRemaining = await getTransferRemaining(validTransferId);
             if (numericExpense > currentRemaining) {
                 return res.status(400).json({
                     message: `Expense amount exceeds the remaining transfer amount.`,
@@ -195,12 +205,7 @@ exports.updateExpense = async (req, res) => {
             }
 
             // Check if the new expense will exceed the transfer's total amount
-            const [expenseSumRows] = await db.query(
-                "SELECT COALESCE(SUM(expense_amount), 0) as total_expenses FROM expenses WHERE transfer_id = ? AND id != ?",
-                [validTransferId, id]
-            );
-            const otherExpenses = Number(expenseSumRows[0].total_expenses || 0);
-            const availableAmount = Number(targetTransfer.amount || 0) - otherExpenses;
+            const availableAmount = await getTransferRemaining(validTransferId, Number(id));
             
             if (numericExpense > availableAmount) {
                 return res.status(400).json({

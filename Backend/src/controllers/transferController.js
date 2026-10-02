@@ -29,12 +29,26 @@ exports.getAllTransfers = async (req, res) => {
         const [rows] = await db.query(`
             SELECT
                 t.*,
-                COALESCE(SUM(e.expense_amount), 0) AS total_expense,
-                (t.amount - COALESCE(SUM(e.expense_amount), 0)) AS computed_remaining
+                COALESCE(e.total_expense, 0) AS total_expense,
+                COALESCE(a.total_transferred, 0) AS total_transferred,
+                GREATEST(t.amount - COALESCE(e.total_expense, 0) - COALESCE(a.total_transferred, 0), 0) AS computed_remaining,
+                i.amount AS source_income_amount,
+                i.category AS source_income_category,
+                COALESCE(u.name, u.username, t.created_by) AS created_by_name
             FROM transfers t
-            LEFT JOIN expenses e ON e.transfer_id = t.id
+            LEFT JOIN (
+                SELECT transfer_id, SUM(expense_amount) AS total_expense
+                FROM expenses
+                GROUP BY transfer_id
+            ) e ON e.transfer_id = t.id
+            LEFT JOIN (
+                SELECT transfer_id, SUM(amount) AS total_transferred
+                FROM transfer_allocations
+                GROUP BY transfer_id
+            ) a ON a.transfer_id = t.id
+            LEFT JOIN income i ON i.id = t.source_income_id
+            LEFT JOIN users u ON u.user_id = t.created_by
             WHERE t.user_id = ?
-            GROUP BY t.id
             ORDER BY t.transfer_date DESC, t.created_at DESC
         `, [userId]);
 
@@ -54,6 +68,7 @@ exports.getAllTransfers = async (req, res) => {
             ...r,
             remaining_amount: Math.max(Number(r.computed_remaining), 0),
             total_expense: Number(r.total_expense || 0),
+            total_transferred: Number(r.total_transferred || 0),
         }));
 
         res.json(normalised);
@@ -148,6 +163,17 @@ exports.updateTransfer = async (req, res) => {
             return res.status(400).json({ message: "Transfer amount must be greater than zero." });
         }
 
+        const [[usageTotals]] = await db.query(
+            `SELECT
+                (SELECT COALESCE(SUM(expense_amount), 0) FROM expenses WHERE transfer_id = ?) AS total_expenses,
+                (SELECT COALESCE(SUM(amount), 0) FROM transfer_allocations WHERE transfer_id = ?) AS total_allocated`,
+            [id, id]
+        );
+        const totalUsed = Number(usageTotals.total_expenses || 0) + Number(usageTotals.total_allocated || 0);
+        if (newAmount < totalUsed) {
+            return res.status(400).json({ message: "Transfer amount cannot be less than amounts already spent or transferred." });
+        }
+
         const currentSourceIncomeId = existingTransfer.source_income_id ? Number(existingTransfer.source_income_id) : null;
         const targetIncomeId = sourceIncomeId ? Number(sourceIncomeId) : currentSourceIncomeId;
 
@@ -196,13 +222,7 @@ exports.updateTransfer = async (req, res) => {
             ]
         );
 
-        // recalculate remaining_amount of transfer
-        const [expenseSumRows] = await db.query(
-            "SELECT COALESCE(SUM(expense_amount), 0) as total_expenses FROM expenses WHERE transfer_id = ?",
-            [id]
-        );
-        const totalExpenses = Number(expenseSumRows[0].total_expenses || 0);
-        const transferRemaining = Number(Math.max(newAmount - totalExpenses, 0).toFixed(2));
+        const transferRemaining = Number(Math.max(newAmount - totalUsed, 0).toFixed(2));
         await db.query("UPDATE transfers SET remaining_amount = ? WHERE id = ?", [transferRemaining, id]);
 
         if (currentSourceIncomeId) await applyIncomeBalanceDelta(currentSourceIncomeId);
@@ -226,6 +246,14 @@ exports.deleteTransfer = async (req, res) => {
             return res.status(404).json({ message: "Transfer not found." });
         }
 
+        const [[historyCount]] = await db.query(
+            "SELECT COUNT(*) AS total FROM transfer_allocations WHERE transfer_id = ? AND user_id = ?",
+            [id, req.user?.user_id]
+        );
+        if (Number(historyCount.total) > 0) {
+            return res.status(409).json({ message: "This transfer has history and cannot be deleted." });
+        }
+
         await db.query("DELETE FROM transfers WHERE id = ? AND user_id = ?", [id, req.user?.user_id]);
 
         if (transfer.source_income_id) {
@@ -236,5 +264,121 @@ exports.deleteTransfer = async (req, res) => {
     } catch (error) {
         console.error("Delete Transfer Error:", error);
         res.status(500).json({ message: "Failed to delete transfer", error: error.message });
+    }
+};
+
+exports.getTransferHistory = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.user_id;
+        const [transferRows] = await db.query(
+            "SELECT id FROM transfers WHERE id = ? AND user_id = ?",
+            [id, userId]
+        );
+
+        if (!transferRows[0]) {
+            return res.status(404).json({ message: "Transfer not found." });
+        }
+
+        const [rows] = await db.query(
+            `SELECT h.*, COALESCE(u.name, u.username, h.created_by) AS created_by_name
+             FROM transfer_allocations h
+             LEFT JOIN users u ON u.user_id = h.created_by
+             WHERE h.transfer_id = ? AND h.user_id = ?
+             ORDER BY h.transfer_date DESC, h.created_at DESC`,
+            [id, userId]
+        );
+
+        res.json(rows);
+    } catch (error) {
+        console.error("Fetch Transfer History Error:", error);
+        res.status(500).json({ message: "Failed to fetch transfer history", error: error.message });
+    }
+};
+
+exports.createTransferHistory = async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user?.user_id;
+    const { amount, purpose, reason, date } = req.body;
+    const numericAmount = normalizeMoney(amount);
+
+    if (numericAmount === null || numericAmount <= 0) {
+        return res.status(400).json({ message: "Transfer amount must be greater than zero." });
+    }
+    if (!purpose || !String(purpose).trim() || !date) {
+        return res.status(400).json({ message: "Purpose and transfer date are required." });
+    }
+
+    let connection;
+    let transactionStarted = false;
+
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+        transactionStarted = true;
+
+        const [transferRows] = await connection.query(
+            "SELECT * FROM transfers WHERE id = ? AND user_id = ? FOR UPDATE",
+            [id, userId]
+        );
+        const transfer = transferRows[0];
+
+        if (!transfer) {
+            await connection.rollback();
+            transactionStarted = false;
+            return res.status(404).json({ message: "Transfer not found." });
+        }
+
+        const [[expenseTotals]] = await connection.query(
+            "SELECT COALESCE(SUM(expense_amount), 0) AS total FROM expenses WHERE transfer_id = ?",
+            [id]
+        );
+        const [[allocationTotals]] = await connection.query(
+            "SELECT COALESCE(SUM(amount), 0) AS total FROM transfer_allocations WHERE transfer_id = ?",
+            [id]
+        );
+        const currentRemaining = Number(Math.max(
+            Number(transfer.amount) - Number(expenseTotals.total) - Number(allocationTotals.total),
+            0
+        ).toFixed(2));
+
+        if (numericAmount > currentRemaining) {
+            await connection.rollback();
+            transactionStarted = false;
+            return res.status(400).json({
+                message: `Transfer amount exceeds the current remaining amount of ₹${currentRemaining.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+            });
+        }
+
+        const remainingAmount = Number((currentRemaining - numericAmount).toFixed(2));
+        const [result] = await connection.query(
+            `INSERT INTO transfer_allocations
+                (user_id, transfer_id, previous_amount, amount, remaining_amount, purpose, reason, transfer_date, created_by, updated_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [userId, id, currentRemaining, numericAmount, remainingAmount, String(purpose).trim(), reason || null, date, userId, userId]
+        );
+
+        await connection.query(
+            "UPDATE transfers SET remaining_amount = ?, updated_by = ? WHERE id = ? AND user_id = ?",
+            [remainingAmount, userId, id, userId]
+        );
+        await connection.commit();
+        transactionStarted = false;
+
+        const [historyRows] = await db.query(
+            `SELECT h.*, COALESCE(u.name, u.username, h.created_by) AS created_by_name
+             FROM transfer_allocations h
+             LEFT JOIN users u ON u.user_id = h.created_by
+             WHERE h.id = ? AND h.user_id = ?`,
+            [result.insertId, userId]
+        );
+
+        res.status(201).json({ message: "Transfer saved successfully", transfer: historyRows[0] });
+    } catch (error) {
+        if (connection && transactionStarted) await connection.rollback();
+        console.error("Create Transfer History Error:", error);
+        res.status(500).json({ message: "Failed to save transfer", error: error.message });
+    } finally {
+        connection?.release();
     }
 };

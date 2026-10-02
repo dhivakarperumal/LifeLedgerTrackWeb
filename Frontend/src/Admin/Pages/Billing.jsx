@@ -27,7 +27,23 @@ const initialForm = {
   attachment: null,
 };
 
+const initialTransferForm = () => ({
+  amount: "",
+  purpose: "",
+  customPurpose: "",
+  reason: "",
+  date: new Date().toISOString().split("T")[0],
+});
+
 const formatDateOnly = (date) => (date ? String(date).split("T")[0] : "-");
+const formatMoney = (value) => `₹${Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatDateTime = (value) => value ? new Date(value).toLocaleString("en-IN", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+}) : "-";
 
 const Billing = () => {
   const location = useLocation();
@@ -44,11 +60,34 @@ const Billing = () => {
   const [editingIncomeId, setEditingIncomeId] = useState(null);
   const [existingAttachment, setExistingAttachment] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [isTransferLoading, setIsTransferLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [isTransferSaving, setIsTransferSaving] = useState(false);
+  const [transferRecords, setTransferRecords] = useState([]);
+  const [transferHistory, setTransferHistory] = useState([]);
+  const [transferIncomeFilter, setTransferIncomeFilter] = useState("all");
+  const [selectedTransferId, setSelectedTransferId] = useState("");
+  const [transferForm, setTransferForm] = useState(initialTransferForm);
+  const [transferValidation, setTransferValidation] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [incomeFilter, setIncomeFilter] = useState("All Income");
   const [viewMode, setViewMode] = useState("table");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  const selectedTransferRecord = transferRecords.find(
+    (transfer) => String(transfer.id) === String(selectedTransferId),
+  ) || null;
+  const currentTransferRemaining = Number(
+    selectedTransferRecord?.remaining_amount ?? selectedTransferRecord?.amount ?? 0,
+  );
+  const newTransferAmount = Number(transferForm.amount || 0);
+  const newTransferRemaining = Math.max(currentTransferRemaining - newTransferAmount, 0);
+  const filteredTransferRecords = transferRecords.filter((transfer) => (
+    transferIncomeFilter === "all"
+      || String(transfer.source_income_id || "") === String(transferIncomeFilter)
+  ));
 
   useEffect(() => {
     setBudgetDraft(String(monthlyBudget));
@@ -137,6 +176,102 @@ const Billing = () => {
     setExistingAttachment(null);
     setForm(initialForm);
     setIsModalOpen(true);
+  };
+
+  const closeTransferModal = () => {
+    setIsTransferModalOpen(false);
+    setSelectedTransferId("");
+    setTransferForm(initialTransferForm());
+    setTransferValidation("");
+  };
+
+  const openTransferModal = async () => {
+    setTransferRecords([]);
+    setTransferIncomeFilter("all");
+    setSelectedTransferId("");
+    setTransferHistory([]);
+    setTransferForm(initialTransferForm());
+    setTransferValidation("");
+    setIsTransferModalOpen(true);
+    setIsTransferLoading(true);
+    try {
+      const response = await api.get("/transfers");
+      setTransferRecords(response.data || []);
+    } catch (error) {
+      console.error("Fetch Transfer List Error:", error);
+      toast.error(error.response?.data?.message || "Failed to load transfers.");
+    } finally {
+      setIsTransferLoading(false);
+    }
+  };
+
+  const selectTransferRecord = async (transfer) => {
+    setSelectedTransferId(String(transfer.id));
+    setTransferHistory([]);
+    setTransferForm(initialTransferForm());
+    setTransferValidation("");
+    setIsHistoryLoading(true);
+    try {
+      const response = await api.get(`/transfers/${transfer.id}/history`);
+      setTransferHistory(response.data || []);
+    } catch (error) {
+      console.error("Fetch Transfer History Error:", error);
+      toast.error(error.response?.data?.message || "Failed to load transfer history.");
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
+  const submitTransferHistory = async (event) => {
+    event.preventDefault();
+    if (!selectedTransferRecord) return;
+
+    if (!newTransferAmount || newTransferAmount <= 0) {
+      setTransferValidation("Enter a transfer amount greater than zero.");
+      return;
+    }
+    if (newTransferAmount > currentTransferRemaining) {
+      setTransferValidation("Transfer amount cannot exceed the current remaining amount.");
+      return;
+    }
+
+    const purpose = transferForm.purpose === "Other"
+      ? transferForm.customPurpose.trim()
+      : transferForm.purpose;
+    if (!purpose) {
+      setTransferValidation("Select a purpose or enter a custom purpose.");
+      return;
+    }
+
+    setIsTransferSaving(true);
+    setTransferValidation("");
+    try {
+      const response = await api.post(`/transfers/${selectedTransferRecord.id}/history`, {
+        amount: newTransferAmount,
+        purpose,
+        reason: transferForm.reason.trim(),
+        date: transferForm.date,
+      });
+      const savedTransfer = response.data.transfer;
+      setTransferHistory((current) => [savedTransfer, ...current]);
+      setTransferRecords((current) => current.map((transfer) => (
+        String(transfer.id) === String(selectedTransferRecord.id)
+          ? {
+            ...transfer,
+            remaining_amount: savedTransfer.remaining_amount,
+            total_transferred: Number(transfer.total_transferred || 0) + newTransferAmount,
+          }
+          : transfer
+      )));
+      toast.success("Transfer saved successfully.");
+      closeTransferModal();
+    } catch (error) {
+      const message = error.response?.data?.message || "Failed to save transfer.";
+      setTransferValidation(message);
+      toast.error(message);
+    } finally {
+      setIsTransferSaving(false);
+    }
   };
 
   const openEditIncome = (income) => {
@@ -375,6 +510,13 @@ const Billing = () => {
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:from-[#1e40af] hover:to-[#1d4ed8] active:scale-95 md:w-auto"
             >
               <FiPlus size={15} /> Set Monthly Budget
+            </button>
+            <button
+              type="button"
+              onClick={openTransferModal}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0f766e] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-900/20 transition-all hover:bg-[#115e59] active:scale-95 md:w-auto"
+            >
+              <FiPlus size={16} /> Add Transfer
             </button>
             <button
               type="button"
@@ -735,6 +877,280 @@ const Billing = () => {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {isTransferModalOpen && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5" onMouseDown={(event) => { if (event.target === event.currentTarget) closeTransferModal(); }}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="income-transfer-title"
+            className="relative flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <header className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-slate-900 px-5 py-4 text-white sm:px-7">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-teal-300">Income management</p>
+                <h2 id="income-transfer-title" className="mt-1 text-xl font-bold">Add Transfer</h2>
+              </div>
+              <button type="button" onClick={closeTransferModal} className="rounded-lg p-2 text-white/75 transition hover:bg-white/10 hover:text-white" aria-label="Close transfer dialog">
+                <FiX size={21} />
+              </button>
+            </header>
+
+            <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
+              <section className="min-w-0 border-b border-slate-200 p-4 sm:p-6 lg:border-b-0 lg:border-r" aria-label="Transfer list">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900">Transfer List</h3>
+                    <p className="mt-1 text-xs text-slate-500">Select a transfer to use its remaining amount.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{filteredTransferRecords.length} records</span>
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                      Income
+                      <select
+                        value={transferIncomeFilter}
+                        onChange={(event) => setTransferIncomeFilter(event.target.value)}
+                        className="max-w-56 rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 outline-none focus:border-teal-600"
+                      >
+                        <option value="all">All Income</option>
+                        {incomes.map((income) => (
+                          <option key={income.id} value={income.id}>{income.title} · {income.category}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="min-w-[1120px] w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-3 py-3">Transfer ID / Date</th>
+                        <th className="px-3 py-3">From</th>
+                        <th className="px-3 py-3">To</th>
+                        <th className="px-3 py-3 text-right">Previous</th>
+                        <th className="px-3 py-3 text-right">Transfer</th>
+                        <th className="px-3 py-3 text-right">Remaining</th>
+                        <th className="px-3 py-3">Purpose / Reason</th>
+                        <th className="px-3 py-3">Created by / at</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredTransferRecords.map((transfer) => {
+                        const isSelected = String(transfer.id) === String(selectedTransferId);
+                        return (
+                          <tr
+                            key={transfer.id}
+                            onClick={() => selectTransferRecord(transfer)}
+                            onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") selectTransferRecord(transfer); }}
+                            role="button"
+                            tabIndex={0}
+                            aria-pressed={isSelected}
+                            className={`cursor-pointer align-top transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-teal-600 ${isSelected ? "bg-teal-50" : "hover:bg-slate-50"}`}
+                          >
+                            <td className="whitespace-nowrap px-3 py-3">
+                              <span className="block font-bold text-slate-800">TR{String(transfer.id).padStart(3, "0")}</span>
+                              <span className="mt-1 block text-slate-500">{formatDateOnly(transfer.transfer_date)}</span>
+                            </td>
+                            <td className="max-w-28 px-3 py-3 text-slate-600">{transfer.source_income_category || transfer.transfer_from || "Account"}</td>
+                            <td className="max-w-28 px-3 py-3 text-slate-600">{transfer.category || transfer.transfer_to || "Account"}</td>
+                            <td className="whitespace-nowrap px-3 py-3 text-right font-semibold text-slate-700">{formatMoney(transfer.amount)}</td>
+                            <td className="whitespace-nowrap px-3 py-3 text-right font-semibold text-slate-700">{formatMoney(transfer.amount)}</td>
+                            <td className="whitespace-nowrap px-3 py-3 text-right font-bold text-teal-700">{formatMoney(transfer.remaining_amount ?? transfer.amount)}</td>
+                            <td className="max-w-44 px-3 py-3">
+                              <span className="block font-semibold text-slate-700">{transfer.title || transfer.category || "-"}</span>
+                              <span className="mt-1 block line-clamp-2 text-slate-500">{transfer.notes || "-"}</span>
+                            </td>
+                            <td className="max-w-40 px-3 py-3">
+                              <span className="block text-slate-700">{transfer.created_by_name || transfer.created_by || "-"}</span>
+                              <span className="mt-1 block text-slate-500">{formatDateTime(transfer.created_at)}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {!isTransferLoading && filteredTransferRecords.length === 0 && (
+                        <tr><td colSpan="8" className="px-4 py-10 text-center text-sm text-slate-500">No transfer records are available.</td></tr>
+                      )}
+                      {isTransferLoading && (
+                        <tr><td colSpan="8" className="px-4 py-10 text-center text-sm text-slate-500">Loading transfers...</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="min-w-0 p-4 sm:p-6">
+                {selectedTransferRecord ? (
+                  <>
+                    <div className="mb-5">
+                      <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Selected transfer</p>
+                      <h3 className="mt-1 text-lg font-bold text-slate-900">TR{String(selectedTransferRecord.id).padStart(3, "0")} · {selectedTransferRecord.title || selectedTransferRecord.category}</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <div className="rounded-lg border border-slate-200 p-3">
+                        <p className="text-[10px] font-bold uppercase text-slate-500">Previous Amount</p>
+                        <p className="mt-1 font-bold text-slate-900">{formatMoney(selectedTransferRecord.amount)}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 p-3">
+                        <p className="text-[10px] font-bold uppercase text-slate-500">Already Transferred</p>
+                        <p className="mt-1 font-bold text-slate-900">{formatMoney(selectedTransferRecord.total_transferred)}</p>
+                      </div>
+                      <div className="rounded-lg border border-teal-200 bg-teal-50 p-3">
+                        <p className="text-[10px] font-bold uppercase text-teal-800">Current Remaining</p>
+                        <p className="mt-1 font-bold text-teal-900">{formatMoney(currentTransferRemaining)}</p>
+                      </div>
+                    </div>
+
+                    <form id="add-transfer-form" onSubmit={submitTransferHistory} className="mt-5 space-y-4">
+                      {currentTransferRemaining <= 0 ? (
+                        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-800">No remaining amount available.</p>
+                      ) : (
+                        <label className="block">
+                          <span className="mb-1.5 block text-sm font-semibold text-slate-700">New Transfer Amount</span>
+                          <input
+                            type="number"
+                            min="0.01"
+                            max={currentTransferRemaining}
+                            step="0.01"
+                            value={transferForm.amount}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              setTransferForm((current) => ({ ...current, amount: value }));
+                              setTransferValidation(Number(value) > currentTransferRemaining ? "Transfer amount cannot exceed the current remaining amount." : "");
+                            }}
+                            disabled={currentTransferRemaining <= 0}
+                            required
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100"
+                          />
+                        </label>
+                      )}
+
+                      <label className="block">
+                        <span className="mb-1.5 block text-sm font-semibold text-slate-700">Purpose</span>
+                        <select
+                          value={transferForm.purpose}
+                          onChange={(event) => setTransferForm((current) => ({ ...current, purpose: event.target.value, customPurpose: "" }))}
+                          disabled={currentTransferRemaining <= 0}
+                          required
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100"
+                        >
+                          <option value="">Select purpose</option>
+                          {["Expense", "Budget", "Purchase", "Salary", "Maintenance", "Marketing", "Other"].map((purpose) => <option key={purpose}>{purpose}</option>)}
+                        </select>
+                      </label>
+                      {transferForm.purpose === "Other" && (
+                        <label className="block">
+                          <span className="mb-1.5 block text-sm font-semibold text-slate-700">Custom Purpose</span>
+                          <input
+                            value={transferForm.customPurpose}
+                            onChange={(event) => setTransferForm((current) => ({ ...current, customPurpose: event.target.value }))}
+                            disabled={currentTransferRemaining <= 0}
+                            required
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100"
+                          />
+                        </label>
+                      )}
+                      <label className="block">
+                        <span className="mb-1.5 block text-sm font-semibold text-slate-700">Reason</span>
+                        <textarea
+                          rows="3"
+                          value={transferForm.reason}
+                          onChange={(event) => setTransferForm((current) => ({ ...current, reason: event.target.value }))}
+                          disabled={currentTransferRemaining <= 0}
+                          placeholder="Add a note about this transfer"
+                          className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-sm font-semibold text-slate-700">Transfer Date</span>
+                        <input
+                          type="date"
+                          value={transferForm.date}
+                          onChange={(event) => setTransferForm((current) => ({ ...current, date: event.target.value }))}
+                          disabled={currentTransferRemaining <= 0}
+                          required
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100"
+                        />
+                      </label>
+
+                      <div className="rounded-xl border border-teal-200 bg-teal-50 p-4" aria-live="polite">
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <span className="font-medium text-slate-600">Current remaining</span>
+                          <span className="font-semibold text-slate-900">{formatMoney(currentTransferRemaining)}</span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                          <span className="font-medium text-slate-600">New transfer amount</span>
+                          <span className="font-semibold text-slate-900">{formatMoney(newTransferAmount)}</span>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-teal-200 pt-3">
+                          <span className="font-bold text-teal-900">New remaining amount</span>
+                          <span className="text-lg font-black text-teal-900">{formatMoney(newTransferRemaining)}</span>
+                        </div>
+                      </div>
+                      {transferValidation && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{transferValidation}</p>}
+                    </form>
+
+                    <div className="mt-6 border-t border-slate-200 pt-5">
+                      <div className="mb-3 flex items-center justify-between">
+                        <h4 className="font-bold text-slate-900">Transfer History</h4>
+                        <span className="text-xs text-slate-500">{transferHistory.length} entries</span>
+                      </div>
+                      {isHistoryLoading ? (
+                        <p className="py-5 text-center text-sm text-slate-500">Loading history...</p>
+                      ) : transferHistory.length ? (
+                        <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                          {transferHistory.map((entry) => (
+                            <article key={entry.id} className="rounded-lg border border-slate-200 p-3">
+                              <div className="flex flex-wrap items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-xs font-bold text-slate-900">Transfer #TR{String(entry.id).padStart(3, "0")} · {entry.purpose}</p>
+                                  <p className="mt-1 text-xs text-slate-500">{formatDateOnly(entry.transfer_date)} · {entry.created_by_name || entry.created_by || "-"} · {formatDateTime(entry.created_at)}</p>
+                                </div>
+                                <p className="font-bold text-teal-700">{formatMoney(entry.amount)}</p>
+                              </div>
+                              <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                                <p><span className="block text-slate-500">Previous</span><b>{formatMoney(entry.previous_amount)}</b></p>
+                                <p><span className="block text-slate-500">Transfer</span><b>{formatMoney(entry.amount)}</b></p>
+                                <p><span className="block text-slate-500">Remaining</span><b>{formatMoney(entry.remaining_amount)}</b></p>
+                              </div>
+                              {entry.reason && <p className="mt-2 border-t border-slate-100 pt-2 text-xs leading-5 text-slate-600">{entry.reason}</p>}
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="rounded-lg bg-slate-50 px-3 py-5 text-center text-sm text-slate-500">No additional transfers recorded.</p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex min-h-64 flex-col items-center justify-center text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-teal-700"><FiPlus size={21} /></div>
+                    <h3 className="mt-4 font-bold text-slate-900">Choose a transfer</h3>
+                    <p className="mt-1 max-w-xs text-sm leading-6 text-slate-500">Select a record from the list to review its available amount and add to its transfer history.</p>
+                  </div>
+                )}
+              </section>
+            </div>
+
+            <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
+              <button type="button" onClick={closeTransferModal} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Cancel</button>
+              <button
+                type="button"
+                disabled={!selectedTransferRecord || isTransferSaving || currentTransferRemaining <= 0}
+                onClick={() => { setTransferForm(initialTransferForm()); setTransferValidation(""); }}
+                className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >Reset</button>
+              <button
+                type="submit"
+                form="add-transfer-form"
+                disabled={!selectedTransferRecord || isTransferSaving || currentTransferRemaining <= 0}
+                className="rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >{isTransferSaving ? "Saving..." : "Save Transfer"}</button>
+            </footer>
+          </section>
         </div>
       )}
 
