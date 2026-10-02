@@ -735,7 +735,7 @@ const DiaryManagement = () => {
       </div>
 
       <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-center xl:justify-between">
           <div className="relative min-w-[220px] flex-1">
             <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
             <input
@@ -786,6 +786,28 @@ const DiaryManagement = () => {
             </select>
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
           </div>
+
+          <select
+            value={dateRangeFilter}
+            onChange={(event) => setDateRangeFilter(event.target.value)}
+            aria-label="Filter diary entries by date range"
+            className="w-full min-w-[160px] appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white xl:w-auto"
+          >
+            {DATE_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+
+          {dateRangeFilter === "Custom Date Range" && (
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:w-auto">
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                From
+                <input type="date" value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} aria-label="Diary start date" className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#7b2cbf]" />
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                To
+                <input type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} aria-label="Diary end date" className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#7b2cbf]" />
+              </label>
+            </div>
+          )}
 
           <div className="relative min-w-[150px]">
             <button
