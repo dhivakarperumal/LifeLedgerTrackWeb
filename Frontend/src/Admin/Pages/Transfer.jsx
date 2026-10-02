@@ -451,7 +451,7 @@ const Transfer = () => {
                                                         title={!t.source_income_id ? "This transfer has no linked income" : remAmt <= 0 ? "No remaining amount to return" : "Move remaining amount to linked income"}
                                                     >
                                                         <FiRefreshCw size={12} className={returningId === t.id ? "animate-spin" : ""} />
-                                                        {returningId === t.id ? "Moving..." : "Move to Income"}
+                                                        
                                                     </button>
                                                     <button
                                                         type="button"

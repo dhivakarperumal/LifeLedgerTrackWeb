@@ -35,6 +35,7 @@ router.get(   "/",    transferController.getAllTransfers);
 router.post(  "/",    upload.single("receipt"), transferController.createTransfer);
 router.get(   "/:id/history", transferController.getTransferHistory);
 router.post(  "/:id/history", transferController.createTransferHistory);
+router.post(  "/:id/fund-from-income", transferController.createTransferAddition);
 router.post(  "/:id/return-to-income", transferController.returnTransferRemainingToIncome);
 router.put(   "/:id", upload.single("receipt"), transferController.updateTransfer);
 router.delete("/:id", transferController.deleteTransfer);

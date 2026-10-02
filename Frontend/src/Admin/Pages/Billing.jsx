@@ -28,6 +28,7 @@ const initialForm = {
 };
 
 const initialTransferForm = () => ({
+  incomeId: "",
   amount: "",
   purpose: "",
   customPurpose: "",
@@ -82,11 +83,21 @@ const Billing = () => {
   const currentTransferRemaining = Number(
     selectedTransferRecord?.remaining_amount ?? selectedTransferRecord?.amount ?? 0,
   );
+  const selectedFundingIncome = incomes.find(
+    (income) => String(income.id) === String(transferForm.incomeId),
+  ) || null;
+  const fundingIncomeAvailable = Number(
+    selectedFundingIncome?.remaining_amount ?? selectedFundingIncome?.amount ?? 0,
+  );
   const newTransferAmount = Number(transferForm.amount || 0);
-  const newTransferRemaining = Math.max(currentTransferRemaining - newTransferAmount, 0);
+  const completedTransferAmount = Number(
+    selectedTransferRecord?.group_total_transferred ?? selectedTransferRecord?.amount ?? 0,
+  );
+  const newTransferRemaining = completedTransferAmount + newTransferAmount;
   const filteredTransferRecords = transferRecords.filter((transfer) => (
-    transferIncomeFilter === "all"
-      || String(transfer.source_income_id || "") === String(transferIncomeFilter)
+    !transfer.parent_transfer_id
+      && (transferIncomeFilter === "all"
+        || String(transfer.source_income_id || "") === String(transferIncomeFilter))
   ));
 
   useEffect(() => {
@@ -208,7 +219,7 @@ const Billing = () => {
   const selectTransferRecord = async (transfer) => {
     setSelectedTransferId(String(transfer.id));
     setTransferHistory([]);
-    setTransferForm(initialTransferForm());
+    setTransferForm({ ...initialTransferForm(), incomeId: String(transfer.source_income_id || "") });
     setTransferValidation("");
     setIsHistoryLoading(true);
     try {
@@ -230,8 +241,12 @@ const Billing = () => {
       setTransferValidation("Enter a transfer amount greater than zero.");
       return;
     }
-    if (newTransferAmount > currentTransferRemaining) {
-      setTransferValidation("Transfer amount cannot exceed the current remaining amount.");
+    if (!transferForm.incomeId || !selectedFundingIncome) {
+      setTransferValidation("Select an income to fund this extra transfer.");
+      return;
+    }
+    if (newTransferAmount > fundingIncomeAvailable) {
+      setTransferValidation(`Amount cannot exceed the selected income balance of ${formatMoney(fundingIncomeAvailable)}.`);
       return;
     }
 
@@ -246,24 +261,37 @@ const Billing = () => {
     setIsTransferSaving(true);
     setTransferValidation("");
     try {
-      const response = await api.post(`/transfers/${selectedTransferRecord.id}/history`, {
+      const response = await api.post(`/transfers/${selectedTransferRecord.id}/fund-from-income`, {
         amount: newTransferAmount,
+        incomeId: Number(transferForm.incomeId),
         purpose,
         reason: transferForm.reason.trim(),
         date: transferForm.date,
       });
       const savedTransfer = response.data.transfer;
-      setTransferHistory((current) => [savedTransfer, ...current]);
+      const savedAdjustment = response.data.adjustment;
       setTransferRecords((current) => current.map((transfer) => (
         String(transfer.id) === String(selectedTransferRecord.id)
           ? {
             ...transfer,
-            remaining_amount: savedTransfer.remaining_amount,
-            total_transferred: Number(transfer.total_transferred || 0) + newTransferAmount,
+            ...savedTransfer,
+            group_total_transferred: response.data.total_transferred,
           }
           : transfer
       )));
-      toast.success("Transfer saved successfully.");
+      setIncomes((current) => current.map((income) => (
+        String(income.id) === String(transferForm.incomeId)
+          ? { ...income, remaining_amount: response.data.income_remaining_amount }
+          : income
+      )));
+      setTransferHistory((current) => [{
+        ...savedAdjustment,
+        id: selectedTransferRecord.id,
+        history_key: `adjustment-${savedAdjustment.id}`,
+        event_type: "Extra Amount Added",
+        remaining_amount: response.data.total_transferred,
+      }, ...current]);
+      toast.success("Transfer amount updated successfully.");
       closeTransferModal();
     } catch (error) {
       const message = error.response?.data?.message || "Failed to save transfer.";
@@ -995,8 +1023,8 @@ const Billing = () => {
                         <p className="mt-1 font-bold text-slate-900">{formatMoney(selectedTransferRecord.amount)}</p>
                       </div>
                       <div className="rounded-lg border border-slate-200 p-3">
-                        <p className="text-[10px] font-bold uppercase text-slate-500">Already Transferred</p>
-                        <p className="mt-1 font-bold text-slate-900">{formatMoney(selectedTransferRecord.total_transferred)}</p>
+                        <p className="text-[10px] font-bold uppercase text-slate-500">Completed Amount</p>
+                        <p className="mt-1 font-bold text-slate-900">{formatMoney(completedTransferAmount)}</p>
                       </div>
                       <div className="rounded-lg border border-teal-200 bg-teal-50 p-3">
                         <p className="text-[10px] font-bold uppercase text-teal-800">Current Remaining</p>
@@ -1005,35 +1033,54 @@ const Billing = () => {
                     </div>
 
                     <form id="add-transfer-form" onSubmit={submitTransferHistory} className="mt-5 space-y-4">
-                      {currentTransferRemaining <= 0 ? (
-                        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-800">No remaining amount available.</p>
-                      ) : (
-                        <label className="block">
-                          <span className="mb-1.5 block text-sm font-semibold text-slate-700">New Transfer Amount</span>
-                          <input
-                            type="number"
-                            min="0.01"
-                            max={currentTransferRemaining}
-                            step="0.01"
-                            value={transferForm.amount}
-                            onChange={(event) => {
-                              const value = event.target.value;
-                              setTransferForm((current) => ({ ...current, amount: value }));
-                              setTransferValidation(Number(value) > currentTransferRemaining ? "Transfer amount cannot exceed the current remaining amount." : "");
-                            }}
-                            disabled={currentTransferRemaining <= 0}
-                            required
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100"
-                          />
-                        </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-sm font-semibold text-slate-700">Income to Add</span>
+                        <select
+                          value={transferForm.incomeId}
+                          onChange={(event) => {
+                            setTransferForm((current) => ({ ...current, incomeId: event.target.value, amount: "" }));
+                            setTransferValidation("");
+                          }}
+                          required
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                        >
+                          <option value="">Select income</option>
+                          {incomes.map((income) => (
+                            <option key={income.id} value={income.id}>
+                              {income.title} · {formatMoney(income.remaining_amount ?? income.amount)} available
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {selectedFundingIncome && (
+                        <p className="-mt-2 text-xs text-slate-500">Available from {selectedFundingIncome.title}: {formatMoney(fundingIncomeAvailable)}</p>
                       )}
+
+                      <label className="block">
+                        <span className="mb-1.5 block text-sm font-semibold text-slate-700">New Extra Amount</span>
+                        <input
+                          type="number"
+                          min="0.01"
+                          max={fundingIncomeAvailable}
+                          step="0.01"
+                          value={transferForm.amount}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setTransferForm((current) => ({ ...current, amount: value }));
+                            setTransferValidation(Number(value) > fundingIncomeAvailable ? "Extra amount cannot exceed the selected income balance." : "");
+                          }}
+                          disabled={!transferForm.incomeId || fundingIncomeAvailable <= 0}
+                          required
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100"
+                        />
+                      </label>
 
                       <label className="block">
                         <span className="mb-1.5 block text-sm font-semibold text-slate-700">Purpose</span>
                         <select
                           value={transferForm.purpose}
                           onChange={(event) => setTransferForm((current) => ({ ...current, purpose: event.target.value, customPurpose: "" }))}
-                          disabled={currentTransferRemaining <= 0}
+                          disabled={!transferForm.incomeId || fundingIncomeAvailable <= 0}
                           required
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100"
                         >
@@ -1047,7 +1094,7 @@ const Billing = () => {
                           <input
                             value={transferForm.customPurpose}
                             onChange={(event) => setTransferForm((current) => ({ ...current, customPurpose: event.target.value }))}
-                            disabled={currentTransferRemaining <= 0}
+                            disabled={!transferForm.incomeId || fundingIncomeAvailable <= 0}
                             required
                             className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100"
                           />
@@ -1059,7 +1106,7 @@ const Billing = () => {
                           rows="3"
                           value={transferForm.reason}
                           onChange={(event) => setTransferForm((current) => ({ ...current, reason: event.target.value }))}
-                          disabled={currentTransferRemaining <= 0}
+                          disabled={!transferForm.incomeId || fundingIncomeAvailable <= 0}
                           placeholder="Add a note about this transfer"
                           className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100"
                         />
@@ -1070,7 +1117,7 @@ const Billing = () => {
                           type="date"
                           value={transferForm.date}
                           onChange={(event) => setTransferForm((current) => ({ ...current, date: event.target.value }))}
-                          disabled={currentTransferRemaining <= 0}
+                          disabled={!transferForm.incomeId || fundingIncomeAvailable <= 0}
                           required
                           className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100"
                         />
@@ -1082,11 +1129,11 @@ const Billing = () => {
                           <span className="font-semibold text-slate-900">{formatMoney(currentTransferRemaining)}</span>
                         </div>
                         <div className="mt-2 flex items-center justify-between gap-3 text-sm">
-                          <span className="font-medium text-slate-600">New transfer amount</span>
+                          <span className="font-medium text-slate-600">New extra amount</span>
                           <span className="font-semibold text-slate-900">{formatMoney(newTransferAmount)}</span>
                         </div>
                         <div className="mt-3 flex items-center justify-between gap-3 border-t border-teal-200 pt-3">
-                          <span className="font-bold text-teal-900">New remaining amount</span>
+                          <span className="font-bold text-teal-900">Total transfer</span>
                           <span className="text-lg font-black text-teal-900">{formatMoney(newTransferRemaining)}</span>
                         </div>
                       </div>
@@ -1103,13 +1150,16 @@ const Billing = () => {
                       ) : transferHistory.length ? (
                         <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
                           {transferHistory.map((entry) => (
-                            <article key={entry.id} className="rounded-lg border border-slate-200 p-3">
+                            <article key={entry.history_key || entry.id} className="rounded-lg border border-slate-200 p-3">
                               <div className="flex flex-wrap items-start justify-between gap-2">
                                 <div>
-                                  <p className="text-xs font-bold text-slate-900">Transfer #TR{String(entry.id).padStart(3, "0")} · {entry.purpose}</p>
+                                  <p className="text-xs font-bold text-slate-900">TR{String(entry.id).padStart(3, "0")} · {entry.event_type || entry.purpose}</p>
                                   <p className="mt-1 text-xs text-slate-500">{formatDateOnly(entry.transfer_date)} · {entry.created_by_name || entry.created_by || "-"} · {formatDateTime(entry.created_at)}</p>
                                 </div>
-                                <p className="font-bold text-teal-700">{formatMoney(entry.amount)}</p>
+                                <div className="text-right">
+                                  <p className="font-bold text-teal-700">{formatMoney(entry.amount)}</p>
+                                  <span className="text-[10px] font-bold uppercase text-emerald-700">Completed</span>
+                                </div>
                               </div>
                               <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                                 <p><span className="block text-slate-500">Previous</span><b>{formatMoney(entry.previous_amount)}</b></p>
@@ -1139,14 +1189,14 @@ const Billing = () => {
               <button type="button" onClick={closeTransferModal} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Cancel</button>
               <button
                 type="button"
-                disabled={!selectedTransferRecord || isTransferSaving || currentTransferRemaining <= 0}
+                disabled={!selectedTransferRecord || isTransferSaving}
                 onClick={() => { setTransferForm(initialTransferForm()); setTransferValidation(""); }}
                 className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >Reset</button>
               <button
                 type="submit"
                 form="add-transfer-form"
-                disabled={!selectedTransferRecord || isTransferSaving || currentTransferRemaining <= 0}
+                disabled={!selectedTransferRecord || isTransferSaving || !transferForm.incomeId || fundingIncomeAvailable <= 0}
                 className="rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
               >{isTransferSaving ? "Saving..." : "Save Transfer"}</button>
             </footer>

@@ -112,6 +112,7 @@ const initializeDatabase = async () => {
       amount DECIMAL(12,2) NOT NULL,
       remaining_amount DECIMAL(12,2) DEFAULT NULL,
       source_income_id INT NULL,
+      parent_transfer_id INT NULL,
       category VARCHAR(100) NOT NULL,
       transfer_from VARCHAR(100) NOT NULL,
       transfer_to VARCHAR(100) NOT NULL,
@@ -139,6 +140,23 @@ const initializeDatabase = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       KEY idx_transfer_allocation_owner (transfer_id, user_id, transfer_date)
+    )`,
+    `CREATE TABLE IF NOT EXISTS transfer_adjustments (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      transfer_id INT NOT NULL,
+      income_id INT NOT NULL,
+      previous_amount DECIMAL(12,2) NOT NULL,
+      amount DECIMAL(12,2) NOT NULL,
+      total_amount DECIMAL(12,2) NOT NULL,
+      purpose VARCHAR(120) NOT NULL,
+      reason TEXT NULL,
+      transfer_date DATE NOT NULL,
+      created_by VARCHAR(50) NULL,
+      updated_by VARCHAR(50) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_transfer_adjustment_owner (transfer_id, income_id, user_id, transfer_date)
     )`,
     `CREATE TABLE IF NOT EXISTS transfer_returns (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -360,6 +378,7 @@ const initializeDatabase = async () => {
   await ensureColumn("expenses", "updated_by", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "updated_at", "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
   await ensureColumn("transfers", "user_id", "VARCHAR(50) NULL");
+  await ensureColumn("transfers", "parent_transfer_id", "INT NULL");
   await ensureColumn("transfers", "created_by", "VARCHAR(50) NULL");
   await ensureColumn("transfers", "updated_by", "VARCHAR(50) NULL");
   await ensureColumn("transfers", "updated_at", "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
