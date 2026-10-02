@@ -388,14 +388,13 @@ const Transfer = () => {
                                     <th className="px-5 py-4 text-right">Remaining</th>
                                     <th className="px-6 py-4">Payment</th>
                                     <th className="px-6 py-4">Date</th>
-                                    <th className="px-4 py-4 text-center">Receipt</th>
                                     <th className="px-4 py-4 text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {paginatedTransfers.length === 0 && (
                                     <tr>
-                                        <td colSpan={10} className="py-10 text-center text-sm text-slate-400">
+                                        <td colSpan={9} className="py-10 text-center text-sm text-slate-400">
                                             No transfer records found.
                                         </td>
                                     </tr>
@@ -416,28 +415,13 @@ const Transfer = () => {
                                             <td className="px-6 py-4 text-slate-500">
                                                 {t.transfer_date ? String(t.transfer_date).split("T")[0] : "—"}
                                             </td>
-                                            <td className="px-4 py-4 text-center">
-                                                {t.receipt ? (
-                                                    <a
-                                                        href={`${(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "")}${t.receipt}`}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-2.5 py-1.5 text-[11px] font-bold text-purple-700 hover:bg-purple-100"
-                                                        title="View Receipt"
-                                                    >
-                                                        <FiPaperclip size={12} /> View
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-xs text-slate-300">—</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-4 text-center">
-                                                <div className="flex flex-wrap items-center justify-center gap-2">
+                                            <td className="whitespace-nowrap px-4 py-4 text-center">
+                                                <div className="flex flex-nowrap items-center justify-center gap-1.5">
                                                     {t.receipt && (
                                                         <button
                                                             type="button"
                                                             onClick={() => openViewTransfer(t)}
-                                                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
+                                                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
                                                             title="View transfer"
                                                         >
                                                             <FiEye size={14} />
@@ -447,7 +431,7 @@ const Transfer = () => {
                                                         type="button"
                                                         onClick={() => handleReturnRemainingToIncome(t)}
                                                         disabled={!t.source_income_id || remAmt <= 0 || returningId === t.id}
-                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+                                                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
                                                         title={!t.source_income_id ? "This transfer has no linked income" : remAmt <= 0 ? "No remaining amount to return" : "Move remaining amount to linked income"}
                                                     >
                                                         <FiRefreshCw size={12} className={returningId === t.id ? "animate-spin" : ""} />
@@ -456,7 +440,7 @@ const Transfer = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => openEditTransfer(t)}
-                                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600 transition-all hover:bg-violet-500 hover:text-white"
+                                                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 transition-all hover:bg-violet-500 hover:text-white"
                                                         title="Edit transfer"
                                                     >
                                                         <FiEdit2 size={14} />
@@ -464,7 +448,7 @@ const Transfer = () => {
                                                     <button
                                                         onClick={() => handleDelete(t.id)}
                                                         disabled={deletingId === t.id}
-                                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-400 transition-all hover:bg-red-500 hover:text-white disabled:opacity-40"
+                                                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-400 transition-all hover:bg-red-500 hover:text-white disabled:opacity-40"
                                                         title="Delete transfer"
                                                     >
                                                         <FiTrash2 size={14} />
