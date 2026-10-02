@@ -7,16 +7,18 @@ const getTransferRemaining = async (transferId, excludedExpenseId = null) => {
         ? "SELECT COALESCE(SUM(expense_amount), 0) AS total FROM expenses WHERE transfer_id = ? AND id != ?"
         : "SELECT COALESCE(SUM(expense_amount), 0) AS total FROM expenses WHERE transfer_id = ?";
     const expenseParams = excludedExpenseId ? [transferId, excludedExpenseId] : [transferId];
-    const [[transferRows], [expenseRows], [allocationRows]] = await Promise.all([
+    const [[transferRows], [expenseRows], [allocationRows], [returnRows]] = await Promise.all([
         db.query("SELECT amount FROM transfers WHERE id = ?", [transferId]),
         db.query(expenseQuery, expenseParams),
         db.query("SELECT COALESCE(SUM(amount), 0) AS total FROM transfer_allocations WHERE transfer_id = ?", [transferId]),
+        db.query("SELECT COALESCE(SUM(amount), 0) AS total FROM transfer_returns WHERE transfer_id = ?", [transferId]),
     ]);
 
     if (!transferRows[0]) return null;
 
     return Number(Math.max(
-        Number(transferRows[0].amount || 0) - Number(expenseRows[0].total || 0) - Number(allocationRows[0].total || 0),
+        Number(transferRows[0].amount || 0) - Number(expenseRows[0].total || 0)
+            - Number(allocationRows[0].total || 0) - Number(returnRows[0].total || 0),
         0
     ).toFixed(2));
 };

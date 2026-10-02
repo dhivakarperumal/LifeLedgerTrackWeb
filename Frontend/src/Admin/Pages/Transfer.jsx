@@ -15,6 +15,16 @@ const fmt = (v) =>
         maximumFractionDigits: 2,
     })}`;
 
+const getRemainingAmount = (transfer) => Math.max(
+    Number(transfer.remaining_amount ?? (
+        Number(transfer.amount || 0)
+        - Number(transfer.total_expense || 0)
+        - Number(transfer.total_transferred || 0)
+        - Number(transfer.total_returned || 0)
+    )),
+    0,
+);
+
 const emptyForm = () => ({
     title: "",
     amount: "",
@@ -46,6 +56,7 @@ const Transfer = () => {
     const [viewMode, setViewMode] = useState("table");
     const [currentPage, setCurrentPage] = useState(1);
     const [deletingId, setDeletingId] = useState(null);
+    const [returningId, setReturningId] = useState(null);
     const pageSize = 10;
 
     /* ── data loaders ─────────────────────────────────────────────────── */
@@ -247,14 +258,39 @@ const Transfer = () => {
         }
     };
 
+    const handleReturnRemainingToIncome = async (transfer) => {
+        const remainingAmount = getRemainingAmount(transfer);
+        if (!transfer.source_income_id || remainingAmount <= 0) return;
+
+        if (!window.confirm(`Move ${fmt(remainingAmount)} from this transfer back to its linked income?`)) return;
+
+        setReturningId(transfer.id);
+        try {
+            const response = await api.post(`/transfers/${transfer.id}/return-to-income`);
+            const returnedAmount = Number(response.data.returned_amount || 0);
+            setTransfers((current) => current.map((item) => (
+                item.id === transfer.id
+                    ? { ...item, ...response.data.transfer, remaining_amount: 0, total_returned: Number(item.total_returned || 0) + returnedAmount }
+                    : item
+            )));
+            setIncomes((current) => current.map((income) => (
+                String(income.id) === String(transfer.source_income_id)
+                    ? { ...income, remaining_amount: response.data.income_remaining_amount }
+                    : income
+            )));
+            toast.success(response.data.message || `${fmt(returnedAmount)} returned to income.`);
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Failed to return the remaining amount to income.");
+        } finally {
+            setReturningId(null);
+        }
+    };
+
     /* ── derived stats ────────────────────────────────────────────────── */
     const totalTransferred = transfers.reduce((s, t) => s + Number(t.amount || 0), 0);
     const totalExpense     = transfers.reduce((s, t) => s + Number(t.total_expense || 0), 0);
     const totalRemaining   = transfers.reduce(
-        (sum, transfer) => sum + Math.max(
-            Number(transfer.amount || 0) - Number(transfer.total_expense || 0),
-            0,
-        ),
+        (sum, transfer) => sum + getRemainingAmount(transfer),
         0,
     );
 
@@ -367,7 +403,7 @@ const Transfer = () => {
                                 {paginatedTransfers.map((t, index) => {
                                     const trAmt  = Number(t.amount || 0);
                                     const expAmt = Number(t.total_expense || 0);
-                                    const remAmt = Math.max(trAmt - expAmt, 0);
+                                    const remAmt = getRemainingAmount(t);
                                     return (
                                         <tr key={t.id} className="text-slate-700 hover:bg-purple-50/40">
                                             <td className="px-4 py-4 font-bold text-slate-500">{(safeCurrentPage - 1) * pageSize + index + 1}</td>
@@ -396,7 +432,7 @@ const Transfer = () => {
                                                 )}
                                             </td>
                                             <td className="px-4 py-4 text-center">
-                                                <div className="flex items-center justify-center gap-2">
+                                                <div className="flex flex-wrap items-center justify-center gap-2">
                                                     {t.receipt && (
                                                         <button
                                                             type="button"
@@ -407,6 +443,16 @@ const Transfer = () => {
                                                             <FiEye size={14} />
                                                         </button>
                                                     )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleReturnRemainingToIncome(t)}
+                                                        disabled={!t.source_income_id || remAmt <= 0 || returningId === t.id}
+                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+                                                        title={!t.source_income_id ? "This transfer has no linked income" : remAmt <= 0 ? "No remaining amount to return" : "Move remaining amount to linked income"}
+                                                    >
+                                                        <FiRefreshCw size={12} className={returningId === t.id ? "animate-spin" : ""} />
+                                                        {returningId === t.id ? "Moving..." : "Move to Income"}
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         onClick={() => openEditTransfer(t)}
@@ -442,7 +488,7 @@ const Transfer = () => {
                         {paginatedTransfers.map((t, index) => {
                             const trAmt  = Number(t.amount || 0);
                             const expAmt = Number(t.total_expense || 0);
-                            const remAmt = Math.max(trAmt - expAmt, 0);
+                                            const remAmt = getRemainingAmount(t);
                             const pct    = trAmt > 0 ? Math.min((expAmt / trAmt) * 100, 100) : 0;
                             return (
                                 <div key={t.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -506,6 +552,16 @@ const Transfer = () => {
                                             <p className="font-black text-[#00897b]">{fmt(remAmt)}</p>
                                         </div>
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleReturnRemainingToIncome(t)}
+                                        disabled={!t.source_income_id || remAmt <= 0 || returningId === t.id}
+                                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+                                        title={!t.source_income_id ? "This transfer has no linked income" : remAmt <= 0 ? "No remaining amount to return" : "Move remaining amount to linked income"}
+                                    >
+                                        <FiRefreshCw size={13} className={returningId === t.id ? "animate-spin" : ""} />
+                                        {returningId === t.id ? "Moving..." : "Move to Income"}
+                                    </button>
                                     {t.receipt && (
                                         <a
                                             href={`${(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "")}${t.receipt}`}

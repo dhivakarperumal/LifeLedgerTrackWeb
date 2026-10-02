@@ -5,22 +5,28 @@ const normalizeMoney = (value) => {
     return Number.isFinite(numericValue) ? numericValue : null;
 };
 
-const applyIncomeBalanceDelta = async (incomeId) => {
+const applyIncomeBalanceDelta = async (incomeId, executor = db) => {
     if (!incomeId) return;
 
-    // Recalculate remaining amount based on total transferred amount
-    const [incomeRows] = await db.query("SELECT * FROM income WHERE id = ?", [incomeId]);
+    const [incomeRows] = await executor.query("SELECT * FROM income WHERE id = ?", [incomeId]);
     if (!incomeRows[0]) return;
     const incomeAmount = Number(incomeRows[0].amount || 0);
 
-    const [transferSumRows] = await db.query(
-        "SELECT COALESCE(SUM(amount), 0) as total_transferred FROM transfers WHERE source_income_id = ?",
-        [incomeId]
-    );
+    const [[transferSumRows], [returnSumRows]] = await Promise.all([
+        executor.query(
+            "SELECT COALESCE(SUM(amount), 0) AS total_transferred FROM transfers WHERE source_income_id = ?",
+            [incomeId]
+        ),
+        executor.query(
+            "SELECT COALESCE(SUM(amount), 0) AS total_returned FROM transfer_returns WHERE income_id = ?",
+            [incomeId]
+        ),
+    ]);
     const totalTransferred = Number(transferSumRows[0].total_transferred || 0);
-    const updatedRemaining = Number(Math.max(incomeAmount - totalTransferred, 0).toFixed(2));
+    const totalReturned = Number(returnSumRows[0].total_returned || 0);
+    const updatedRemaining = Number(Math.max(incomeAmount - totalTransferred + totalReturned, 0).toFixed(2));
 
-    await db.query("UPDATE income SET remaining_amount = ? WHERE id = ?", [updatedRemaining, incomeId]);
+    await executor.query("UPDATE income SET remaining_amount = ? WHERE id = ?", [updatedRemaining, incomeId]);
 };
 
 exports.getAllTransfers = async (req, res) => {
@@ -31,7 +37,8 @@ exports.getAllTransfers = async (req, res) => {
                 t.*,
                 COALESCE(e.total_expense, 0) AS total_expense,
                 COALESCE(a.total_transferred, 0) AS total_transferred,
-                GREATEST(t.amount - COALESCE(e.total_expense, 0) - COALESCE(a.total_transferred, 0), 0) AS computed_remaining,
+                COALESCE(r.total_returned, 0) AS total_returned,
+                GREATEST(t.amount - COALESCE(e.total_expense, 0) - COALESCE(a.total_transferred, 0) - COALESCE(r.total_returned, 0), 0) AS computed_remaining,
                 i.amount AS source_income_amount,
                 i.category AS source_income_category,
                 COALESCE(u.name, u.username, t.created_by) AS created_by_name
@@ -46,6 +53,11 @@ exports.getAllTransfers = async (req, res) => {
                 FROM transfer_allocations
                 GROUP BY transfer_id
             ) a ON a.transfer_id = t.id
+            LEFT JOIN (
+                SELECT transfer_id, SUM(amount) AS total_returned
+                FROM transfer_returns
+                GROUP BY transfer_id
+            ) r ON r.transfer_id = t.id
             LEFT JOIN income i ON i.id = t.source_income_id
             LEFT JOIN users u ON u.user_id = t.created_by
             WHERE t.user_id = ?
@@ -69,6 +81,7 @@ exports.getAllTransfers = async (req, res) => {
             remaining_amount: Math.max(Number(r.computed_remaining), 0),
             total_expense: Number(r.total_expense || 0),
             total_transferred: Number(r.total_transferred || 0),
+            total_returned: Number(r.total_returned || 0),
         }));
 
         res.json(normalised);
@@ -166,16 +179,22 @@ exports.updateTransfer = async (req, res) => {
         const [[usageTotals]] = await db.query(
             `SELECT
                 (SELECT COALESCE(SUM(expense_amount), 0) FROM expenses WHERE transfer_id = ?) AS total_expenses,
-                (SELECT COALESCE(SUM(amount), 0) FROM transfer_allocations WHERE transfer_id = ?) AS total_allocated`,
-            [id, id]
+                (SELECT COALESCE(SUM(amount), 0) FROM transfer_allocations WHERE transfer_id = ?) AS total_allocated,
+                (SELECT COALESCE(SUM(amount), 0) FROM transfer_returns WHERE transfer_id = ?) AS total_returned`,
+            [id, id, id]
         );
-        const totalUsed = Number(usageTotals.total_expenses || 0) + Number(usageTotals.total_allocated || 0);
+        const totalUsed = Number(usageTotals.total_expenses || 0)
+            + Number(usageTotals.total_allocated || 0)
+            + Number(usageTotals.total_returned || 0);
         if (newAmount < totalUsed) {
             return res.status(400).json({ message: "Transfer amount cannot be less than amounts already spent or transferred." });
         }
 
         const currentSourceIncomeId = existingTransfer.source_income_id ? Number(existingTransfer.source_income_id) : null;
         const targetIncomeId = sourceIncomeId ? Number(sourceIncomeId) : currentSourceIncomeId;
+        if (Number(usageTotals.total_returned || 0) > 0 && targetIncomeId !== currentSourceIncomeId) {
+            return res.status(400).json({ message: "A transfer returned to income cannot be reassigned to another income record." });
+        }
 
         // Validation for new amount vs income
         if (targetIncomeId) {
@@ -186,11 +205,13 @@ exports.updateTransfer = async (req, res) => {
             }
 
             // check if the new transfer will exceed income
-            const [transferSumRows] = await db.query(
-                "SELECT COALESCE(SUM(amount), 0) as total_transferred FROM transfers WHERE source_income_id = ? AND id != ?",
-                [targetIncomeId, id]
+            const [[transferSumRow]] = await db.query(
+                `SELECT
+                    (SELECT COALESCE(SUM(amount), 0) FROM transfers WHERE source_income_id = ? AND id != ?) -
+                    (SELECT COALESCE(SUM(amount), 0) FROM transfer_returns WHERE income_id = ? AND transfer_id != ?) AS net_transferred`,
+                [targetIncomeId, id, targetIncomeId, id]
             );
-            const otherTransfers = Number(transferSumRows[0].total_transferred || 0);
+            const otherTransfers = Number(transferSumRow.net_transferred || 0);
             const availableAmount = Number(targetIncome.amount || 0) - otherTransfers;
             
             if (newAmount > availableAmount) {
@@ -247,8 +268,10 @@ exports.deleteTransfer = async (req, res) => {
         }
 
         const [[historyCount]] = await db.query(
-            "SELECT COUNT(*) AS total FROM transfer_allocations WHERE transfer_id = ? AND user_id = ?",
-            [id, req.user?.user_id]
+            `SELECT
+                (SELECT COUNT(*) FROM transfer_allocations WHERE transfer_id = ? AND user_id = ?) +
+                (SELECT COUNT(*) FROM transfer_returns WHERE transfer_id = ? AND user_id = ?) AS total`,
+            [id, req.user?.user_id, id, req.user?.user_id]
         );
         if (Number(historyCount.total) > 0) {
             return res.status(409).json({ message: "This transfer has history and cannot be deleted." });
@@ -337,8 +360,12 @@ exports.createTransferHistory = async (req, res) => {
             "SELECT COALESCE(SUM(amount), 0) AS total FROM transfer_allocations WHERE transfer_id = ?",
             [id]
         );
+        const [[returnTotals]] = await connection.query(
+            "SELECT COALESCE(SUM(amount), 0) AS total FROM transfer_returns WHERE transfer_id = ?",
+            [id]
+        );
         const currentRemaining = Number(Math.max(
-            Number(transfer.amount) - Number(expenseTotals.total) - Number(allocationTotals.total),
+            Number(transfer.amount) - Number(expenseTotals.total) - Number(allocationTotals.total) - Number(returnTotals.total),
             0
         ).toFixed(2));
 
@@ -378,6 +405,100 @@ exports.createTransferHistory = async (req, res) => {
         if (connection && transactionStarted) await connection.rollback();
         console.error("Create Transfer History Error:", error);
         res.status(500).json({ message: "Failed to save transfer", error: error.message });
+    } finally {
+        connection?.release();
+    }
+};
+
+exports.returnTransferRemainingToIncome = async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user?.user_id;
+    let connection;
+    let transactionStarted = false;
+
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+        transactionStarted = true;
+
+        const [transferRows] = await connection.query(
+            "SELECT * FROM transfers WHERE id = ? AND user_id = ? FOR UPDATE",
+            [id, userId]
+        );
+        const transfer = transferRows[0];
+        if (!transfer) {
+            await connection.rollback();
+            transactionStarted = false;
+            return res.status(404).json({ message: "Transfer not found." });
+        }
+        if (!transfer.source_income_id) {
+            await connection.rollback();
+            transactionStarted = false;
+            return res.status(400).json({ message: "This transfer is not linked to a source income." });
+        }
+
+        const incomeId = Number(transfer.source_income_id);
+        const [incomeRows] = await connection.query(
+            "SELECT id FROM income WHERE id = ? AND user_id = ? FOR UPDATE",
+            [incomeId, userId]
+        );
+        if (!incomeRows[0]) {
+            await connection.rollback();
+            transactionStarted = false;
+            return res.status(400).json({ message: "The linked income record is no longer available." });
+        }
+
+        const [[usageTotals]] = await connection.query(
+            `SELECT
+                (SELECT COALESCE(SUM(expense_amount), 0) FROM expenses WHERE transfer_id = ?) AS total_expenses,
+                (SELECT COALESCE(SUM(amount), 0) FROM transfer_allocations WHERE transfer_id = ?) AS total_allocated,
+                (SELECT COALESCE(SUM(amount), 0) FROM transfer_returns WHERE transfer_id = ?) AS total_returned`,
+            [id, id, id]
+        );
+        const amountToReturn = Number(Math.max(
+            Number(transfer.amount) - Number(usageTotals.total_expenses || 0)
+                - Number(usageTotals.total_allocated || 0) - Number(usageTotals.total_returned || 0),
+            0
+        ).toFixed(2));
+
+        if (amountToReturn <= 0) {
+            await connection.rollback();
+            transactionStarted = false;
+            return res.status(400).json({ message: "No remaining amount is available to move to income." });
+        }
+
+        await connection.query(
+            `INSERT INTO transfer_returns (user_id, transfer_id, income_id, amount, created_by, updated_by)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [userId, id, incomeId, amountToReturn, userId, userId]
+        );
+        await connection.query(
+            "UPDATE transfers SET remaining_amount = 0, updated_by = ? WHERE id = ? AND user_id = ?",
+            [userId, id, userId]
+        );
+        await applyIncomeBalanceDelta(incomeId, connection);
+        await connection.commit();
+        transactionStarted = false;
+
+        const [[updatedTransfer]] = await db.query(
+            "SELECT * FROM transfers WHERE id = ? AND user_id = ?",
+            [id, userId]
+        );
+        const [[updatedIncome]] = await db.query(
+            "SELECT remaining_amount FROM income WHERE id = ? AND user_id = ?",
+            [incomeId, userId]
+        );
+
+        res.json({
+            message: `${amountToReturn.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} returned to income successfully.`,
+            transfer: updatedTransfer,
+            returned_amount: amountToReturn,
+            income_remaining_amount: Number(updatedIncome.remaining_amount || 0),
+        });
+    } catch (error) {
+        if (connection && transactionStarted) await connection.rollback();
+        console.error("Return Transfer To Income Error:", error);
+        res.status(500).json({ message: "Failed to return transfer amount to income", error: error.message });
     } finally {
         connection?.release();
     }
