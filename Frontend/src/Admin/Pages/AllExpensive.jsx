@@ -24,6 +24,7 @@ const emptyForm = () => ({
     transfer_amount: "",
     transfer_id: "",
     category: "",
+    location: "",
     from: "",
     to: "",
     payment_method: "Cash",
@@ -147,6 +148,7 @@ const AllExpensive = () => {
             transfer_amount: expense.transfer_amount ?? "",
             transfer_id: expense.transfer_id ?? "",
             category: expense.category || "",
+            location: expense.location || "",
             from: expense.from || "",
             to: expense.to || "",
             payment_method: expense.payment_method || "Cash",
@@ -251,6 +253,7 @@ const AllExpensive = () => {
             const matchSearch =
                 (ex.title || "").toLowerCase().includes(q) ||
                 (ex.category || "").toLowerCase().includes(q) ||
+                (ex.location || "").toLowerCase().includes(q) ||
                 (ex.notes || "").toLowerCase().includes(q);
             const matchCat = categoryFilter === "All" || ex.category === categoryFilter;
             return matchSearch && matchCat;
@@ -389,6 +392,7 @@ const AllExpensive = () => {
                                             <td className="px-4 py-4 text-gray-500 font-medium">{(safeCurrentPage - 1) * pageSize + i + 1}</td>
                                             <td className="px-4 py-4">
                                                 <p className="font-bold text-slate-800 max-w-[160px] truncate">{ex.title}</p>
+                                                {ex.location && <p className="text-[11px] text-violet-600 truncate max-w-[160px]">{ex.location}</p>}
                                                 {ex.notes && <p className="text-[11px] text-gray-400 truncate max-w-[160px]">{ex.notes}</p>}
                                             </td>
                                             <td className="px-4 py-4">
@@ -467,6 +471,7 @@ const AllExpensive = () => {
                                 <div className="flex items-start justify-between gap-2">
                                     <div>
                                         <p className="font-bold text-slate-800 text-sm leading-tight">{ex.title}</p>
+                                        {ex.location && <p className="mt-1 flex items-center gap-1 text-[10px] text-violet-600"><FiMapPin size={11} />{ex.location}</p>}
                                         <span className="mt-1 inline-block px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-[#240046]/10 text-[#7b2cbf]">
                                             {ex.category}
                                         </span>
@@ -633,6 +638,13 @@ const AllExpensive = () => {
                                     <p className="mt-2 font-bold text-slate-800">{viewExpense.payment_method || "—"}</p>
                                 </div>
                             </div>
+
+                            {viewExpense.location && (
+                                <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Location</p>
+                                    <p className="mt-2 font-bold text-slate-800">{viewExpense.location}</p>
+                                </div>
+                            )}
 
                             {viewExpense.notes && (
                                 <div className="rounded-xl bg-slate-50 p-3">
@@ -854,6 +866,17 @@ const AllExpensive = () => {
                                     </select>
                                 </Field>
                             </div>
+
+                            <Field label="Location" icon={<FiMapPin />}>
+                                <input
+                                    type="text"
+                                    name="location"
+                                    value={form.location}
+                                    onChange={handleChange}
+                                    placeholder="Where did you make this expense?"
+                                    className={inputCls}
+                                />
+                            </Field>
 
                             {isTravelCategory(form.category) && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

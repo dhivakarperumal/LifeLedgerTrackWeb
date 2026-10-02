@@ -102,6 +102,7 @@ const initializeDatabase = async () => {
       income_date DATE NOT NULL,
       payment_method VARCHAR(100),
       notes TEXT,
+      location VARCHAR(255) NULL,
       recurring ENUM('Yes', 'No') NOT NULL DEFAULT 'No',
       attachment TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -375,6 +376,7 @@ const initializeDatabase = async () => {
   await ensureColumn("expenses", "expense_time", "TIME NULL");
   await ensureColumn("expenses", "from", "VARCHAR(255) NULL");
   await ensureColumn("expenses", "to", "VARCHAR(255) NULL");
+  await ensureColumn("expenses", "location", "VARCHAR(255) NULL");
   await ensureColumn("expenses", "created_by", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "updated_by", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "updated_at", "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");

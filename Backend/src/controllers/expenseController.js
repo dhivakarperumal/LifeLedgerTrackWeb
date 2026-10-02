@@ -59,6 +59,7 @@ exports.createExpense = async (req, res) => {
             time,
             expense_time,
             notes,
+            location,
             recurring,
             from,
             to,
@@ -117,11 +118,12 @@ exports.createExpense = async (req, res) => {
 
         const normalizedFrom = isTravelExpense ? String(from || "").trim() : null;
         const normalizedTo = isTravelExpense ? String(to || "").trim() : null;
+        const normalizedLocation = String(location || "").trim() || null;
 
         const [result] = await db.query(
             `INSERT INTO expenses
-                (user_id, title, expense_amount, transfer_amount, transfer_id, remaining_amount, category, payment_method, expense_date, expense_time, notes, recurring, attachment, \`from\`, \`to\`, created_by, updated_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                (user_id, title, expense_amount, transfer_amount, transfer_id, remaining_amount, category, payment_method, expense_date, expense_time, notes, location, recurring, attachment, \`from\`, \`to\`, created_by, updated_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 req.user?.user_id || null,
                 title.trim(),
@@ -134,6 +136,7 @@ exports.createExpense = async (req, res) => {
                 date,
                 expenseTime,
                 notes || null,
+                normalizedLocation,
                 recurring === "Yes" ? "Yes" : "No",
                 attachmentPath,
                 normalizedFrom,
@@ -169,6 +172,7 @@ exports.updateExpense = async (req, res) => {
             time,
             expense_time,
             notes,
+            location,
             recurring,
             from,
             to,
@@ -221,10 +225,13 @@ exports.updateExpense = async (req, res) => {
         const expenseTime = time || expense_time || existingExpense.expense_time || null;
         const normalizedFrom = isTravelExpense ? String(from ?? existingExpense.from ?? "").trim() : "";
         const normalizedTo = isTravelExpense ? String(to ?? existingExpense.to ?? "").trim() : "";
+        const normalizedLocation = location !== undefined
+            ? String(location || "").trim() || null
+            : existingExpense.location;
 
         await db.query(
             `UPDATE expenses
-             SET user_id = ?, title = ?, expense_amount = ?, transfer_amount = ?, transfer_id = ?, remaining_amount = ?, category = ?, payment_method = ?, expense_date = ?, expense_time = ?, notes = ?, recurring = ?, attachment = ?, \`from\` = ?, \`to\` = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+             SET user_id = ?, title = ?, expense_amount = ?, transfer_amount = ?, transfer_id = ?, remaining_amount = ?, category = ?, payment_method = ?, expense_date = ?, expense_time = ?, notes = ?, location = ?, recurring = ?, attachment = ?, \`from\` = ?, \`to\` = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ? AND user_id = ?`,
             [
                 req.user?.user_id || existingExpense.user_id,
@@ -238,6 +245,7 @@ exports.updateExpense = async (req, res) => {
                 date || existingExpense.expense_date,
                 expenseTime,
                 notes !== undefined ? notes : existingExpense.notes,
+                normalizedLocation,
                 recurring === "Yes" ? "Yes" : (recurring === "No" ? "No" : existingExpense.recurring),
                 attachmentPath,
                 normalizedFrom,
