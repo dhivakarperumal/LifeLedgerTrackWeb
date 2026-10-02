@@ -284,6 +284,8 @@ const Billing = () => {
           ? { ...income, remaining_amount: response.data.income_remaining_amount }
           : income
       )));
+      const refreshedIncomes = await api.get("/incomes");
+      setIncomes(refreshedIncomes.data || []);
       setTransferHistory((current) => [{
         ...savedAdjustment,
         id: selectedTransferRecord.id,

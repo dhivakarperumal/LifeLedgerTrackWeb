@@ -9,6 +9,7 @@ const dbConfig = {
   database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
+  dateStrings: true,
 };
 
 const createDatabaseIfMissing = async () => {
