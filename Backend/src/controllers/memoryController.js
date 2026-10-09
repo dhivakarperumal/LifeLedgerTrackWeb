@@ -2,6 +2,14 @@ const db = require("../config/db");
 const fs = require("fs");
 const path = require("path");
 
+const getCurrentDateKey = () => {
+  const current = new Date();
+  const year = current.getFullYear();
+  const month = String(current.getMonth() + 1).padStart(2, "0");
+  const day = String(current.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const normalizeMediaGallery = (value) => {
   if (!value) return [];
   if (Array.isArray(value)) return value;
@@ -298,7 +306,7 @@ const createMemory = async (req, res) => {
         resolvedCategory.id || null,
         resolvedCategory.name || null,
         resolvedCategory.color || "#8B5CF6",
-        memory_date || new Date().toISOString().slice(0, 10),
+        memory_date || getCurrentDateKey(),
         location || "",
         mood || "Happy",
         tagValue,

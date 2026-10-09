@@ -27,7 +27,7 @@ const formatDate = (value, opts = {}) => {
     month: "short",
     year: "numeric",
     ...opts,
-  }).format(date);
+  });
 };
 
 const toDateInput = (date = new Date()) => {
@@ -242,6 +242,11 @@ const CalendarReminder = () => {
   const openPanel = (type) => {
     setPanelType(type);
     setEditingItem(null);
+    if (type === "event") {
+      setEventForm({ ...defaultEventForm, startDate: toDateInput(selectedDate) });
+    } else {
+      setReminderForm({ ...defaultReminderForm, reminderDate: toDateInput(selectedDate) });
+    }
     setPanelOpen(true);
   };
 
@@ -255,8 +260,8 @@ const CalendarReminder = () => {
         title: item.title || "",
         category: item.category || "Personal",
         startDate: item.startDate || toDateInput(),
-        startTime: item.startTime || "09:00",
-        endTime: item.endTime || "10:00",
+        startTime: String(item.startTime || "09:00").slice(0, 5),
+        endTime: String(item.endTime || "10:00").slice(0, 5),
         location: item.location || "",
         description: item.description || "",
         priority: item.priority || "Medium",
@@ -271,7 +276,7 @@ const CalendarReminder = () => {
         title: item.title || "",
         category: item.category || "Personal",
         reminderDate: item.reminderDate || toDateInput(),
-        reminderTime: item.reminderTime || "09:00",
+        reminderTime: String(item.reminderTime || "09:00").slice(0, 5),
         priority: item.priority || "Medium",
         notes: item.notes || "",
         notificationEnabled: item.notificationEnabled !== false,
