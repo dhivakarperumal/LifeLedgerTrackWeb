@@ -7,6 +7,7 @@ import {
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
+import { toLocalDateKey } from "../../utils/date";
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
 const fmt = (v) =>
@@ -30,7 +31,7 @@ const emptyForm = () => ({
     amount: "",
     paymentMethod: "Cash",
     category: "",
-    date: new Date().toISOString().split("T")[0],
+    date: toLocalDateKey(),
     notes: "",
 });
 
@@ -181,7 +182,7 @@ const Transfer = () => {
             amount: transfer.amount ?? "",
             category: transfer.category || "",
             paymentMethod: transfer.payment_method || "Cash",
-            date: transfer.transfer_date ? String(transfer.transfer_date).split("T")[0] : new Date().toISOString().split("T")[0],
+            date: toLocalDateKey(transfer.transfer_date) || toLocalDateKey(),
             notes: transfer.notes || "",
         });
         setReceiptFile(null);

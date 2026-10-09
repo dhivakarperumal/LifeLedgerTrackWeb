@@ -15,12 +15,13 @@ import {
 import { toast } from "react-hot-toast";
 import api from "../../api";
 import { StoreContext } from "../../PrivateRouter/StoreContext";
+import { parseDateOnly, toLocalDateKey } from "../../utils/date";
 
 const initialForm = {
   title: "",
   amount: "",
   category: "",
-  date: new Date().toISOString().split("T")[0],
+  date: toLocalDateKey(),
   paymentMethod: "Cash",
   notes: "",
   recurring: "No",
@@ -33,7 +34,7 @@ const initialTransferForm = () => ({
   purpose: "",
   customPurpose: "",
   reason: "",
-  date: new Date().toISOString().split("T")[0],
+  date: toLocalDateKey(),
 });
 
 const formatDateOnly = (date) => (date ? String(date).split("T")[0] : "-");
@@ -312,7 +313,7 @@ const Billing = () => {
       title: income.title || "",
       amount: income.amount ?? "",
       category: income.category || "",
-      date: income.income_date ? String(income.income_date).split("T")[0] : new Date().toISOString().split("T")[0],
+      date: toLocalDateKey(income.income_date) || toLocalDateKey(),
       paymentMethod: income.payment_method || "Cash",
       notes: income.notes || "",
       recurring: income.recurring || "No",
@@ -386,7 +387,7 @@ const Billing = () => {
   const currentYear = new Date().getFullYear();
   const monthlyIncome = incomes
     .filter((income) => {
-      const incomeDate = new Date(income.income_date);
+      const incomeDate = parseDateOnly(income.income_date);
       return (
         incomeDate.getMonth() === currentMonth &&
         incomeDate.getFullYear() === currentYear

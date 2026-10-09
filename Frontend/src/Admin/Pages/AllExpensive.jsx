@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import api from "../../api";
 import Loader from "../../Components/CommenComponents/Loader";
 import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
+import { toLocalDateKey } from "../../utils/date";
 import { toast } from "react-hot-toast";
 import { FaRupeeSign } from "react-icons/fa";
 import {
@@ -29,7 +30,7 @@ const emptyForm = () => ({
     from: "",
     to: "",
     payment_method: "Cash",
-    date: new Date().toISOString().split("T")[0],
+    date: toLocalDateKey(),
     time: getCurrentTime(),
     notes: "",
     attachment: null,
@@ -156,7 +157,7 @@ const AllExpensive = () => {
             from: expense.from || "",
             to: expense.to || "",
             payment_method: expense.payment_method || "Cash",
-            date: expense.expense_date ? String(expense.expense_date).split("T")[0] : new Date().toISOString().split("T")[0],
+            date: toLocalDateKey(expense.expense_date) || toLocalDateKey(),
             time: expense.expense_time ? String(expense.expense_time).slice(0, 5) : getCurrentTime(),
             notes: expense.notes || "",
             attachment: null,

@@ -4,6 +4,7 @@ import api from "../../api";
 import { useAuth } from "../../PrivateRouter/AuthContext";
 import { toast } from "react-hot-toast";
 import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
+import { formatDateOnly, parseDateOnly, toLocalDateKey } from "../../utils/date";
 import {
   FiPlus, FiSearch, FiCalendar, FiHeart, FiEdit2, FiTrash2, FiStar, FiClock,
   FiFileText, FiImage, FiVideo, FiPaperclip, FiBookmark, FiCheck, FiX,
@@ -31,9 +32,7 @@ const defaultMoodOptions = [
 
 const formatDate = (value) => {
   if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return formatDateOnly(value, "en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
 const toDateKey = (date) => {
@@ -56,20 +55,7 @@ const getCalendarDays = (monthDate) => {
 };
 
 const normalizeDateInput = (value) => {
-  if (!value) return new Date().toISOString().slice(0, 10);
-
-  const direct = new Date(value);
-  if (!Number.isNaN(direct.getTime())) {
-    return direct.toISOString().slice(0, 10);
-  }
-
-  const match = String(value).match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-  if (match) {
-    const [, day, month, year] = match;
-    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  }
-
-  return value;
+  return toLocalDateKey(value) || toLocalDateKey();
 };
 
 const normalizeTimeInput = (value) => {
@@ -268,7 +254,7 @@ const DiaryManagement = () => {
     mood: "Happy",
     tags: "",
     location: "",
-    entry_date: new Date().toISOString().slice(0, 10),
+    entry_date: toLocalDateKey(),
     entry_time: "",
     status: "published",
     is_favorite: false,
@@ -347,11 +333,11 @@ const DiaryManagement = () => {
     const month = new Date().getMonth();
     const year = new Date().getFullYear();
     const thisMonth = entries.filter((entry) => {
-      const date = new Date(entry.entry_date);
+      const date = parseDateOnly(entry.entry_date);
       return date.getMonth() === month && date.getFullYear() === year;
     }).length;
     const thisYear = entries.filter((entry) => {
-      const date = new Date(entry.entry_date);
+      const date = parseDateOnly(entry.entry_date);
       return date.getFullYear() === year;
     }).length;
     const favorites = entries.filter((entry) => entry.is_favorite).length;
@@ -368,12 +354,12 @@ const DiaryManagement = () => {
         if (selectedFilter === "drafts") return entry.status === "draft";
         if (selectedFilter === "recent") return true;
         if (selectedFilter === "month") {
-          const date = new Date(entry.entry_date);
+          const date = parseDateOnly(entry.entry_date);
           const now = new Date();
           return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
         }
         if (selectedFilter === "year") {
-          const date = new Date(entry.entry_date);
+          const date = parseDateOnly(entry.entry_date);
           return date.getFullYear() === new Date().getFullYear();
         }
         return true;
@@ -432,7 +418,7 @@ const DiaryManagement = () => {
       mood: "Happy",
       tags: "",
       location: "",
-      entry_date: new Date().toISOString().slice(0, 10),
+      entry_date: toLocalDateKey(),
       entry_time: "",
       status: "published",
       is_favorite: false,
@@ -708,7 +694,7 @@ const DiaryManagement = () => {
     }
   };
 
-  const recentEntries = [...entries].sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date)).slice(0, 5);
+  const recentEntries = [...entries].sort((a, b) => toLocalDateKey(b.entry_date).localeCompare(toLocalDateKey(a.entry_date))).slice(0, 5);
 
   return (
     <div className="min-h-screen space-y-5 p-1 pb-20 md:p-2">

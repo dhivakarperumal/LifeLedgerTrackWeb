@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api";
 import { toast } from "react-hot-toast";
+import { formatDateOnly } from "../../utils/date";
 import {
   FiArrowLeft,
   FiCalendar,
@@ -20,9 +21,7 @@ import {
 
 const formatDate = (value) => {
   if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return formatDateOnly(value, "en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
 const formatDateTime = (value) => {

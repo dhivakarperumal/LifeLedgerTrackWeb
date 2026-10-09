@@ -15,15 +15,14 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import api from "../../api";
+import { formatDateOnly, parseDateOnly, toLocalDateKey } from "../../utils/date";
 
 const VIEW_MODES = ["month", "week", "day", "agenda"];
 const HOURS = Array.from({ length: 24 }, (_, idx) => idx);
 
 const formatDate = (value, opts = {}) => {
   if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-IN", {
+  return formatDateOnly(value, "en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -32,11 +31,7 @@ const formatDate = (value, opts = {}) => {
 };
 
 const toDateInput = (date = new Date()) => {
-  const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return toLocalDateKey(date);
 };
 
 const toMonthLabel = (date) =>
@@ -87,7 +82,7 @@ const sortItems = (items, key) =>
   [...items].sort((a, b) => {
     const valA = typeof key === "function" ? key(a) : a[key];
     const valB = typeof key === "function" ? key(b) : b[key];
-    return new Date(valA) - new Date(valB);
+    return toLocalDateKey(valA).localeCompare(toLocalDateKey(valB));
   });
 
 const defaultEventForm = {
@@ -397,7 +392,7 @@ const CalendarReminder = () => {
   const monthEvents = useMemo(() => {
     const list = [];
     events.forEach((event) => {
-      const date = new Date(event.startDate);
+      const date = parseDateOnly(event.startDate);
       if (
         date.getMonth() === calendarMonth.getMonth() &&
         date.getFullYear() === calendarMonth.getFullYear()
@@ -571,7 +566,7 @@ const CalendarReminder = () => {
 
                 return (
                   <button
-                    key={date.toISOString()}
+                    key={toDateInput(date)}
                     onClick={() => setSelectedDate(date)}
                     className={`min-h-[120px] rounded-2xl border p-2 text-left transition ${
                       isSelected
@@ -847,7 +842,7 @@ const CalendarReminder = () => {
 
               return (
                 <button
-                  key={date.toISOString()}
+                  key={toDateInput(date)}
                   onClick={() => setSelectedDate(date)}
                   className={`flex h-9 items-center justify-center rounded-full text-sm transition ${
                     isSelected

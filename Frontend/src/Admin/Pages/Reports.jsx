@@ -9,6 +9,7 @@ import {
     FiChevronDown, FiChevronLeft, FiChevronRight, FiCheckCircle, FiAlertCircle,
 } from "react-icons/fi";
 import { FaRupeeSign } from "react-icons/fa";
+import { formatDateOnly, toLocalDateKey } from "../../utils/date";
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 const fmt = (n) =>
@@ -16,8 +17,7 @@ const fmt = (n) =>
 
 const fmtDate = (d) => {
     if (!d) return "—";
-    const dt = new Date(d);
-    return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    return formatDateOnly(d, "en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 
 /* ── badge colours ───────────────────────────────────────────────────────── */
@@ -72,7 +72,7 @@ const Reports = () => {
     const allRecords = useMemo(() => {
         const exp = reportType === "transfer" ? [] : expenses;
         const trf = reportType === "expense"  ? [] : transfers;
-        return [...exp, ...trf].sort((a, b) => new Date(b._date) - new Date(a._date));
+        return [...exp, ...trf].sort((a, b) => toLocalDateKey(b._date).localeCompare(toLocalDateKey(a._date)));
     }, [expenses, transfers, reportType]);
 
     /* unique categories & payment methods */
@@ -94,8 +94,8 @@ const Reports = () => {
 
         if (preset === "Custom Range") {
             return {
-                from: from ? new Date(from) : null,
-                to: to ? new Date(`${to}T23:59:59`) : null,
+                from: from || null,
+                to: to || null,
             };
         }
 
@@ -188,9 +188,11 @@ const Reports = () => {
             const matchCat     = categoryFilter === "All" || r.category === categoryFilter;
             const matchPayment = paymentFilter  === "All" || payment === paymentFilter;
 
-            const rDate = r._date ? new Date(r._date) : null;
-            const matchFrom = !activeDateRange.from || (rDate && rDate >= activeDateRange.from);
-            const matchTo   = !activeDateRange.to || (rDate && rDate <= activeDateRange.to);
+            const rDate = toLocalDateKey(r._date);
+            const rangeStart = activeDateRange.from instanceof Date ? toLocalDateKey(activeDateRange.from) : activeDateRange.from;
+            const rangeEnd = activeDateRange.to instanceof Date ? toLocalDateKey(activeDateRange.to) : activeDateRange.to;
+            const matchFrom = !rangeStart || (rDate && rDate >= rangeStart);
+            const matchTo   = !rangeEnd || (rDate && rDate <= rangeEnd);
 
             return matchSearch && matchCat && matchPayment && matchFrom && matchTo;
         });
@@ -586,14 +588,10 @@ const Reports = () => {
 
         const liveDetailRows = (visible || []).slice(0, 10).map((row, index) => {
             const isExpense = row._type === "expense";
-            const rowDate = row._date ? new Date(row._date) : null;
-            const formattedDate = rowDate
-                ? rowDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+            const formattedDate = row._date
+                ? formatDateOnly(row._date, "en-IN", { day: "2-digit", month: "short", year: "numeric" })
                 : "—";
-            const formattedTime = rowDate
-                ? rowDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
-                : "";
-            const dateTimeText = formattedTime ? `${formattedDate}\n${formattedTime}` : formattedDate;
+            const dateTimeText = formattedDate;
 
             return [
                 String(index + 1),

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import api from "../api";
+import { toLocalDateKey } from "../utils/date";
 import { useAuth } from "../PrivateRouter/AuthContext";
 
 const backendUrl = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "");
@@ -177,16 +178,13 @@ const Header = ({ onMenuClick }) => {
       const eventList = Array.isArray(res?.data?.data) ? res.data.data : [];
 
       const today = new Date();
-      const todayKey = today.toISOString().split("T")[0];
+      const todayKey = toLocalDateKey(today);
 
       const todayEvents = eventList.filter((event) => {
         const candidate = event?.startDate || event?.reminderDate || event?.event_date || event?.date || event?.created_at;
         if (!candidate) return false;
 
-        const date = new Date(candidate);
-        if (Number.isNaN(date.getTime())) return false;
-
-        return date.toISOString().split("T")[0] === todayKey;
+        return toLocalDateKey(candidate) === todayKey;
       });
 
       setTodayCalendarEvents(todayEvents);

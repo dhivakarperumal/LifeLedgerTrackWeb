@@ -4,6 +4,7 @@ import api from "../../api";
 import Loader from "../../Components/CommenComponents/Loader";
 import { toast } from "react-hot-toast";
 import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
+import { formatDateOnly, parseDateOnly, toLocalDateKey } from "../../utils/date";
 import {
   FiImage,
   FiVideo,
@@ -31,26 +32,11 @@ const MAX_MEDIA_FILE_SIZE = 100 * 1024 * 1024;
 
 const formatDate = (value) => {
   if (!value) return "No date";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "No date";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return formatDateOnly(value, "en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
 const normalizeDateInput = (value) => {
-  if (!value) return new Date().toISOString().slice(0, 10);
-
-  const direct = new Date(value);
-  if (!Number.isNaN(direct.getTime())) {
-    return direct.toISOString().slice(0, 10);
-  }
-
-  const match = String(value).match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-  if (match) {
-    const [, day, month, year] = match;
-    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  }
-
-  return value;
+  return toLocalDateKey(value) || toLocalDateKey();
 };
 
 const getMediaUrl = (value) => {
@@ -104,7 +90,7 @@ const initialForm = {
   title: "",
   description: "",
   category_id: "",
-  memory_date: new Date().toISOString().slice(0, 10),
+  memory_date: toLocalDateKey(),
   location: "",
   mood: "Happy",
   tags: "",
@@ -279,7 +265,7 @@ const MemoriesManagement = () => {
   const stats = useMemo(() => ({
     total: memories.length,
     favorites: memories.filter((item) => item.is_favorite).length,
-    thisYear: memories.filter((item) => new Date(item.memory_date).getFullYear() === new Date().getFullYear()).length,
+    thisYear: memories.filter((item) => parseDateOnly(item.memory_date).getFullYear() === new Date().getFullYear()).length,
     albums: 0,
   }), [memories]);
 
