@@ -678,6 +678,10 @@ const AllExpensive = () => {
                                     <p className="mt-2 font-bold text-slate-800">{viewExpense.expense_date ? String(viewExpense.expense_date).split("T")[0] : "—"}</p>
                                 </div>
                                 <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Time</p>
+                                    <p className="mt-2 font-bold text-slate-800">{viewExpense.expense_time ? String(viewExpense.expense_time).slice(0, 5) : "—"}</p>
+                                </div>
+                                <div className="rounded-xl bg-slate-50 p-3">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment</p>
                                     <p className="mt-2 font-bold text-slate-800">{viewExpense.payment_method || "—"}</p>
                                 </div>

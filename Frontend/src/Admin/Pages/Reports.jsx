@@ -247,7 +247,7 @@ const Reports = () => {
         const doc = new jsPDF({ unit: "pt", format: "a4" });
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
-        const fileName = `life-ledger-report-${new Date().toISOString().split("T")[0]}.pdf`;
+        const fileName = `life-ledger-report-${toLocalDateKey()}.pdf`;
 
         const greenLight = [208, 224, 197];
         const greenMid = [160, 195, 145];
@@ -591,7 +591,8 @@ const Reports = () => {
             const formattedDate = row._date
                 ? formatDateOnly(row._date, "en-IN", { day: "2-digit", month: "short", year: "numeric" })
                 : "—";
-            const dateTimeText = formattedDate;
+            const formattedTime = isExpense && row.expense_time ? String(row.expense_time).slice(0, 5) : "";
+            const dateTimeText = formattedTime ? `${formattedDate}\n${formattedTime}` : formattedDate;
 
             return [
                 String(index + 1),
@@ -714,7 +715,7 @@ const Reports = () => {
         const url  = URL.createObjectURL(blob);
         const a    = document.createElement("a");
         a.href = url;
-        a.download = `life-ledger-report-${new Date().toISOString().split("T")[0]}.csv`;
+        a.download = `life-ledger-report-${toLocalDateKey()}.csv`;
         a.click();
         URL.revokeObjectURL(url);
         toast.success("Report exported!");

@@ -3,6 +3,7 @@ import { AuthContext } from "../PrivateRouter/AuthContext";
 import { useAdmin } from "../PrivateRouter/AdminContext";
 import { StoreContext } from "../PrivateRouter/StoreContext";
 import api from "../api";
+import { toLocalDateKey } from "../utils/date";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
@@ -110,35 +111,16 @@ const Dashboard = () => {
         loadMonthlyBudget();
     }, [setMonthlyBudget]);
 
-    const getLocalDateKey = (value) => {
-        if (!value) return "";
-
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) {
-            const str = String(value).trim();
-            const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (match) {
-                return `${match[1]}-${match[2]}-${match[3]}`;
-            }
-            return "";
-        }
-
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-    };
-
     const getTodayItems = (items, dateFields = []) => {
         const list = Array.isArray(items) ? items : [];
-        const todayKey = getLocalDateKey(new Date());
+        const todayKey = toLocalDateKey();
 
         return list.filter((item) => {
             if (!item) return false;
             return dateFields.some((field) => {
                 const val = item[field];
                 if (!val) return false;
-                return getLocalDateKey(val) === todayKey;
+                return toLocalDateKey(val) === todayKey;
             });
         });
     };
