@@ -104,7 +104,6 @@ const DiaryManagement = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedMood, setSelectedMood] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
@@ -348,23 +347,7 @@ const DiaryManagement = () => {
   const filteredEntries = useMemo(() => {
     const term = search.toLowerCase();
     const dateRange = resolveDateRange(dateRangeFilter, customStartDate, customEndDate);
-    return entries.filter((entry) => {
-      const matchesFilter = (() => {
-        if (selectedFilter === "favorites") return entry.is_favorite;
-        if (selectedFilter === "drafts") return entry.status === "draft";
-        if (selectedFilter === "recent") return true;
-        if (selectedFilter === "month") {
-          const date = parseDateOnly(entry.entry_date);
-          const now = new Date();
-          return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-        }
-        if (selectedFilter === "year") {
-          const date = parseDateOnly(entry.entry_date);
-          return date.getFullYear() === new Date().getFullYear();
-        }
-        return true;
-      })();
-
+    const matchingEntries = entries.filter((entry) => {
       const categoryMatch = selectedCategory === "all" || String(entry.category_id) === String(selectedCategory) || (entry.category_name || "") === selectedCategory;
       const moodMatch = selectedMood === "all" || entry.mood === selectedMood;
       const dateMatch = !selectedDate || entry.entry_date === selectedDate;
@@ -377,13 +360,21 @@ const DiaryManagement = () => {
         entry.category_name,
         (entry.tags || []).join(" "),
       ].join(" ").toLowerCase().includes(term);
-      return matchesFilter && categoryMatch && moodMatch && dateMatch && dateRangeMatch && searchMatch;
+      return categoryMatch && moodMatch && dateMatch && dateRangeMatch && searchMatch;
     });
-  }, [entries, search, selectedFilter, selectedMood, selectedCategory, selectedDate, dateRangeFilter, customStartDate, customEndDate]);
+
+    return matchingEntries.sort((first, second) => {
+      const dateOrder = toLocalDateKey(second.entry_date).localeCompare(toLocalDateKey(first.entry_date));
+      if (dateOrder !== 0) return dateOrder;
+      const timeOrder = String(second.entry_time || "").localeCompare(String(first.entry_time || ""));
+      if (timeOrder !== 0) return timeOrder;
+      return String(second.created_at || "").localeCompare(String(first.created_at || ""));
+    });
+  }, [entries, search, selectedMood, selectedCategory, selectedDate, dateRangeFilter, customStartDate, customEndDate]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedFilter, selectedMood, selectedCategory, selectedDate, dateRangeFilter, customStartDate, customEndDate]);
+  }, [search, selectedMood, selectedCategory, selectedDate, dateRangeFilter, customStartDate, customEndDate]);
 
   const pageSize = 10;
   const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize));
@@ -751,28 +742,6 @@ const DiaryManagement = () => {
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
           </div>
 
-          <div className="relative min-w-[160px]">
-            <select
-              value={selectedFilter}
-              onChange={(e) => setSelectedFilter(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 pr-10 text-sm font-medium text-slate-600 outline-none transition-all focus:border-[#7b2cbf] focus:bg-white"
-            >
-              {[
-                { label: "All Entries", value: "all" },
-                { label: "Recent", value: "recent" },
-                { label: "Favorites", value: "favorites" },
-                { label: "Drafts", value: "drafts" },
-                { label: "This Month", value: "month" },
-                { label: "This Year", value: "year" },
-              ].map((filter) => (
-                <option key={filter.value} value={filter.value}>
-                  {filter.label}
-                </option>
-              ))}
-            </select>
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">▾</span>
-          </div>
-
           <select
             value={dateRangeFilter}
             onChange={(event) => setDateRangeFilter(event.target.value)}
@@ -881,10 +850,10 @@ const DiaryManagement = () => {
                   <thead>
                     <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c]">
                       <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider w-16 text-center">S No</th>
-                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Date</th>
                       <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Title & Content</th>
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Images</th>
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Date</th>
                       <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Category</th>
-                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Mood</th>
                       <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider text-right">Action</th>
                     </tr>
                   </thead>
@@ -898,26 +867,48 @@ const DiaryManagement = () => {
                           <button onClick={openNewEntry} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-900/20 hover:from-[#10002b] hover:to-[#5a189a]"><FiPlus /> Add Diary Entry</button>
                         </td>
                       </tr>
-                    ) : paginatedEntries.map((entry, index) => (
+                    ) : paginatedEntries.map((entry, index) => {
+                      const imageAttachments = normalizeExistingDiaryMedia(entry).filter((media) => {
+                        const mediaType = String(media.type || "").toLowerCase();
+                        const mediaName = String(media.name || media.previewUrl || "");
+                        return mediaType === "image" || mediaType.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp|svg)(?:$|\?)/i.test(mediaName);
+                      });
+                      const firstImage = imageAttachments[0];
+                      return (
                       <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap text-center font-bold text-slate-400">
                           {(safeCurrentPage - 1) * pageSize + index + 1}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-slate-800 font-bold">{formatDate(entry.entry_date)}</div>
                         </td>
                         <td className="px-4 py-4">
                           <p className="font-bold text-slate-900 max-w-[200px] truncate">{entry.title}</p>
                           <p className="text-xs text-slate-500 max-w-[250px] truncate">{entry.content.replace(/<[^>]+>/g, "")}</p>
                         </td>
+                        <td className="px-4 py-3">
+                          {firstImage ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/admin/users/diary/${entry.id}`)}
+                              title={`View ${firstImage.name || "diary image"}`}
+                              aria-label={`View image for ${entry.title}`}
+                              className="h-11 w-11 overflow-hidden rounded-md border border-slate-200 bg-slate-50 transition hover:border-violet-400"
+                            >
+                              <img
+                                src={firstImage.previewUrl}
+                                alt={firstImage.name || `Diary image for ${entry.title}`}
+                                crossOrigin="use-credentials"
+                                loading="lazy"
+                                decoding="async"
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
+                          ) : <span className="text-xs text-slate-400">No images</span>}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="text-slate-800 font-bold">{formatDate(entry.entry_date)}</div>
+                        </td>
                         <td className="px-4 py-4">
                           <span className="rounded-lg bg-violet-50 border border-violet-100 px-2.5 py-1 text-xs font-bold text-violet-700 whitespace-nowrap">
                             {entry.category_name || "General"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="rounded-lg bg-amber-50 border border-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700 whitespace-nowrap">
-                            {moodMap[entry.mood] || "😊"} {entry.mood}
                           </span>
                         </td>
                         <td className="px-4 py-4 text-right">
@@ -931,7 +922,7 @@ const DiaryManagement = () => {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    ); })}
                   </tbody>
                 </table>
               </div>
