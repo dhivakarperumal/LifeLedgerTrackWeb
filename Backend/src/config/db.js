@@ -69,7 +69,29 @@ const migrateAppLockUserIds = async () => {
        WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'user_id'`,
       [definition.name]
     );
-    if (!columns.length || String(columns[0].data_type).toLowerCase() === "varchar") continue;
+    if (!columns.length) continue;
+
+    if (String(columns[0].data_type).toLowerCase() === "varchar") {
+      await pool.query(
+        `UPDATE \`${definition.name}\` lock_row
+         JOIN users u ON u.id = CAST(lock_row.user_id AS UNSIGNED)
+         SET lock_row.user_id = u.user_id
+         WHERE lock_row.user_id REGEXP '^[0-9]+$'`
+      );
+      const [unmappedNumericRows] = await pool.query(
+        `SELECT COUNT(*) AS unmappedCount FROM \`${definition.name}\`
+         WHERE user_id REGEXP '^[0-9]+$'`
+      );
+      if (Number(unmappedNumericRows[0]?.unmappedCount) > 0) {
+        if (definition.name === "app_lock_settings") {
+          throw new Error("Cannot migrate App Lock settings: a numeric user ID has no matching users row.");
+        }
+        await pool.query(
+          `DELETE FROM \`${definition.name}\` WHERE user_id REGEXP '^[0-9]+$'`
+        );
+      }
+      continue;
+    }
 
     const migrationColumn = "app_lock_user_id_migration";
     await ensureColumn(definition.name, migrationColumn, "VARCHAR(50) NULL");
@@ -663,3 +685,4 @@ const initializeDatabase = async () => {
 
 module.exports = pool;
 module.exports.initializeDatabase = initializeDatabase;
+module.exports.migrateAppLockUserIds = migrateAppLockUserIds;

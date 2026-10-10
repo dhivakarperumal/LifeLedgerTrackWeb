@@ -58,7 +58,7 @@ const getSettings = async (userId) => {
 
 const verifyAccountPassword = async (userId, password) => {
   if (typeof password !== "string" || !password || password.length > 256) return false;
-  const [rows] = await db.query("SELECT password FROM users WHERE id = ?", [userId]);
+  const [rows] = await db.query("SELECT password FROM users WHERE user_id = ?", [userId]);
   return Boolean(rows[0]?.password && await bcrypt.compare(password, rows[0].password));
 };
 
@@ -232,7 +232,7 @@ const activeLockoutSeconds = async (userId) => {
 exports.status = async (req, res) => {
   try {
     setMediaSessionCookie(req, res);
-    res.json(publicSettings(await getSettings(req.user.id)));
+    res.json(publicSettings(await getSettings(req.user.user_id)));
   } catch (error) {
     console.error("App lock status error:", error.message);
     res.status(500).json({ message: "Unable to load app-lock settings." });
@@ -242,9 +242,9 @@ exports.status = async (req, res) => {
 exports.configure = async (req, res) => {
   try {
     const { currentPassword, enabled, method, credential, confirmCredential, lockOnHidden, idleTimeoutMinutes, confirmDisable } = req.body;
-    const prior = await getSettings(req.user.id);
+    const prior = await getSettings(req.user.user_id);
     const biometricEnabled = Boolean(req.body.biometricEnabled || (enabled && method === "biometric"));
-    if (!await verifyAccountPassword(req.user.id, currentPassword)) {
+    if (!await verifyAccountPassword(req.user.user_id, currentPassword)) {
       return res.status(401).json({ message: "Confirm your account password to change security settings." });
     }
     if (typeof enabled !== "boolean") return res.status(400).json({ message: "Choose whether App Lock is enabled." });
@@ -281,13 +281,13 @@ exports.configure = async (req, res) => {
        credential_hash = COALESCE(VALUES(credential_hash), credential_hash),
        lock_on_hidden = VALUES(lock_on_hidden), idle_timeout_minutes = VALUES(idle_timeout_minutes),
        biometric_enabled = VALUES(biometric_enabled)`,
-      [req.user.id, enabled ? 1 : 0, enabled ? method : prior?.method || "pin", credentialHash || null,
+      [req.user.user_id, enabled ? 1 : 0, enabled ? method : prior?.method || "pin", credentialHash || null,
         lockOnHidden === false ? 0 : 1, timeout, biometricEnabled ? 1 : 0]
     );
 
-    await db.query("DELETE FROM app_lock_sessions WHERE user_id = ?", [req.user.id]);
+    await db.query("DELETE FROM app_lock_sessions WHERE user_id = ?", [req.user.user_id]);
     res.clearCookie("life_ledger_lock", lockCookieOptions());
-    res.json({ message: enabled ? "App Lock settings saved." : "App Lock disabled.", settings: publicSettings(await getSettings(req.user.id)) });
+    res.json({ message: enabled ? "App Lock settings saved." : "App Lock disabled.", settings: publicSettings(await getSettings(req.user.user_id)) });
   } catch (error) {
     console.error("App lock configuration error:", error.message);
     res.status(500).json({ message: "Unable to save app-lock settings." });
@@ -296,7 +296,7 @@ exports.configure = async (req, res) => {
 
 exports.unlock = async (req, res) => {
   try {
-    const settings = await getSettings(req.user.id);
+    const settings = await getSettings(req.user.user_id);
     if (!settings?.enabled) return res.status(400).json({ message: "App Lock is not enabled." });
 
     const isFallback = settings.method === "biometric" && req.body.method === "password";
@@ -306,15 +306,15 @@ exports.unlock = async (req, res) => {
 
     let verifier = settings.credential_hash;
     if (isFallback) {
-      const [users] = await db.query("SELECT password FROM users WHERE id = ?", [req.user.id]);
+      const [users] = await db.query("SELECT password FROM users WHERE user_id = ?", [req.user.user_id]);
       verifier = users[0]?.password;
     }
-    const result = await verifyLockCredential(req.user.id, verifier, req.body.credential);
+    const result = await verifyLockCredential(req.user.user_id, verifier, req.body.credential);
     if (!result.valid) {
       if (result.retryAfter) res.set("Retry-After", String(result.retryAfter));
       return res.status(result.status).json({ message: result.message });
     }
-    return issueGrant(req.user.id, res);
+    return issueGrant(req.user.user_id, res);
   } catch (error) {
     console.error("App lock unlock error:", error.message);
     res.status(500).json({ message: "Unable to verify the lock credential." });
@@ -324,14 +324,14 @@ exports.unlock = async (req, res) => {
 exports.lock = async (req, res) => {
   const token = req.get("X-App-Lock-Token") || getCookie(req, "life_ledger_lock");
   if (token) {
-    await db.query("DELETE FROM app_lock_sessions WHERE token_hash = ? AND user_id = ?", [hashToken(token), req.user.id]);
+    await db.query("DELETE FROM app_lock_sessions WHERE token_hash = ? AND user_id = ?", [hashToken(token), req.user.user_id]);
   }
   res.clearCookie("life_ledger_lock", lockCookieOptions());
   res.json({ message: "App locked." });
 };
 
 exports.logout = async (req, res) => {
-  await db.query("DELETE FROM app_lock_sessions WHERE user_id = ?", [req.user.id]);
+  await db.query("DELETE FROM app_lock_sessions WHERE user_id = ?", [req.user.user_id]);
   res.clearCookie("life_ledger_lock", lockCookieOptions());
   res.clearCookie("life_ledger_session", mediaSessionCookieOptions());
   res.json({ message: "Session ended." });
@@ -339,17 +339,17 @@ exports.logout = async (req, res) => {
 
 exports.registrationOptions = async (req, res) => {
   try {
-    if (!await verifyAccountPassword(req.user.id, req.body.currentPassword)) {
+    if (!await verifyAccountPassword(req.user.user_id, req.body.currentPassword)) {
       return res.status(401).json({ message: "Confirm your account password to register a biometric credential." });
     }
     const { rpID } = webAuthnConfig(req);
-    const [users] = await db.query("SELECT username, email FROM users WHERE id = ?", [req.user.id]);
-    const prior = await getSettings(req.user.id);
+    const [users] = await db.query("SELECT username, email FROM users WHERE user_id = ?", [req.user.user_id]);
+    const prior = await getSettings(req.user.user_id);
     const options = await generateRegistrationOptions({
       rpName: "Life Ledger",
       rpID,
-      userID: new TextEncoder().encode(String(req.user.id)),
-      userName: users[0]?.username || users[0]?.email || String(req.user.id),
+      userID: new TextEncoder().encode(String(req.user.user_id)),
+      userName: users[0]?.username || users[0]?.email || String(req.user.user_id),
       attestationType: "none",
       authenticatorSelection: {
         authenticatorAttachment: "platform",
@@ -361,7 +361,7 @@ exports.registrationOptions = async (req, res) => {
         transports: parseTransports(prior.webauthn_transports),
       }] : [],
     });
-    await saveChallenge(req.user.id, "registration", options.challenge);
+    await saveChallenge(req.user.user_id, "registration", options.challenge);
     res.json(options);
   } catch (error) {
     console.error("WebAuthn registration options error:", error.message);
@@ -371,7 +371,7 @@ exports.registrationOptions = async (req, res) => {
 
 exports.registrationVerify = async (req, res) => {
   try {
-    const challenge = await consumeChallenge(req.user.id, "registration");
+    const challenge = await consumeChallenge(req.user.user_id, "registration");
     if (!challenge) return res.status(400).json({ message: "Registration challenge expired. Start again." });
     const { expectedOrigin, rpID } = webAuthnConfig(req);
     const verification = await verifyRegistrationResponse({
@@ -392,7 +392,7 @@ exports.registrationVerify = async (req, res) => {
        ON DUPLICATE KEY UPDATE webauthn_credential_id = VALUES(webauthn_credential_id),
        webauthn_public_key = VALUES(webauthn_public_key), webauthn_counter = VALUES(webauthn_counter),
        webauthn_transports = VALUES(webauthn_transports)`,
-      [req.user.id, credential.id, Buffer.from(credential.publicKey).toString("base64url"),
+      [req.user.user_id, credential.id, Buffer.from(credential.publicKey).toString("base64url"),
         credential.counter, JSON.stringify(credential.transports || [])]
     );
     res.json({ message: "Platform authenticator registered." });
@@ -404,12 +404,12 @@ exports.registrationVerify = async (req, res) => {
 
 exports.authenticationOptions = async (req, res) => {
   try {
-    const retryAfter = await activeLockoutSeconds(req.user.id);
+    const retryAfter = await activeLockoutSeconds(req.user.user_id);
     if (retryAfter) {
       res.set("Retry-After", String(retryAfter));
       return res.status(429).json({ message: "Too many attempts. Try again later." });
     }
-    const settings = await getSettings(req.user.id);
+    const settings = await getSettings(req.user.user_id);
     if (!settings?.enabled || (!settings.biometric_enabled && settings.method !== "biometric") || !settings.webauthn_credential_id) {
       return res.status(400).json({ message: "Biometric unlock is not configured." });
     }
@@ -420,7 +420,7 @@ exports.authenticationOptions = async (req, res) => {
       allowCredentials: [{ id: settings.webauthn_credential_id, transports }],
       userVerification: "required",
     });
-    await saveChallenge(req.user.id, "authentication", options.challenge);
+    await saveChallenge(req.user.user_id, "authentication", options.challenge);
     res.json(options);
   } catch (error) {
     console.error("WebAuthn authentication options error:", error.message);
@@ -430,9 +430,9 @@ exports.authenticationOptions = async (req, res) => {
 
 exports.authenticationVerify = async (req, res) => {
   try {
-    const challenge = await consumeChallenge(req.user.id, "authentication");
+    const challenge = await consumeChallenge(req.user.user_id, "authentication");
     if (!challenge) return res.status(400).json({ message: "Authentication challenge expired. Try again." });
-    const settings = await getSettings(req.user.id);
+    const settings = await getSettings(req.user.user_id);
     if (!settings?.enabled || !settings.webauthn_credential_id) return res.status(400).json({ message: "Biometric unlock is not configured." });
     const { expectedOrigin, rpID } = webAuthnConfig(req);
     let verification;
@@ -451,21 +451,21 @@ exports.authenticationVerify = async (req, res) => {
         requireUserVerification: true,
       });
     } catch (verificationError) {
-      const retryAfter = await recordWebAuthnFailure(req.user.id);
+      const retryAfter = await recordWebAuthnFailure(req.user.user_id);
       if (retryAfter) res.set("Retry-After", String(retryAfter));
       return res.status(retryAfter ? 429 : 401).json({ message: "Biometric verification failed." });
     }
     if (!verification.verified) {
-      const retryAfter = await recordWebAuthnFailure(req.user.id);
+      const retryAfter = await recordWebAuthnFailure(req.user.user_id);
       if (retryAfter) res.set("Retry-After", String(retryAfter));
       return res.status(retryAfter ? 429 : 401).json({ message: "Biometric verification failed." });
     }
 
     await db.query(
       "UPDATE app_lock_settings SET webauthn_counter = ?, failed_attempts = 0, locked_until = NULL WHERE user_id = ?",
-      [verification.authenticationInfo.newCounter, req.user.id]
+      [verification.authenticationInfo.newCounter, req.user.user_id]
     );
-    return issueGrant(req.user.id, res);
+    return issueGrant(req.user.user_id, res);
   } catch (error) {
     console.error("WebAuthn authentication verification error:", error.message);
     res.status(401).json({ message: "Biometric authentication failed or was cancelled." });

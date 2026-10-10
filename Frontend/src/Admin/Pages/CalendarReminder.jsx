@@ -467,7 +467,7 @@ const CalendarReminder = () => {
   }
 
   return (
-    <div className="space-y-6 rounded-3xl bg-[#F8D76A] p-3 sm:p-5">
+    <div className="space-y-4 sm:space-y-6 rounded-2xl sm:rounded-3xl bg-[#F8D76A] p-2 sm:p-5">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {summaryCards.map(({ title, value, icon: Icon, accent }) => (
           <div
@@ -496,19 +496,21 @@ const CalendarReminder = () => {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.85fr)_minmax(0,0.75fr)]">
         <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2">
               <button
                 onClick={() => setCalendarMonth((prev) => addMonths(prev, -1))}
                 className="rounded-xl border border-[#E8D8AE] bg-[#FFF9E9] p-2 text-[#8A3A18] transition hover:bg-[#FFF0C2]"
+                aria-label="Previous month"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <div className="min-w-[180px] text-center text-xl font-bold text-slate-900">
+              <div className="flex-1 sm:flex-none sm:min-w-[180px] text-center text-lg sm:text-xl font-bold text-slate-900">
                 {toMonthLabel(calendarMonth)}
               </div>
               <button
                 onClick={() => setCalendarMonth((prev) => addMonths(prev, 1))}
                 className="rounded-xl border border-[#E8D8AE] bg-[#FFF9E9] p-2 text-[#8A3A18] transition hover:bg-[#FFF0C2]"
+                aria-label="Next month"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -524,25 +526,25 @@ const CalendarReminder = () => {
               </button>
             </div>
 
-            <div className="flex items-center gap-2 rounded-xl bg-[#F5E8C9] p-1">
-              {VIEW_MODES.map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={`rounded-lg px-3 py-2 text-xs font-semibold capitalize transition ${
-                    viewMode === mode
-                      ? "bg-[#A50000] text-white shadow-sm"
-                      : "text-[#775E43] hover:text-[#8F0000]"
-                  }`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 rounded-xl bg-[#F5E8C9] p-1">
+                {VIEW_MODES.map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    className={`rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold capitalize transition ${
+                      viewMode === mode
+                        ? "bg-[#A50000] text-white shadow-sm"
+                        : "text-[#775E43] hover:text-[#8F0000]"
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
               <button
                 onClick={() => openPanel("event")}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#A50000] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#820000]"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#A50000] px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm transition hover:bg-[#820000]"
               >
                 <Plus className="h-4 w-4" /> Add Event
               </button>
@@ -550,125 +552,133 @@ const CalendarReminder = () => {
           </div>
 
           {viewMode === "month" && (
-            <div className="grid grid-cols-7 gap-2">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div
-                  key={day}
-                  className="px-2 py-3 text-center text-xs font-bold uppercase tracking-[0.14em] text-slate-500"
-                >
-                  {day}
+            <div className="w-full overflow-x-auto pb-2 -mx-1 px-1 sm:mx-0 sm:px-0">
+              <div className="min-w-[620px] sm:min-w-0">
+                <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-2">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                    <div
+                      key={day}
+                      className="px-1 py-2 text-center text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500"
+                    >
+                      {day}
+                    </div>
+                  ))}
                 </div>
-              ))}
 
-              {monthDays.map((date) => {
-                const dayEvents = events.filter((event) =>
-                  isSameDay(event.startDate, date),
-                );
-                const isCurrentMonth =
-                  date.getMonth() === calendarMonth.getMonth();
-                const isSelected = isSameDay(date, selectedDate);
-                const isToday = isSameDay(date, new Date());
+                <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                  {monthDays.map((date) => {
+                    const dayEvents = events.filter((event) =>
+                      isSameDay(event.startDate, date),
+                    );
+                    const isCurrentMonth =
+                      date.getMonth() === calendarMonth.getMonth();
+                    const isSelected = isSameDay(date, selectedDate);
+                    const isToday = isSameDay(date, new Date());
 
-                return (
-                  <button
-                    key={toDateInput(date)}
-                    onClick={() => setSelectedDate(date)}
-                    className={`min-h-[120px] rounded-2xl border p-2 text-left transition ${
-                      isSelected
-                        ? "border-[#A50000] bg-[#FFF0D1]"
-                        : "border-[#E8D8AE] bg-[#FFF9E9] hover:bg-white"
-                    } ${!isCurrentMonth ? "opacity-40" : ""}`}
-                  >
-                    <div className="mb-2 flex items-center justify-between">
-                      <span
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${
-                          isToday ? "bg-[#A50000] text-white" : "text-[#483A2B]"
-                        }`}
+                    return (
+                      <button
+                        key={toDateInput(date)}
+                        onClick={() => setSelectedDate(date)}
+                        className={`min-h-[85px] sm:min-h-[110px] md:min-h-[120px] rounded-xl sm:rounded-2xl border p-1.5 sm:p-2 text-left transition ${
+                          isSelected
+                            ? "border-[#A50000] bg-[#FFF0D1]"
+                            : "border-[#E8D8AE] bg-[#FFF9E9] hover:bg-white"
+                        } ${!isCurrentMonth ? "opacity-40" : ""}`}
                       >
-                        {date.getDate()}
-                      </span>
-                      {dayEvents.length > 0 && (
-                        <span className="rounded-full bg-[#F5E2A9] px-2 py-0.5 text-[10px] font-bold text-[#7B4B13]">
-                          {dayEvents.length}
-                        </span>
-                      )}
-                    </div>
+                        <div className="mb-1 sm:mb-2 flex items-center justify-between">
+                          <span
+                            className={`inline-flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full text-xs sm:text-sm font-semibold ${
+                              isToday ? "bg-[#A50000] text-white" : "text-[#483A2B]"
+                            }`}
+                          >
+                            {date.getDate()}
+                          </span>
+                          {dayEvents.length > 0 && (
+                            <span className="rounded-full bg-[#F5E2A9] px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold text-[#7B4B13]">
+                              {dayEvents.length}
+                            </span>
+                          )}
+                        </div>
 
-                    <div className="space-y-1">
-                      {dayEvents.slice(0, 2).map((event) => (
-                        <div
-                          key={event.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedItem({ type: "event", data: event });
-                          }}
-                          className="truncate rounded-md px-1.5 py-1 text-[10px] font-semibold text-white cursor-pointer hover:opacity-90 transition"
-                          style={{ backgroundColor: event.color || "#A50000" }}
-                        >
-                          {event.title}
+                        <div className="space-y-1">
+                          {dayEvents.slice(0, 2).map((event) => (
+                            <div
+                              key={event.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedItem({ type: "event", data: event });
+                              }}
+                              className="truncate rounded px-1 sm:px-1.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-semibold text-white cursor-pointer hover:opacity-90 transition"
+                              style={{ backgroundColor: event.color || "#A50000" }}
+                            >
+                              {event.title}
+                            </div>
+                          ))}
+                          {dayEvents.length > 2 && (
+                            <div className="text-[9px] sm:text-[10px] font-medium text-slate-500">
+                              +{dayEvents.length - 2} more
+                            </div>
+                          )}
                         </div>
-                      ))}
-                      {dayEvents.length > 2 && (
-                        <div className="text-[10px] font-medium text-slate-500">
-                          +{dayEvents.length - 2} more
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
           {viewMode === "week" && (
-            <div className="grid gap-3 md:grid-cols-7">
-              {Array.from({ length: 7 }, (_, idx) => {
-                const current = new Date(selectedDate);
-                current.setDate(
-                  selectedDate.getDate() - selectedDate.getDay() + idx,
-                );
-                const dayEvents = events.filter((event) =>
-                  isSameDay(event.startDate, current),
-                );
-                return (
-                  <div
-                    key={idx}
-                    className="rounded-2xl border border-[#E8D8AE] bg-[#FFF9E9] p-3"
-                  >
-                    <div className="mb-3 text-center text-xs font-bold uppercase tracking-[0.15em] text-slate-500">
-                      {new Intl.DateTimeFormat("en-IN", {
-                        weekday: "short",
-                      }).format(current)}
-                    </div>
-                    <div className="space-y-2">
-                      {dayEvents.length > 0 ? (
-                        dayEvents.map((event) => (
-                          <div
-                            key={event.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedItem({ type: "event", data: event });
-                            }}
-                            className="rounded-xl px-2 py-2 text-xs text-white cursor-pointer hover:opacity-90 transition"
-                            style={{
-                              backgroundColor: event.color || "#A50000",
-                            }}
-                          >
-                            <div className="font-semibold">{event.title}</div>
-                            <div className="mt-1 opacity-90">
-                              {event.startTime || "All day"}
+            <div className="w-full overflow-x-auto pb-2 -mx-1 px-1 sm:mx-0 sm:px-0">
+              <div className="min-w-[620px] sm:min-w-0 grid gap-2 sm:gap-3 grid-cols-7">
+                {Array.from({ length: 7 }, (_, idx) => {
+                  const current = new Date(selectedDate);
+                  current.setDate(
+                    selectedDate.getDate() - selectedDate.getDay() + idx,
+                  );
+                  const dayEvents = events.filter((event) =>
+                    isSameDay(event.startDate, current),
+                  );
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded-2xl border border-[#E8D8AE] bg-[#FFF9E9] p-2 sm:p-3"
+                    >
+                      <div className="mb-2 sm:mb-3 text-center text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
+                        {new Intl.DateTimeFormat("en-IN", {
+                          weekday: "short",
+                        }).format(current)}
+                      </div>
+                      <div className="space-y-1.5 sm:space-y-2">
+                        {dayEvents.length > 0 ? (
+                          dayEvents.map((event) => (
+                            <div
+                              key={event.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedItem({ type: "event", data: event });
+                              }}
+                              className="rounded-lg sm:rounded-xl px-1.5 sm:px-2 py-1 sm:py-2 text-[10px] sm:text-xs text-white cursor-pointer hover:opacity-90 transition"
+                              style={{
+                                backgroundColor: event.color || "#A50000",
+                              }}
+                            >
+                              <div className="font-semibold truncate">{event.title}</div>
+                              <div className="mt-0.5 sm:mt-1 opacity-90 text-[9px] sm:text-[11px]">
+                                {event.startTime || "All day"}
+                              </div>
                             </div>
+                          ))
+                        ) : (
+                          <div className="text-center text-[11px] sm:text-xs text-slate-400">
+                            No events
                           </div>
-                        ))
-                      ) : (
-                        <div className="text-center text-xs text-slate-400">
-                          No events
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
 

@@ -111,17 +111,18 @@ const Dashboard = () => {
         loadMonthlyBudget();
     }, [setMonthlyBudget]);
 
-    const getTodayItems = (items, dateFields = []) => {
+    const getTodayItems = (items, primaryDateField) => {
         const list = Array.isArray(items) ? items : [];
         const todayKey = toLocalDateKey();
 
         return list.filter((item) => {
             if (!item) return false;
-            return dateFields.some((field) => {
-                const val = item[field];
-                if (!val) return false;
-                return toLocalDateKey(val) === todayKey;
-            });
+            const primaryVal = item[primaryDateField];
+            if (primaryVal) {
+                return toLocalDateKey(primaryVal) === todayKey;
+            }
+            const fallbackVal = item.created_at || item.createdAt;
+            return fallbackVal ? toLocalDateKey(fallbackVal) === todayKey : false;
         });
     };
 
@@ -138,20 +139,20 @@ const Dashboard = () => {
 
             if (expRes.status === "fulfilled") {
                 const all = expRes.value.data || [];
-                setRecentExpenses(getTodayItems(all, ["expense_date", "created_at"]).slice(0, 5));
+                setRecentExpenses(getTodayItems(all, "expense_date").slice(0, 5));
             }
             if (trfRes.status === "fulfilled") {
                 const all = trfRes.value.data || [];
-                setRecentTransfers(getTodayItems(all, ["transfer_date", "created_at"]).slice(0, 5));
+                setRecentTransfers(getTodayItems(all, "transfer_date").slice(0, 5));
             }
             if (memRes.status === "fulfilled") {
                 const all = memRes.value.data || [];
-                setRecentMemories(getTodayItems(all, ["created_at", "memory_date"]).slice(0, 4));
+                setRecentMemories(getTodayItems(all, "memory_date").slice(0, 4));
             }
             if (diaRes.status === "fulfilled") {
                 const raw = diaRes.value.data;
                 const all = Array.isArray(raw) ? raw : (raw?.entries || raw?.data || []);
-                setRecentDiary(getTodayItems(all, ["entry_date", "created_at", "date"]).slice(0, 4));
+                setRecentDiary(getTodayItems(all, "entry_date").slice(0, 4));
             }
             if (eveRes.status === "fulfilled") {
                 const payload = eveRes.value?.data || [];
@@ -162,7 +163,7 @@ const Dashboard = () => {
                         : Array.isArray(payload?.events)
                             ? payload.events
                             : [];
-                setRecentEvents(getTodayItems(all, ["startDate", "start_date", "createdAt", "created_at"]).slice(0, 5));
+                setRecentEvents(getTodayItems(all, "startDate").slice(0, 5));
             }
         } catch (err) {
             console.error("Fetch Recent Activity Error:", err);
