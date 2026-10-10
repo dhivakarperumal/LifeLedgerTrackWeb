@@ -11,6 +11,7 @@ const { requireAuth } = require("./src/middleware/auth");
 const app = express();
 const port = Number(process.env.PORT) || 5000;
 const frontendDistPath = path.join(__dirname, "../Frontend/dist");
+const frontendIndexPath = path.join(frontendDistPath, "index.html");
 const allowedFrontendOrigins = new Set(
   String(process.env.APP_FRONTEND_ORIGIN || "").split(",").map((origin) => origin.trim()).filter(Boolean)
 );
@@ -36,16 +37,22 @@ app.use(
   express.static(path.join(__dirname, "uploads"))
 );
 
-if (fs.existsSync(frontendDistPath)) {
-  app.use(express.static(frontendDistPath));
+app.use(express.static(frontendDistPath));
 
-  app.get(/^(?!\/api\/).+/, (req, res, next) => {
-    if (req.path.startsWith("/api/")) {
-      return next();
+app.get(/^(?!\/api\/).+/, (req, res, next) => {
+  if (req.path.startsWith("/api/")) return next();
+  if (!fs.existsSync(frontendIndexPath)) {
+    return res.status(503).type("text/plain").send("Frontend build is unavailable. Run npm --prefix Frontend run build.");
+  }
+
+  res.sendFile(frontendIndexPath, (error) => {
+    if (!error) return;
+    if (error.code === "ENOENT" || error.statusCode === 404) {
+      return res.status(503).type("text/plain").send("Frontend build is unavailable. Run npm --prefix Frontend run build.");
     }
-    res.sendFile(path.join(frontendDistPath, "index.html"));
+    return next(error);
   });
-}
+});
 
 app.get("/api/health", async (req, res) => {
   try {

@@ -116,9 +116,9 @@ export const PatternGrid = ({ value, onChange, disabled = false }) => {
 export const PinKeypad = ({ value, onChange, onSubmit, disabled, actionLabel = "Unlock", minLength = 4 }) => {
   const enter = (digit) => onChange(value.length < 6 ? `${value}${digit}` : value);
   const backspace = () => onChange(value.slice(0, -1));
-  const buttonClass = "grid aspect-square place-items-center rounded-xl border border-slate-200 bg-white text-lg font-semibold text-slate-800 transition hover:border-[#8EA66B] hover:bg-[#f4f6ef] disabled:cursor-not-allowed disabled:opacity-50";
+  const buttonClass = "grid h-12 sm:h-14 place-items-center rounded-full border border-slate-200 bg-white text-lg font-semibold text-slate-800 transition hover:border-[#8EA66B] hover:bg-[#f4f6ef] disabled:cursor-not-allowed disabled:opacity-50";
   return (
-      <div className="mx-auto w-full max-w-[220px] sm:max-w-[260px]">
+      <div className="mx-auto w-full max-w-[190px] sm:max-w-[220px]">
         <div className="mb-2 flex h-8 items-center justify-center gap-3 sm:mb-4 sm:h-10" aria-label={`${value.length} PIN digits entered`}>
         {Array.from({ length: 6 }, (_, index) => <span key={index} className={`h-3 w-3 rounded-full ${index < value.length ? "bg-[#53633b]" : "bg-slate-200"}`} />)}
       </div>
@@ -130,7 +130,7 @@ export const PinKeypad = ({ value, onChange, onSubmit, disabled, actionLabel = "
         <button type="button" disabled={disabled || value.length >= 6} onClick={() => enter("0")} className={buttonClass} aria-label="Enter 0">0</button>
         <button type="button" disabled={disabled || !value} onClick={backspace} className={buttonClass} aria-label="Delete last digit"><Delete size={19} /></button>
       </div>
-      <button type="button" disabled={disabled || value.length < minLength} onClick={onSubmit} className="mt-3 w-full rounded-xl bg-[#53633b] px-4 py-3 font-semibold text-white transition hover:bg-[#414f2e] disabled:cursor-not-allowed disabled:opacity-50">{actionLabel}</button>
+      <button type="button" disabled={disabled || value.length < minLength} onClick={onSubmit} className="mt-3 w-full rounded-full bg-[#53633b] px-4 py-3 font-semibold text-white transition hover:bg-[#414f2e] disabled:cursor-not-allowed disabled:opacity-50">{actionLabel}</button>
     </div>
   );
 };
@@ -213,12 +213,12 @@ const AppLockScreen = () => {
   const disabled = unlocking || busy;
 
   return (
-    <main className="grid h-dvh min-h-[100svh] place-items-center overflow-hidden bg-gradient-to-br from-[#1F0A3C] via-[#2d2041] to-[#334726] px-3 py-2 sm:h-screen sm:px-4 sm:py-10">
-      <section className="max-h-full min-h-0 w-full max-w-md overflow-hidden rounded-2xl border border-white/40 bg-white p-4 shadow-2xl shadow-black/20 sm:p-9" aria-labelledby="lock-heading">
-        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-[#eef1e8] text-[#53633b] sm:mb-5 sm:h-14 sm:w-14"><LockKeyhole size={25} aria-hidden="true" /></div>
-        <p className="text-center text-xs font-bold uppercase tracking-[0.16em] text-[#647447]">Life Ledger</p>
-        <h1 id="lock-heading" className="mt-2 text-center text-2xl font-bold text-slate-900">App locked</h1>
-        <p className="mt-2 text-center text-sm text-slate-500">{user?.name || user?.username || "Your account"}</p>
+    <main className="grid h-dvh min-h-[100svh] place-items-center overflow-hidden bg-gradient-to-br from-[#1F0A3C] via-[#2d2041] to-[#334726] px-2 py-3 sm:h-screen sm:px-3 sm:py-6">
+      <section className="max-h-full min-h-0 w-full max-w-md overflow-hidden rounded-2xl border border-white/40 bg-white p-3 shadow-2xl shadow-black/20 sm:p-6" aria-labelledby="lock-heading">
+        <div className="mx-auto mb-2 grid h-11 w-11 place-items-center rounded-2xl bg-[#eef1e8] text-[#53633b] sm:mb-3 sm:h-12 sm:w-12"><LockKeyhole size={22} aria-hidden="true" /></div>
+        <p className="text-center text-[10px] font-bold uppercase tracking-[0.16em] text-[#647447] sm:text-xs">Life Ledger</p>
+        <h1 id="lock-heading" className="mt-1 text-center text-[2rem] font-bold leading-tight text-slate-900">App locked</h1>
+        <p className="mt-1 text-center text-sm text-slate-500">{user?.name || user?.username || "Your account"}</p>
 
         {loadError ? (
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
