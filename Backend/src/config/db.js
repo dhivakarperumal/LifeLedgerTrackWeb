@@ -56,6 +56,78 @@ const ensureColumn = async (tableName, columnName, columnDefinition) => {
   await pool.query(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${columnDefinition}`);
 };
 
+const migrateAppLockUserIds = async () => {
+  const tableDefinitions = [
+    { name: "app_lock_settings", primaryColumns: ["user_id"], indexes: ["idx_app_lock_enabled"] },
+    { name: "app_lock_challenges", primaryColumns: ["user_id", "purpose"], indexes: [] },
+    { name: "app_lock_sessions", primaryColumns: ["token_hash"], indexes: ["idx_app_lock_session_owner"] },
+  ];
+
+  for (const definition of tableDefinitions) {
+    const [columns] = await pool.query(
+      `SELECT data_type FROM information_schema.columns
+       WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'user_id'`,
+      [definition.name]
+    );
+    if (!columns.length || String(columns[0].data_type).toLowerCase() === "varchar") continue;
+
+    const migrationColumn = "app_lock_user_id_migration";
+    await ensureColumn(definition.name, migrationColumn, "VARCHAR(50) NULL");
+    await pool.query(
+      `UPDATE \`${definition.name}\` lock_row
+       JOIN users u ON u.id = lock_row.user_id
+       SET lock_row.\`${migrationColumn}\` = u.user_id
+       WHERE lock_row.\`${migrationColumn}\` IS NULL`
+    );
+
+    const [unmappedRows] = await pool.query(
+      `SELECT COUNT(*) AS unmappedCount FROM \`${definition.name}\`
+       WHERE \`${migrationColumn}\` IS NULL OR \`${migrationColumn}\` = ''`
+    );
+    if (Number(unmappedRows[0]?.unmappedCount) > 0) {
+      if (definition.name === "app_lock_settings") {
+        throw new Error("Cannot migrate App Lock settings: a settings row has no matching users.user_id.");
+      }
+      await pool.query(
+        `DELETE FROM \`${definition.name}\`
+         WHERE \`${migrationColumn}\` IS NULL OR \`${migrationColumn}\` = ''`
+      );
+    }
+
+    const [indexes] = await pool.query(`SHOW INDEX FROM \`${definition.name}\``);
+    const userIdIndexes = [...new Set(indexes
+      .filter((index) => index.Column_name === "user_id" && index.Key_name !== "PRIMARY")
+      .map((index) => index.Key_name))];
+    for (const indexName of userIdIndexes) {
+      await pool.query(`ALTER TABLE \`${definition.name}\` DROP INDEX \`${indexName}\``);
+    }
+
+    const primaryUsesOldUserId = indexes.some(
+      (index) => index.Key_name === "PRIMARY" && index.Column_name === "user_id"
+    );
+    if (primaryUsesOldUserId) {
+      await pool.query(`ALTER TABLE \`${definition.name}\` DROP PRIMARY KEY`);
+    }
+    await pool.query(
+      `ALTER TABLE \`${definition.name}\`
+       DROP COLUMN user_id,
+       CHANGE COLUMN \`${migrationColumn}\` user_id VARCHAR(50) NOT NULL`
+    );
+
+    if (definition.primaryColumns.includes("user_id")) {
+      await pool.query(
+        `ALTER TABLE \`${definition.name}\` ADD PRIMARY KEY (${definition.primaryColumns.join(", ")})`
+      );
+    }
+    if (definition.name === "app_lock_settings") {
+      await pool.query("ALTER TABLE app_lock_settings ADD KEY idx_app_lock_enabled (user_id, enabled)");
+    }
+    if (definition.name === "app_lock_sessions") {
+      await pool.query("ALTER TABLE app_lock_sessions ADD KEY idx_app_lock_session_owner (user_id, expires_at)");
+    }
+  }
+};
+
 const initializeDatabase = async () => {
   await createDatabaseIfMissing();
 
@@ -80,7 +152,7 @@ const initializeDatabase = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS app_lock_settings (
-      user_id INT PRIMARY KEY,
+      user_id VARCHAR(50) PRIMARY KEY,
       enabled TINYINT(1) NOT NULL DEFAULT 0,
       method VARCHAR(20) NOT NULL DEFAULT 'pin',
       credential_hash VARCHAR(255) NULL,
@@ -97,7 +169,7 @@ const initializeDatabase = async () => {
       KEY idx_app_lock_enabled (user_id, enabled)
     )`,
     `CREATE TABLE IF NOT EXISTS app_lock_challenges (
-      user_id INT NOT NULL,
+      user_id VARCHAR(50) NOT NULL,
       purpose VARCHAR(20) NOT NULL,
       challenge VARCHAR(255) NOT NULL,
       expires_at DATETIME NOT NULL,
@@ -105,7 +177,7 @@ const initializeDatabase = async () => {
     )`,
     `CREATE TABLE IF NOT EXISTS app_lock_sessions (
       token_hash CHAR(64) PRIMARY KEY,
-      user_id INT NOT NULL,
+      user_id VARCHAR(50) NOT NULL,
       expires_at DATETIME NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       KEY idx_app_lock_session_owner (user_id, expires_at)
@@ -331,6 +403,8 @@ const initializeDatabase = async () => {
   for (const statement of schemaStatements) {
     await pool.query(statement);
   }
+
+  await migrateAppLockUserIds();
 
   try {
     const [categoryIndexes] = await pool.query(

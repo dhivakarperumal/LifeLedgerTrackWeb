@@ -53,7 +53,7 @@ export const PatternGrid = ({ value, onChange, disabled = false }) => {
   }, [value]);
 
   return (
-    <div className="mx-auto w-full max-w-[300px]">
+    <div className="mx-auto w-full max-w-[250px] sm:max-w-[300px]">
       <div
         ref={gridRef}
         role="group"
@@ -118,8 +118,8 @@ export const PinKeypad = ({ value, onChange, onSubmit, disabled, actionLabel = "
   const backspace = () => onChange(value.slice(0, -1));
   const buttonClass = "grid aspect-square place-items-center rounded-xl border border-slate-200 bg-white text-lg font-semibold text-slate-800 transition hover:border-[#8EA66B] hover:bg-[#f4f6ef] disabled:cursor-not-allowed disabled:opacity-50";
   return (
-    <div className="mx-auto w-full max-w-[260px]">
-      <div className="mb-4 flex h-10 items-center justify-center gap-3" aria-label={`${value.length} PIN digits entered`}>
+      <div className="mx-auto w-full max-w-[220px] sm:max-w-[260px]">
+        <div className="mb-2 flex h-8 items-center justify-center gap-3 sm:mb-4 sm:h-10" aria-label={`${value.length} PIN digits entered`}>
         {Array.from({ length: 6 }, (_, index) => <span key={index} className={`h-3 w-3 rounded-full ${index < value.length ? "bg-[#53633b]" : "bg-slate-200"}`} />)}
       </div>
       <div className="grid grid-cols-3 gap-2">
@@ -206,16 +206,16 @@ const AppLockScreen = () => {
     }
   };
 
-  if (loading) return <div className="grid min-h-screen place-items-center bg-[#1F0A3C] text-white" role="status">Checking security status...</div>;
+  if (loading) return <div className="grid h-dvh place-items-center overflow-hidden bg-[#1F0A3C] text-white" role="status">Checking security status...</div>;
 
   const method = settings?.method || "password";
   const allowBiometric = settings?.biometricEnrolled && (settings?.biometricEnabled || method === "biometric");
   const disabled = unlocking || busy;
 
   return (
-    <main className="grid min-h-screen place-items-center bg-gradient-to-br from-[#1F0A3C] via-[#2d2041] to-[#334726] px-4 py-10">
-      <section className="w-full max-w-md rounded-2xl border border-white/40 bg-white p-6 shadow-2xl shadow-black/20 sm:p-9" aria-labelledby="lock-heading">
-        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-[#eef1e8] text-[#53633b]"><LockKeyhole size={25} aria-hidden="true" /></div>
+    <main className="grid h-dvh min-h-[100svh] place-items-center overflow-hidden bg-gradient-to-br from-[#1F0A3C] via-[#2d2041] to-[#334726] px-3 py-2 sm:h-screen sm:px-4 sm:py-10">
+      <section className="max-h-full min-h-0 w-full max-w-md overflow-hidden rounded-2xl border border-white/40 bg-white p-4 shadow-2xl shadow-black/20 sm:p-9" aria-labelledby="lock-heading">
+        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-[#eef1e8] text-[#53633b] sm:mb-5 sm:h-14 sm:w-14"><LockKeyhole size={25} aria-hidden="true" /></div>
         <p className="text-center text-xs font-bold uppercase tracking-[0.16em] text-[#647447]">Life Ledger</p>
         <h1 id="lock-heading" className="mt-2 text-center text-2xl font-bold text-slate-900">App locked</h1>
         <p className="mt-2 text-center text-sm text-slate-500">{user?.name || user?.username || "Your account"}</p>
@@ -226,7 +226,7 @@ const AppLockScreen = () => {
             <button type="button" onClick={() => refreshStatus().catch(() => setLoadError("Security status is still unavailable."))} className="mt-3 font-bold underline">Retry</button>
           </div>
         ) : (
-          <div className="mt-7">
+          <div className="mt-4 sm:mt-7">
             {allowBiometric && !useFallback && (
               <div className="space-y-3">
                 <button type="button" onClick={unlockBiometric} disabled={disabled || !biometricSupport} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#53633b] px-4 py-3.5 font-semibold text-white hover:bg-[#414f2e] disabled:cursor-not-allowed disabled:opacity-50">
@@ -261,9 +261,9 @@ const AppLockScreen = () => {
           </div>
         )}
 
-        {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-700">{error}</p>}
-        {disabled && <p role="status" className="mt-4 text-center text-sm text-slate-500">Verifying...</p>}
-        <div className="mt-6 border-t border-slate-100 pt-4 text-center">
+        {error && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-700 sm:mt-4">{error}</p>}
+        {disabled && <p role="status" className="mt-2 text-center text-sm text-slate-500 sm:mt-4">Verifying...</p>}
+        <div className="mt-3 border-t border-slate-100 pt-3 text-center sm:mt-6 sm:pt-4">
           <button type="button" onClick={() => { void lock(); }} className="text-sm font-semibold text-slate-500 underline underline-offset-4">Stay locked</button>
           <button type="button" onClick={() => { logout(); navigate("/login", { replace: true }); }} className="ml-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 underline underline-offset-4">
             <LogOut size={15} aria-hidden="true" /> Log out
