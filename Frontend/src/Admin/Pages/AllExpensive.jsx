@@ -5,6 +5,7 @@ import Loader from "../../Components/CommenComponents/Loader";
 import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
 import { toLocalDateKey } from "../../utils/date";
 import { toast } from "react-hot-toast";
+import { useLocation, useNavigate } from "react-router-dom";
 import { FaRupeeSign } from "react-icons/fa";
 import {
     FiPlus, FiSearch, FiTrash2, FiList, FiGrid,
@@ -44,6 +45,8 @@ const fmt = (n) =>
     Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const AllExpensive = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
     // ── list state ────────────────────────────────────────────────────────────
     const [expenses, setExpenses] = useState([]);
     const [stats, setStats] = useState({ total: 0, totalAmount: 0, totalTransfer: 0, recurring: 0 });
@@ -65,7 +68,6 @@ const AllExpensive = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [modalMode, setModalMode] = useState("add");
     const [editId, setEditId] = useState(null);
-    const [viewExpense, setViewExpense] = useState(null);
     const [form, setForm] = useState(emptyForm());
     const [saving, setSaving] = useState(false);
     // toggle: false = select from list, true = enter manually
@@ -174,8 +176,15 @@ const AllExpensive = () => {
     };
 
     const openViewExpense = (expense) => {
-        setViewExpense(expense);
+        navigate(`/admin/expensive/all/${expense.id}`);
     };
+
+    useEffect(() => {
+        const expenseToEdit = location.state?.editExpense;
+        if (!expenseToEdit) return;
+        openEditExpense(expenseToEdit);
+        navigate(location.pathname, { replace: true, state: null });
+    }, [location.pathname, location.state, navigate]);
 
     const closeModal = () => {
         setIsOpen(false);
@@ -479,7 +488,7 @@ const AllExpensive = () => {
                                                             type="button"
                                                             onClick={() => openViewExpense(ex)}
                                                             className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all"
-                                                            title="View Receipt"
+                                                            title="View expense details"
                                                         >
                                                             <FiEye size={13} />
                                                         </button>
@@ -528,16 +537,14 @@ const AllExpensive = () => {
                                         </span>
                                     </div>
                                     <div className="flex gap-1.5">
-                                        {ex.attachment && (
-                                            <button
-                                                type="button"
-                                                onClick={() => openViewExpense(ex)}
-                                                className="w-7 h-7 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all shrink-0"
-                                                title="View"
-                                            >
-                                                <FiEye size={12} />
-                                            </button>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => openViewExpense(ex)}
+                                            className="w-7 h-7 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all shrink-0"
+                                            title="View expense details"
+                                        >
+                                            <FiEye size={12} />
+                                        </button>
                                         <button
                                             type="button"
                                             onClick={() => openEditExpense(ex)}
@@ -648,83 +655,6 @@ const AllExpensive = () => {
                         </button>
                     </div>
                 </div>
-            )}
-
-            {/* ════════════════════════════════════════════════════════════════
-                ADD EXPENSE MODAL
-            ════════════════════════════════════════════════════════════════ */}
-            {viewExpense && createPortal(
-                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
-                    <div className="absolute inset-0" onClick={() => setViewExpense(null)} />
-                    <div className="relative z-10 w-full max-w-xl bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white flex items-center justify-between">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FCD34D]/70">Expense Details</p>
-                                <h2 className="text-2xl font-black mt-1">{viewExpense.title}</h2>
-                            </div>
-                            <button onClick={() => setViewExpense(null)} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
-                                <FiX size={18} />
-                            </button>
-                        </div>
-
-                        <div className="p-6 space-y-4 text-sm text-slate-700">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Category</p>
-                                    <p className="mt-2 font-bold text-slate-800">{viewExpense.category || "—"}</p>
-                                </div>
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Amount</p>
-                                    <p className="mt-2 font-black text-rose-600">₹{fmt(viewExpense.expense_amount)}</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date</p>
-                                    <p className="mt-2 font-bold text-slate-800">{viewExpense.expense_date ? String(viewExpense.expense_date).split("T")[0] : "—"}</p>
-                                </div>
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Time</p>
-                                    <p className="mt-2 font-bold text-slate-800">{viewExpense.expense_time ? String(viewExpense.expense_time).slice(0, 5) : "—"}</p>
-                                </div>
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment</p>
-                                    <p className="mt-2 font-bold text-slate-800">{viewExpense.payment_method || "—"}</p>
-                                </div>
-                            </div>
-
-                            {viewExpense.location && (
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Location</p>
-                                    <p className="mt-2 font-bold text-slate-800">{viewExpense.location}</p>
-                                </div>
-                            )}
-
-                            {viewExpense.notes && (
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notes</p>
-                                    <p className="mt-2 leading-6 text-slate-700">{viewExpense.notes}</p>
-                                </div>
-                            )}
-
-                            {viewExpense.attachment && (
-                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Receipt</p>
-                                    <a
-                                        href={`${import.meta.env.VITE_API_URL.replace("/api", "")}${viewExpense.attachment}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="mt-3 inline-flex items-center gap-2 rounded-xl bg-violet-100 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-200"
-                                    >
-                                        <FiPaperclip size={14} /> Open attachment
-                                    </a>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>,
-                document.body
             )}
 
             {isOpen && createPortal(

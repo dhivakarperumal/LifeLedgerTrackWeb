@@ -37,6 +37,25 @@ exports.getAllExpenses = async (req, res) => {
     }
 };
 
+exports.getExpenseById = async (req, res) => {
+    try {
+        const expenseId = Number(req.params.id);
+        if (!Number.isInteger(expenseId) || expenseId <= 0) {
+            return res.status(400).json({ message: "Invalid expense ID." });
+        }
+
+        const [rows] = await db.query(
+            "SELECT * FROM expenses WHERE id = ? AND user_id = ? LIMIT 1",
+            [expenseId, req.user?.user_id]
+        );
+        if (!rows.length) return res.status(404).json({ message: "Expense not found." });
+        return res.json(rows[0]);
+    } catch (error) {
+        console.error("Fetch Expense Details Error:", error.message);
+        return res.status(500).json({ message: "Failed to fetch expense details." });
+    }
+};
+
 const applyTransferBalanceDelta = async (transferId) => {
     if (!transferId) return;
 

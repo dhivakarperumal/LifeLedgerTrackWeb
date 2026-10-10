@@ -20,6 +20,7 @@ const AdminPanel = React.lazy(() => import("./Admin/AdminPanel.jsx"));
 const Dashboard = React.lazy(() => import("./Admin/Dashboard.jsx"));
 
 const AllExpensive = React.lazy(() => import("./Admin/Pages/AllExpensive.jsx"));
+const ExpenseDetails = React.lazy(() => import("./Admin/Pages/ExpenseDetails.jsx"));
 const Category = React.lazy(() => import("./Admin/Pages/Category.jsx"));
 const DiaryManagement = React.lazy(() => import("./Admin/Pages/DiaryManagement.jsx"));
 const DiaryDetails = React.lazy(() => import("./Admin/Pages/DiaryDetails.jsx"));
@@ -59,6 +60,7 @@ const router = createHashRouter([
       { index: true, element: <Dashboard /> },
       { path: "products/category", element: <Category /> },
       { path: "expensive/all", element: <AllExpensive /> },
+      { path: "expensive/all/:id", element: <ExpenseDetails /> },
       { path: "expensive/category", element: <Category /> },
       { path: "users/all", element: <Users initialTab="All" /> },
       { path: "users/all/:id", element: <UserDetails /> },

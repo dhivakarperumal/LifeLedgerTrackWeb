@@ -14,6 +14,8 @@ export const AppLockProvider = ({ children }) => {
   const [loadError, setLoadError] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const channelRef = useRef(null);
+  const idleLockRef = useRef(null);
+  const lastActivityAtRef = useRef(Date.now());
 
   const refreshStatus = async () => {
     const { data } = await api.get("/app-lock/status");
@@ -37,6 +39,7 @@ export const AppLockProvider = ({ children }) => {
     }
     if (broadcast) channelRef.current?.postMessage({ type: "lock" });
   };
+  idleLockRef.current = lock;
 
   const acceptGrant = (token) => {
     setAppLockToken(token);
@@ -101,25 +104,34 @@ export const AppLockProvider = ({ children }) => {
 
   useEffect(() => {
     if (!user || !settings?.enabled || locked || loading) return undefined;
-    let timer;
-    const resetTimer = () => {
-      window.clearTimeout(timer);
-      if (settings.idleTimeoutMinutes > 0) {
-        timer = window.setTimeout(() => { void lock(); }, settings.idleTimeoutMinutes * 60 * 1000);
+    const timeoutMs = Number(settings.idleTimeoutMinutes) * 60 * 1000;
+    if (timeoutMs <= 0) return undefined;
+
+    lastActivityAtRef.current = Date.now();
+    const markActivity = () => {
+      if (document.visibilityState === "visible") lastActivityAtRef.current = Date.now();
+    };
+    const checkIdleTime = () => {
+      if (Date.now() - lastActivityAtRef.current >= timeoutMs) {
+        void idleLockRef.current?.();
       }
     };
     const onVisibility = () => {
-      if (document.visibilityState === "hidden" && settings.lockOnHidden) void lock();
+      if (document.visibilityState === "hidden" && settings.lockOnHidden) {
+        void idleLockRef.current?.();
+      } else if (document.visibilityState === "visible") {
+        checkIdleTime();
+      }
     };
-    const onPageHide = () => { void lock(); };
-    const events = ["pointerdown", "keydown", "touchstart", "mousemove"];
-    events.forEach((eventName) => window.addEventListener(eventName, resetTimer, { passive: true }));
+    const onPageHide = () => { void idleLockRef.current?.(); };
+    const events = ["pointerdown", "keydown", "touchstart", "pointermove"];
+    events.forEach((eventName) => window.addEventListener(eventName, markActivity, { passive: true }));
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onPageHide);
-    resetTimer();
+    const interval = window.setInterval(checkIdleTime, 1000);
     return () => {
-      window.clearTimeout(timer);
-      events.forEach((eventName) => window.removeEventListener(eventName, resetTimer));
+      window.clearInterval(interval);
+      events.forEach((eventName) => window.removeEventListener(eventName, markActivity));
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
     };
