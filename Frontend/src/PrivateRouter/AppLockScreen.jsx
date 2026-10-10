@@ -230,30 +230,30 @@ const AppLockScreen = () => {
             {allowBiometric && !useFallback && (
               <div className="space-y-3">
                 <button type="button" onClick={unlockBiometric} disabled={disabled || !biometricSupport} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#53633b] px-4 py-3.5 font-semibold text-white hover:bg-[#414f2e] disabled:cursor-not-allowed disabled:opacity-50">
-                  <Fingerprint size={19} aria-hidden="true" /> Unlock with device
+                  <Fingerprint size={19} aria-hidden="true" /> {busy ? "Verifying..." : "Unlock with device"}
                 </button>
                 {!biometricSupport && <p className="text-center text-sm text-amber-700">This browser or device does not support platform biometrics, or this page is not running in a secure context.</p>}
                 <button type="button" onClick={() => setUseFallback(true)} className="w-full py-2 text-sm font-semibold text-slate-600 underline underline-offset-4">Use another lock method</button>
               </div>
             )}
 
-            {(method === "pin" && (!allowBiometric || useFallback)) && <PinKeypad value={credential} onChange={setCredential} onSubmit={() => submitCredential("pin")} disabled={disabled} />}
+            {(method === "pin" && (!allowBiometric || useFallback)) && <PinKeypad value={credential} onChange={setCredential} onSubmit={() => submitCredential("pin")} disabled={disabled} actionLabel={disabled ? "Verifying..." : "Unlock"} />}
             {(method === "pattern" && (!allowBiometric || useFallback)) && (
               <div className="space-y-4">
                 <PatternGrid value={pattern} onChange={setPattern} disabled={disabled} />
-                <button type="button" onClick={() => submitCredential("pattern", pattern)} disabled={disabled || pattern.split(",").length < 4} className="w-full rounded-xl bg-[#53633b] px-4 py-3 font-semibold text-white hover:bg-[#414f2e] disabled:opacity-50">Unlock</button>
+                <button type="button" onClick={() => submitCredential("pattern", pattern)} disabled={disabled || pattern.split(",").length < 4} className="w-full rounded-xl bg-[#53633b] px-4 py-3 font-semibold text-white hover:bg-[#414f2e] disabled:opacity-50">{disabled ? "Verifying..." : "Unlock"}</button>
               </div>
             )}
             {(method === "password" && (!allowBiometric || useFallback)) && (
               <div className="space-y-4">
                 <PasswordField value={credential} onChange={setCredential} disabled={disabled} />
-                <button type="button" onClick={() => submitCredential("password")} disabled={disabled || !credential} className="w-full rounded-xl bg-[#53633b] px-4 py-3 font-semibold text-white hover:bg-[#414f2e] disabled:opacity-50">Unlock</button>
+                <button type="button" onClick={() => submitCredential("password")} disabled={disabled || !credential} className="w-full rounded-xl bg-[#53633b] px-4 py-3 font-semibold text-white hover:bg-[#414f2e] disabled:opacity-50">{disabled ? "Verifying..." : "Unlock"}</button>
               </div>
             )}
             {(method === "biometric" && useFallback) && (
               <div className="space-y-4">
                 <PasswordField value={credential} onChange={setCredential} label="Account password" disabled={disabled} />
-                <button type="button" onClick={() => submitCredential("password")} disabled={disabled || !credential} className="w-full rounded-xl bg-[#53633b] px-4 py-3 font-semibold text-white hover:bg-[#414f2e] disabled:opacity-50">Unlock</button>
+                <button type="button" onClick={() => submitCredential("password")} disabled={disabled || !credential} className="w-full rounded-xl bg-[#53633b] px-4 py-3 font-semibold text-white hover:bg-[#414f2e] disabled:opacity-50">{disabled ? "Verifying..." : "Unlock"}</button>
                 <button type="button" onClick={() => setUseFallback(false)} className="w-full py-2 text-sm font-semibold text-slate-600 underline underline-offset-4">Back to biometrics</button>
               </div>
             )}
@@ -262,7 +262,6 @@ const AppLockScreen = () => {
         )}
 
         {error && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-700 sm:mt-4">{error}</p>}
-        {disabled && <p role="status" className="mt-2 text-center text-sm text-slate-500 sm:mt-4">Verifying...</p>}
         <div className="mt-3 border-t border-slate-100 pt-3 text-center sm:mt-6 sm:pt-4">
           <button type="button" onClick={() => { void lock(); }} className="text-sm font-semibold text-slate-500 underline underline-offset-4">Stay locked</button>
           <button type="button" onClick={() => { logout(); navigate("/login", { replace: true }); }} className="ml-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 underline underline-offset-4">
