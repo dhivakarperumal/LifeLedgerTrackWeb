@@ -214,12 +214,12 @@ const DiaryDetails = () => {
                     return (
                       <div key={`${fileName}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                         {isImage ? (
-                          <img src={url} alt={fileName} className="h-52 w-full object-cover" />
+                          <img src={url} alt={fileName} crossOrigin="use-credentials" className="h-52 w-full object-cover" />
                         ) : isVideo ? (
-                          <video src={url} controls className="h-52 w-full object-cover" />
+                          <video src={url} crossOrigin="use-credentials" controls className="h-52 w-full object-cover" />
                         ) : isAudio ? (
                           <div className="flex h-52 items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 p-3">
-                            <audio src={url} controls className="w-full" />
+                            <audio src={url} crossOrigin="use-credentials" controls className="w-full" />
                           </div>
                         ) : (
                           <div className="flex h-52 items-center justify-center bg-slate-200 p-3 text-center text-sm font-medium text-slate-700">
@@ -247,9 +247,9 @@ const DiaryDetails = () => {
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <p className="mb-4 text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Primary media</p>
                 <div className="grid gap-4 md:grid-cols-2">
-                  {entry.image_path && <img src={getMediaUrl(entry.image_path)} alt="Diary media" className="h-60 w-full rounded-2xl object-cover" />}
-                  {entry.video_path && <video src={getMediaUrl(entry.video_path)} controls className="h-60 w-full rounded-2xl object-cover" />}
-                  {entry.audio_path && <audio src={getMediaUrl(entry.audio_path)} controls className="w-full" />}
+                  {entry.image_path && <img src={getMediaUrl(entry.image_path)} alt="Diary media" crossOrigin="use-credentials" className="h-60 w-full rounded-2xl object-cover" />}
+                  {entry.video_path && <video src={getMediaUrl(entry.video_path)} crossOrigin="use-credentials" controls className="h-60 w-full rounded-2xl object-cover" />}
+                  {entry.audio_path && <audio src={getMediaUrl(entry.audio_path)} crossOrigin="use-credentials" controls className="w-full" />}
                   {entry.file_path && <a href={getMediaUrl(entry.file_path)} target="_blank" rel="noreferrer" className="flex h-60 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm font-semibold text-slate-700">Open attached file</a>}
                 </div>
               </div>

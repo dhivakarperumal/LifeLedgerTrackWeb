@@ -98,16 +98,16 @@ const MemoryDetails = () => {
              {memory.media_url ? (
               memory.media_type === "video" ? (
                 <div className="relative w-full h-[300px] md:h-[500px] bg-black">
-                  <video src={getMediaUrl(memory.media_url)} controls className="h-full w-full object-contain" />
+                  <video src={getMediaUrl(memory.media_url)} crossOrigin="use-credentials" controls className="h-full w-full object-contain" />
                 </div>
               ) : memory.media_type === "audio" ? (
                 <div className="relative w-full h-64 md:h-80 flex flex-col items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500">
                   <FiMusic className="text-7xl text-white/50 mb-6 drop-shadow-lg" />
-                  <audio src={getMediaUrl(memory.media_url)} controls className="w-4/5 max-w-md shadow-xl rounded-full bg-white" />
+                  <audio src={getMediaUrl(memory.media_url)} crossOrigin="use-credentials" controls className="w-4/5 max-w-md shadow-xl rounded-full bg-white" />
                 </div>
               ) : (
                 <div className="relative h-72 w-full md:h-96">
-                  <img src={getMediaUrl(memory.media_url)} alt={memory.title} className="absolute inset-0 h-full w-full object-cover opacity-90" />
+                  <img src={getMediaUrl(memory.media_url)} alt={memory.title} crossOrigin="use-credentials" className="absolute inset-0 h-full w-full object-cover opacity-90" />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/30 to-transparent"></div>
                   <div className="absolute bottom-0 left-0 w-full p-6 md:p-10 text-white">
                      <div className="mb-4 flex items-center gap-3">
@@ -203,16 +203,16 @@ const MemoryDetails = () => {
                         <div key={`${mediaUrl}-${idx}`} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
                           <div className={isAudio ? "flex h-[220px] items-center justify-center bg-gradient-to-r from-violet-500 to-pink-500 p-4" : "h-[220px] overflow-hidden bg-black"}>
                             {isVideo ? (
-                              <video src={resolvedUrl} controls className="h-full w-full object-cover" />
+                              <video src={resolvedUrl} crossOrigin="use-credentials" controls className="h-full w-full object-cover" />
                             ) : isAudio ? (
                               <div className="flex w-full items-center justify-center">
                                 <div className="flex w-full max-w-[94%] items-center gap-3 rounded-full bg-white/95 px-4 py-3 shadow-lg">
                                   <span className="text-lg text-slate-700">▶</span>
-                                  <audio src={resolvedUrl} controls className="h-9 w-full" />
+                                  <audio src={resolvedUrl} crossOrigin="use-credentials" controls className="h-9 w-full" />
                                 </div>
                               </div>
                             ) : (
-                              <img src={resolvedUrl} alt={fileName} className="h-full w-full object-cover" />
+                              <img src={resolvedUrl} alt={fileName} crossOrigin="use-credentials" className="h-full w-full object-cover" />
                             )}
                           </div>
 

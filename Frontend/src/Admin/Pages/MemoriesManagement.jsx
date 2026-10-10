@@ -738,11 +738,11 @@ const MemoriesManagement = () => {
                       <div className="flex items-center gap-3">
                         <div className="flex h-14 w-20 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-violet-600">
                           {memory.media_type === "video" ? (
-                            <video src={getMediaUrl(memory.media_url)} className="h-full w-full object-cover" controls playsInline muted />
+                            <video src={getMediaUrl(memory.media_url)} crossOrigin="use-credentials" className="h-full w-full object-cover" controls playsInline muted />
                           ) : memory.media_type === "audio" ? (
                             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 text-white">
                               <FiMusic size={18} />
-                              <audio src={getMediaUrl(memory.media_url)} controls className="h-8 w-20" />
+                              <audio src={getMediaUrl(memory.media_url)} crossOrigin="use-credentials" controls className="h-8 w-20" />
                             </div>
                           ) : (
                             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-100 to-pink-100">
@@ -802,14 +802,14 @@ const MemoriesManagement = () => {
               <div className="relative h-52 overflow-hidden bg-slate-100">
                 {memory.media_url ? (
                   memory.media_type === "video" ? (
-                    <video src={getMediaUrl(memory.media_url)} className="h-full w-full object-cover" controls />
+                    <video src={getMediaUrl(memory.media_url)} crossOrigin="use-credentials" className="h-full w-full object-cover" controls />
                   ) : memory.media_type === "audio" ? (
                     <div className="relative flex flex-col h-full items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 text-4xl text-white">
                       <FiMusic className="mb-4 text-white/60 drop-shadow-md" />
-                      <audio src={getMediaUrl(memory.media_url)} controls className="absolute bottom-2 w-11/12 max-w-[200px] h-8 opacity-90 shadow-sm" />
+                      <audio src={getMediaUrl(memory.media_url)} crossOrigin="use-credentials" controls className="absolute bottom-2 w-11/12 max-w-[200px] h-8 opacity-90 shadow-sm" />
                     </div>
                   ) : (
-                    <img src={getMediaUrl(memory.media_url)} alt={memory.title} className="h-full w-full object-cover" />
+                    <img src={getMediaUrl(memory.media_url)} alt={memory.title} crossOrigin="use-credentials" className="h-full w-full object-cover" />
                   )
                 ) : (
                   <div className="flex h-full items-center justify-center bg-gradient-to-br from-violet-500/90 to-pink-500/90 text-4xl text-white">

@@ -17,6 +17,7 @@ import {
   List,
   Layers,
   CircleDollarSign,
+  ShieldCheck,
 } from "lucide-react";
 
 import { useAuth } from "../PrivateRouter/AuthContext";
@@ -65,6 +66,7 @@ const navItems = [
   { path: "/admin/users/all", label: "Customers", icon: Users },
 
   { path: "/admin/reports", label: "Reports", icon: BarChart3 },
+  { path: "/admin/settings", label: "Security", icon: ShieldCheck },
 ];
 
 /* ================= SIDEBAR ================= */

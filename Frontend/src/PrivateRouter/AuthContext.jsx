@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+import { getAppLockToken, setAppLockToken } from "../api.js";
 
 export const AuthContext = createContext();
 
@@ -27,6 +28,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    const lockToken = getAppLockToken();
+    const authToken = localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (authToken) {
+      fetch(`${import.meta.env.VITE_API_URL || "/api"}/app-lock/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          ...(lockToken ? { "X-App-Lock-Token": lockToken } : {}),
+        },
+      }).catch(() => {});
+    }
+    setAppLockToken(null);
     setUser(null);
     localStorage.removeItem("user");
     localStorage.removeItem("token");

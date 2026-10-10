@@ -79,6 +79,37 @@ const initializeDatabase = async () => {
       monthly_budget DECIMAL(12,2) NOT NULL DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS app_lock_settings (
+      user_id INT PRIMARY KEY,
+      enabled TINYINT(1) NOT NULL DEFAULT 0,
+      method VARCHAR(20) NOT NULL DEFAULT 'pin',
+      credential_hash VARCHAR(255) NULL,
+      lock_on_hidden TINYINT(1) NOT NULL DEFAULT 1,
+      idle_timeout_minutes SMALLINT NOT NULL DEFAULT 5,
+      biometric_enabled TINYINT(1) NOT NULL DEFAULT 0,
+      webauthn_credential_id VARCHAR(512) NULL,
+      webauthn_public_key TEXT NULL,
+      webauthn_counter BIGINT UNSIGNED NOT NULL DEFAULT 0,
+      webauthn_transports JSON NULL,
+      failed_attempts INT NOT NULL DEFAULT 0,
+      locked_until DATETIME NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_app_lock_enabled (user_id, enabled)
+    )`,
+    `CREATE TABLE IF NOT EXISTS app_lock_challenges (
+      user_id INT NOT NULL,
+      purpose VARCHAR(20) NOT NULL,
+      challenge VARCHAR(255) NOT NULL,
+      expires_at DATETIME NOT NULL,
+      PRIMARY KEY (user_id, purpose)
+    )`,
+    `CREATE TABLE IF NOT EXISTS app_lock_sessions (
+      token_hash CHAR(64) PRIMARY KEY,
+      user_id INT NOT NULL,
+      expires_at DATETIME NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_app_lock_session_owner (user_id, expires_at)
+    )`,
     `CREATE TABLE IF NOT EXISTS categories (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id VARCHAR(50),
@@ -342,25 +373,6 @@ const initializeDatabase = async () => {
     // Ignore if the table does not exist yet.
   }
 
-  const staleTables = [
-    "reviews",
-    "order_items",
-    "order_addresses",
-    "memory_albums",
-    "memory_categories",
-    "diary_categories",
-    "diary_attachments"
-  ];
-
-  try {
-    await pool.query("SET FOREIGN_KEY_CHECKS = 0");
-    for (const tableName of staleTables) {
-      await pool.query(`DROP TABLE IF EXISTS \`${tableName}\``);
-    }
-  } finally {
-    await pool.query("SET FOREIGN_KEY_CHECKS = 1");
-  }
-
   await ensureColumn("users", "monthly_budget", "DECIMAL(12,2) NOT NULL DEFAULT 0");
   await ensureColumn("memories", "media_gallery", "JSON NULL");
   await ensureColumn("memories", "media_type", "VARCHAR(50) DEFAULT 'image'");
@@ -503,9 +515,15 @@ const initializeDatabase = async () => {
     if (createSql && createSql.includes("REFERENCES `diary_categories`")) {
       await pool.query("ALTER TABLE diary_entries DROP FOREIGN KEY fk_diary_entry_category");
       await pool.query("ALTER TABLE diary_entries DROP INDEX idx_diary_category");
-      await pool.query("ALTER TABLE diary_entries DROP COLUMN category_id");
-      await pool.query("ALTER TABLE diary_entries ADD COLUMN category_id INT NULL");
-      await pool.query("ALTER TABLE diary_entries ADD CONSTRAINT fk_diary_entry_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL");
+      await pool.query("ALTER TABLE diary_entries MODIFY COLUMN category_id INT NULL");
+      const [orphanCategories] = await pool.query(
+        `SELECT COUNT(*) AS orphanCount FROM diary_entries d
+         LEFT JOIN categories c ON c.id = d.category_id
+         WHERE d.category_id IS NOT NULL AND c.id IS NULL`
+      );
+      if (Number(orphanCategories[0]?.orphanCount) === 0) {
+        await pool.query("ALTER TABLE diary_entries ADD CONSTRAINT fk_diary_entry_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL");
+      }
       await pool.query("ALTER TABLE diary_entries ADD INDEX idx_diary_category (category_id)");
     }
 

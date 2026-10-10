@@ -37,9 +37,21 @@ exports.register = async (req, res) => {
   }
 };
 
-const signToken = (payload) => jwt.sign(payload, process.env.JWT_SECRET || "secretkey", {
+const signToken = (payload) => jwt.sign(payload, process.env.JWT_SECRET, {
   expiresIn: "1d",
 });
+
+const setMediaSessionCookie = (res, token) => {
+  const configuredSameSite = String(process.env.APP_LOCK_COOKIE_SAMESITE || "lax").toLowerCase();
+  const sameSite = ["strict", "lax", "none"].includes(configuredSameSite) ? configuredSameSite : "lax";
+  res.cookie("life_ledger_session", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production" || sameSite === "none",
+    sameSite,
+    path: "/uploads",
+    maxAge: 24 * 60 * 60 * 1000,
+  });
+};
 
 exports.login = async (req, res) => {
   try {
@@ -83,6 +95,7 @@ exports.login = async (req, res) => {
     }
 
     const token = signToken({ id: user.id });
+    setMediaSessionCookie(res, token);
     const normalizedRole = String(user.role || "customer").trim().toLowerCase();
 
     res.json({
@@ -323,6 +336,7 @@ exports.googleLogin = async (req, res) => {
 
     // generate JWT using same secret as regular login
     const token = signToken({ id: user.id, role: user.role });
+    setMediaSessionCookie(res, token);
 
     res.json({
       user: {

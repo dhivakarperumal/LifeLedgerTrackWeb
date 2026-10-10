@@ -1,12 +1,16 @@
 import React, { useContext } from "react";
 import { Navigate } from "react-router-dom";
 import { AuthContext } from "../PrivateRouter/AuthContext.jsx";
+import { useAppLock } from "./AppLockContext.jsx";
+import AppLockScreen from "./AppLockScreen.jsx";
+import Loader from "../Components/CommenComponents/Loader.jsx";
 
 const PrivateRoute = ({ children, allowedRoles = [] }) => {
   const { user, loading } = useContext(AuthContext);
+  const { settings, locked, loading: lockLoading } = useAppLock();
 
-  if (loading) {
-    return <div>Loading...</div>;
+  if (loading || lockLoading) {
+    return <Loader />;
   }
 
   // Not logged in
@@ -25,6 +29,8 @@ const PrivateRoute = ({ children, allowedRoles = [] }) => {
       </div>
     );
   }
+
+  if (settings?.enabled && locked) return <AppLockScreen />;
 
   return children;
 };

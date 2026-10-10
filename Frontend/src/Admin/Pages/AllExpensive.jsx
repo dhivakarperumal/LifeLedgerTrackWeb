@@ -96,9 +96,16 @@ const AllExpensive = () => {
                 })
                 .map((category) => category.name);
 
+            const transfersList = transRes.data || [];
+            const computedTotalTransfer = transfersList.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+            const backendStats = statsRes.data || { total: 0, totalAmount: 0, totalTransfer: 0, recurring: 0 };
+
             setExpenses(expRes.data || []);
-            setStats(statsRes.data || { total: 0, totalAmount: 0, totalTransfer: 0, recurring: 0 });
-            setTransfers(transRes.data || []);
+            setStats({
+                ...backendStats,
+                totalTransfer: Number(backendStats.totalTransfer) || computedTotalTransfer,
+            });
+            setTransfers(transfersList);
             setCategoryOptions(expenseCategories);
         } catch (err) {
             console.error(err);

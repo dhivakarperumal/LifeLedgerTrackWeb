@@ -294,7 +294,7 @@ exports.getExpenseStats = async (req, res) => {
     try {
         const userId = req.user?.user_id;
         const [[totalRow]] = await db.query("SELECT COUNT(*) AS total, COALESCE(SUM(expense_amount), 0) AS totalAmount FROM expenses WHERE user_id = ?", [userId]);
-        const [[transferRow]] = await db.query("SELECT COALESCE(SUM(transfer_amount), 0) AS totalTransfer FROM expenses WHERE transfer_amount IS NOT NULL AND user_id = ?", [userId]);
+        const [[transferRow]] = await db.query("SELECT COALESCE(SUM(amount), 0) AS totalTransfer FROM transfers WHERE user_id = ?", [userId]);
         const [[recurringRow]] = await db.query("SELECT COUNT(*) AS recurring FROM expenses WHERE recurring = 'Yes' AND user_id = ?", [userId]);
 
         res.json({

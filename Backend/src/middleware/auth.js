@@ -1,9 +1,9 @@
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
+const { requireAppUnlock, getCookie } = require("./appLock");
 
 const getJwtSecrets = () => {
-  const secrets = [process.env.JWT_SECRET, "secretkey"];
-  return [...new Set(secrets.filter(Boolean))];
+  return process.env.JWT_SECRET ? [process.env.JWT_SECRET] : [];
 };
 
 const verifyToken = (token) => {
@@ -23,7 +23,9 @@ const verifyToken = (token) => {
 const requireAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization || req.headers.Authorization;
-    const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+    const token = authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : req.originalUrl.startsWith("/uploads/") ? getCookie(req, "life_ledger_session") : null;
 
     if (!token) {
       return res.status(401).json({ message: "Authentication required." });
@@ -45,7 +47,8 @@ const requireAuth = async (req, res, next) => {
       role: rows[0].role,
     };
 
-    next();
+    if (req.originalUrl.startsWith("/api/app-lock/") || req.originalUrl.startsWith("/uploads/")) return next();
+    return requireAppUnlock(req, res, next);
   } catch (error) {
     console.error("Auth middleware error:", error.message);
     return res.status(401).json({ message: "Invalid or expired token." });

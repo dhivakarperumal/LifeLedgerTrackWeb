@@ -4,6 +4,7 @@ import "./index.css";
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "./PrivateRouter/AuthContext.jsx";
+import { AppLockProvider } from "./PrivateRouter/AppLockContext.jsx";
 import { StoreProvider } from "./PrivateRouter/StoreContext.jsx";
 import PrivateRoute from "./PrivateRouter/PrivateRouter.jsx";
 import { AdminProvider } from "./PrivateRouter/AdminContext.jsx";
@@ -34,6 +35,7 @@ const Income = React.lazy(() => import("./Admin/Pages/Billing.jsx"));
 const Reports = React.lazy(() => import("./Admin/Pages/Reports.jsx"));
 const CalendarReminder = React.lazy(() => import("./Admin/Pages/CalendarReminder.jsx"));
 const Profile = React.lazy(() => import("./Admin/Pages/Profile.jsx"));
+const Settings = React.lazy(() => import("./Admin/Pages/Settings.jsx"));
 
 const router = createHashRouter([
   {
@@ -70,6 +72,7 @@ const router = createHashRouter([
       { path: "more/add", element: <Transfer /> },
       { path: "reports", element: <Reports /> },
       { path: "profile", element: <Profile /> },
+      { path: "settings", element: <Settings /> },
       { path: "planner/calendar", element: <CalendarReminder /> },
       { path: "planner/reminders", element: <CalendarReminder /> },
     ],
@@ -80,24 +83,26 @@ const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const app = (
   <AuthProvider>
-    <StoreProvider>
-      <Toaster
-        position="top-right"
-        reverseOrder={false}
-        toastOptions={{
-          duration: 4500,
-          style: {
-            zIndex: 99999,
-            fontSize: "14px",
-            fontWeight: 600,
-          },
-        }}
-        containerStyle={{ zIndex: 99999 }}
-      />
-      <React.Suspense fallback={<Loader />}>
-        <RouterProvider router={router} />
-      </React.Suspense>
-    </StoreProvider>
+    <AppLockProvider>
+      <StoreProvider>
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          toastOptions={{
+            duration: 4500,
+            style: {
+              zIndex: 99999,
+              fontSize: "14px",
+              fontWeight: 600,
+            },
+          }}
+          containerStyle={{ zIndex: 99999 }}
+        />
+        <React.Suspense fallback={<Loader />}>
+          <RouterProvider router={router} />
+        </React.Suspense>
+      </StoreProvider>
+    </AppLockProvider>
   </AuthProvider>
 );
 
