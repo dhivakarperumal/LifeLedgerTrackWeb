@@ -473,13 +473,13 @@ const Billing = () => {
                 </div>
               </div>
               <div className="relative mt-4">
-                <h2 className="text-[2rem] font-black leading-none tracking-[-0.06em] text-white">
+                <h2 className="text-[1.65rem] font-black leading-none tracking-[-0.06em] text-white">
                   ₹
                   {monthlyBudget.toLocaleString("en-IN", {
                     maximumFractionDigits: 2,
                   })}
                 </h2>
-                <p className="mt-2 text-base font-semibold text-white/85">
+                <p className="mt-2 text-sm font-semibold text-white/85">
                   Monthly Budget
                 </p>
               </div>
@@ -643,21 +643,21 @@ const Billing = () => {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-bold text-slate-800">
+                        <p className="text-sm font-bold text-slate-800">
                           {income.title}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-[11px] text-slate-500">
                           {income.category || "Uncategorized"}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-slate-400 line-through">
+                        <p className="text-[11px] text-slate-400 line-through">
                           ₹
                           {Number(income.amount).toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
                           })}
                         </p>
-                        <p className="font-black text-[#00bfa5]">
+                        <p className="text-sm font-black text-[#00bfa5]">
                           ₹
                           {Number(
                             income.remaining_amount ?? income.amount,
@@ -667,7 +667,7 @@ const Billing = () => {
                         </p>
                       </div>
                     </div>
-                    <p className="mt-4 text-xs text-slate-500">
+                    <p className="mt-4 text-[11px] text-slate-500">
                       {formatDateOnly(income.income_date)} · {income.payment_method || "-"}
                     </p>
                     <div className="mt-4 flex items-center justify-end gap-2">
@@ -1466,15 +1466,15 @@ const IncomeStatCard = ({
     </div>
 
     <div className="mt-3 min-w-0">
-      <p className="text-[1.05rem] font-bold leading-snug text-slate-700">
+      <p className="text-[0.9rem] font-bold leading-snug text-slate-700">
         {label}
       </p>
-      <h2 className="mt-2 text-[2.1rem] font-black leading-none tracking-[-0.05em] text-slate-800">
+      <h2 className="mt-2 text-[1.7rem] font-black leading-none tracking-[-0.05em] text-slate-800">
         {isCount
           ? value
           : `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}
       </h2>
-      <p className="mt-2 text-[0.72rem] font-medium text-slate-400">
+      <p className="mt-2 text-[0.68rem] font-medium text-slate-400">
         {caption}
       </p>
     </div>
