@@ -12,7 +12,7 @@ const requireAppUnlock = async (req, res, next) => {
   try {
     const [settings] = await db.query(
       "SELECT enabled FROM app_lock_settings WHERE user_id = ?",
-      [req.user.id]
+      [req.user.user_id]
     );
 
     if (!settings.length || !settings[0].enabled) return next();
@@ -24,7 +24,7 @@ const requireAppUnlock = async (req, res, next) => {
 
     const [sessions] = await db.query(
       "SELECT token_hash FROM app_lock_sessions WHERE token_hash = ? AND user_id = ? AND expires_at > NOW()",
-      [hashToken(token), req.user.id]
+      [hashToken(token), req.user.user_id]
     );
     if (!sessions.length) {
       return res.status(423).json({ code: "APP_LOCK_REQUIRED", message: "Unlock the app to continue." });
@@ -45,7 +45,7 @@ const requireMediaUnlock = async (req, res, next) => {
     }
     const [settings] = await db.query(
       "SELECT enabled FROM app_lock_settings WHERE user_id = ?",
-      [req.user.id]
+      [req.user.user_id]
     );
     if (!settings.length || !settings[0].enabled) return next();
 
@@ -57,7 +57,7 @@ const requireMediaUnlock = async (req, res, next) => {
        FROM app_lock_sessions s
        JOIN app_lock_settings a ON a.user_id = s.user_id
       WHERE s.token_hash = ? AND s.user_id = ? AND s.expires_at > NOW() AND a.enabled = 1`,
-          [hashToken(token), req.user.id]
+          [hashToken(token), req.user.user_id]
     );
     if (!sessions.length) return res.status(423).json({ message: "Unlock the app before accessing private media." });
     next();
