@@ -218,11 +218,114 @@ const TodoList = () => {
 
   const renderTask = (task) => {
     const isCompleted = task.status === "Completed";
+    const isGridView = viewMode === "grid";
     const priorityStyle = {
       High: "bg-rose-50 text-rose-700 ring-rose-200",
       Medium: "bg-amber-50 text-amber-700 ring-amber-200",
       Low: "bg-emerald-50 text-emerald-700 ring-emerald-200",
     }[task.priority] || "bg-slate-50 text-slate-600 ring-slate-200";
+
+    if (isGridView) {
+      return (
+        <article
+          key={task.id}
+          className={`flex h-full min-h-[240px] flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg ${
+            isCompleted ? "border-emerald-100" : "border-slate-200"
+          }`}
+        >
+          <div className={`h-1 w-full ${isCompleted ? "bg-emerald-400" : task.priority === "High" ? "bg-rose-400" : task.priority === "Low" ? "bg-emerald-400" : "bg-amber-400"}`} />
+          <div className="flex flex-1 flex-col p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${priorityStyle}`}>
+                  {task.priority} priority
+                </span>
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                  isCompleted
+                    ? "bg-emerald-50 text-emerald-700"
+                    : task.status === "In Progress"
+                      ? "bg-sky-50 text-sky-700"
+                      : "bg-slate-100 text-slate-600"
+                }`}>
+                  {task.status}
+                </span>
+              </div>
+              <div className="flex shrink-0 items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => editTask(task)}
+                  aria-label={`Edit ${task.title}`}
+                  className="rounded-lg p-2 text-slate-400 transition hover:bg-violet-50 hover:text-violet-700"
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteTask(task)}
+                  aria-label={`Delete ${task.title}`}
+                  className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-start gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  changeTaskStatus(task, isCompleted ? "Pending" : "Completed")
+                }
+                aria-label={isCompleted ? `Reopen ${task.title}` : `Complete ${task.title}`}
+                className={`mt-0.5 shrink-0 rounded-full transition ${
+                  isCompleted ? "text-emerald-600" : "text-slate-300 hover:text-violet-600"
+                }`}
+              >
+                {isCompleted ? <CheckCircle2 size={22} /> : <Circle size={22} />}
+              </button>
+              <div className="min-w-0">
+                <h3 className={`break-words text-base font-bold leading-6 ${
+                  isCompleted ? "text-slate-400 line-through" : "text-slate-800"
+                }`}>
+                  {task.title}
+                </h3>
+                {task.description ? (
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-5 text-slate-500 line-clamp-3">
+                    {task.description}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm italic text-slate-400">No notes added</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-auto pt-5">
+              <div className="space-y-2 border-t border-slate-100 pt-3 text-xs text-slate-500">
+                {task.dueDate && (
+                  <span className="flex items-center gap-2">
+                    <CalendarDays size={15} className="shrink-0 text-violet-500" />
+                    <span>Due {formatDate(task.dueDate)}</span>
+                  </span>
+                )}
+                {task.reminderAt && (
+                  <span className="flex items-center gap-2">
+                    <CalendarClock size={15} className="shrink-0 text-violet-500" />
+                    <span>Reminder {formatDateTime(task.reminderAt)}</span>
+                  </span>
+                )}
+                {!task.dueDate && !task.reminderAt && (
+                  <span className="text-slate-400">No dates scheduled</span>
+                )}
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-slate-400">
+                <span>Created {formatDate(task.createdAt)}</span>
+                <span>Updated {formatDate(task.updatedAt)}</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      );
+    }
 
     return (
       <article
