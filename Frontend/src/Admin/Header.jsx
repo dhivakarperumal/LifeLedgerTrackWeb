@@ -64,6 +64,7 @@ const pageTitles = {
   "/admin/planner/todos": "To-Do List",
   "/admin/reports": "Reports",
   "/admin/profile": "Profile",
+  "/admin/settings": "Security",
 
 };
 

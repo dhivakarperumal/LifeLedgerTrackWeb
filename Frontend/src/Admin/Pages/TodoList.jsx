@@ -4,6 +4,8 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   Clock3,
   LayoutGrid,
@@ -31,6 +33,7 @@ const EMPTY_FORM = {
 const STATUS_OPTIONS = ["Pending", "In Progress", "Completed"];
 const PRIORITY_OPTIONS = ["High", "Medium", "Low"];
 const DATE_FILTERS = ["Any due date", "Overdue", "Due today", "Upcoming", "No due date"];
+const PAGE_SIZE = 10;
 
 const formatDate = (value) =>
   value
@@ -70,6 +73,7 @@ const TodoList = () => {
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("Any priority");
   const [dueDateFilter, setDueDateFilter] = useState("Any due date");
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -124,8 +128,27 @@ const TodoList = () => {
     });
   }, [tasks, search, statusFilter, priorityFilter, dueDateFilter]);
 
-  const pendingTasks = filteredTasks.filter((task) => task.status !== "Completed");
-  const completedTasks = filteredTasks.filter((task) => task.status === "Completed");
+  const orderedTasks = useMemo(
+    () => [
+      ...filteredTasks.filter((task) => task.status !== "Completed"),
+      ...filteredTasks.filter((task) => task.status === "Completed"),
+    ],
+    [filteredTasks],
+  );
+  const totalPages = Math.max(1, Math.ceil(orderedTasks.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * PAGE_SIZE;
+  const pageTasks = orderedTasks.slice(pageStartIndex, pageStartIndex + PAGE_SIZE);
+  const pagePendingTasks = pageTasks.filter((task) => task.status !== "Completed");
+  const pageCompletedTasks = pageTasks.filter((task) => task.status === "Completed");
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, priorityFilter, dueDateFilter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
@@ -165,6 +188,7 @@ const TodoList = () => {
       } else {
         const response = await api.post("/todos", payload);
         setTasks((current) => [response.data.data, ...current]);
+        setCurrentPage(1);
         toast.success(response.data?.message || "Task added.");
       }
       resetForm();
@@ -216,7 +240,7 @@ const TodoList = () => {
     }
   };
 
-  const renderTask = (task, index) => {
+  const renderTask = (task, serialNumber) => {
     const isCompleted = task.status === "Completed";
     const isGridView = viewMode === "grid";
     const priorityStyle = {
@@ -330,7 +354,7 @@ const TodoList = () => {
     return (
       <tr key={task.id} className="group transition hover:bg-violet-50/40">
         <td className="whitespace-nowrap px-4 py-4 text-xs font-bold text-slate-400">
-          {String(index + 1).padStart(2, "0")}
+          {String(serialNumber).padStart(2, "0")}
         </td>
         <td className="px-4 py-4">
           <div className="flex min-w-[240px] items-start gap-3">
@@ -417,7 +441,7 @@ const TodoList = () => {
     );
   };
 
-  const renderTaskGroup = (title, items, Icon, emptyMessage) => (
+  const renderTaskGroup = (title, items, Icon, emptyMessage, serialOffset = 0) => (
     <section className="mt-7">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-lg font-extrabold text-slate-800">
@@ -431,7 +455,7 @@ const TodoList = () => {
       {items.length ? (
         viewMode === "grid" ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {items.map(renderTask)}
+            {items.map((task) => renderTask(task))}
           </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -450,7 +474,7 @@ const TodoList = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {items.map(renderTask)}
+                  {items.map((task, index) => renderTask(task, serialOffset + index + 1))}
                 </tbody>
               </table>
             </div>
@@ -528,26 +552,6 @@ const TodoList = () => {
               </article>
             );
           })}
-        </div>
-
-        <div className="mb-6 rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:p-5">
-          <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="font-bold text-slate-700">Overall progress</span>
-            <span className="font-extrabold text-violet-700">{progress}%</span>
-          </div>
-          <div
-            role="progressbar"
-            aria-label="Task completion progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-            className="h-2.5 overflow-hidden rounded-full bg-violet-100"
-          >
-            <div className="h-full rounded-full bg-gradient-to-r from-violet-600 to-emerald-500 transition-all" style={{ width: `${progress}%` }} />
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            {tasks.length} {tasks.length === 1 ? "task" : "tasks"} · {completedCount} completed · {pendingCount} pending
-          </p>
         </div>
 
         {formOpen && (
@@ -737,11 +741,53 @@ const TodoList = () => {
           </div>
         ) : (
           <>
-            {pendingTasks.length > 0 &&
-              renderTaskGroup("Pending & in progress", pendingTasks, Circle, "No active tasks match these filters.")}
-            {completedTasks.length > 0 &&
-              renderTaskGroup("Completed", completedTasks, CheckCircle2, "No completed tasks match these filters.")}
+            {pagePendingTasks.length > 0 &&
+              renderTaskGroup(
+                "Pending & in progress",
+                pagePendingTasks,
+                Circle,
+                "No active tasks match these filters.",
+                pageStartIndex,
+              )}
+            {pageCompletedTasks.length > 0 &&
+              renderTaskGroup(
+                "Completed",
+                pageCompletedTasks,
+                CheckCircle2,
+                "No completed tasks match these filters.",
+                pageStartIndex + pagePendingTasks.length,
+              )}
           </>
+        )}
+
+        {!loading && orderedTasks.length > 0 && (
+          <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium text-slate-500">
+              Showing <span className="font-bold text-slate-700">{pageStartIndex + 1}–{Math.min(pageStartIndex + PAGE_SIZE, orderedTasks.length)}</span> of{" "}
+              <span className="font-bold text-slate-700">{orderedTasks.length}</span> tasks
+            </p>
+            <div className="flex items-center justify-between gap-2 sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={safeCurrentPage === 1}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <span className="min-w-[88px] text-center text-sm font-bold text-slate-600">
+                Page {safeCurrentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={safeCurrentPage === totalPages}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
