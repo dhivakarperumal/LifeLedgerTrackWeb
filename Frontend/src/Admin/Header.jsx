@@ -61,6 +61,7 @@ const pageTitles = {
   "/admin/more/income": "Income",
   "/admin/more/transfer": "Transfer",
   "/admin/planner/calendar": "Calendar",
+  "/admin/planner/todos": "To-Do List",
   "/admin/reports": "Reports",
   "/admin/profile": "Profile",
 

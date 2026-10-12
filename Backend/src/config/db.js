@@ -419,6 +419,20 @@ const initializeDatabase = async () => {
       KEY idx_diary_category (category_id),
       CONSTRAINT fk_diary_entry_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
       CONSTRAINT fk_diary_entry_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS todo_tasks (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      description TEXT NULL,
+      status ENUM('Pending', 'In Progress', 'Completed') NOT NULL DEFAULT 'Pending',
+      priority ENUM('High', 'Medium', 'Low') NOT NULL DEFAULT 'Medium',
+      due_date DATE NULL,
+      reminder_at DATETIME NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_todo_user_status_due_date (user_id, status, due_date),
+      CONSTRAINT fk_todo_task_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
     )`
   ];
 

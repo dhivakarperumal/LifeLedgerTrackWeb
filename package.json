@@ -30,7 +30,7 @@
   "scripts": {
     "frontend": "npm --prefix \"Frontend\" run dev",
     "backend": "npm --prefix \"Backend\" run dev",
-    "dev": "concurrently \"npm run frontend\" \"npm run backend\""
+    "dthis ev": "concurrently \"npm run frontend\" \"npm run backend\""
   },
   "repository": {
     "type": "git",

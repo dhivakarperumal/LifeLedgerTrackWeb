@@ -18,6 +18,7 @@ import {
   Layers,
   CircleDollarSign,
   ShieldCheck,
+  ListChecks,
 } from "lucide-react";
 
 import { useAuth } from "../PrivateRouter/AuthContext";
@@ -58,6 +59,11 @@ const navItems = [
     path: "/admin/planner/calendar",
     label: "Calendar",
     icon: CalendarDays,
+  },
+  {
+    path: "/admin/planner/todos",
+    label: "To-Do List",
+    icon: ListChecks,
   },
 
   { path: "/admin/users/memories", label: "Memories", icon: Image },

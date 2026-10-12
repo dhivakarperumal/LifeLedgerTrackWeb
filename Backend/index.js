@@ -74,6 +74,7 @@ app.use("/api/transfers", require("./src/routes/transferRoutes"));
 app.use("/api/expenses", require("./src/routes/expenseRoutes"));
 app.use("/api/diary", require("./src/routes/diaryRoutes"));
 app.use("/api/memories", require("./src/routes/memoryRoutes"));
+app.use("/api/todos", require("./src/routes/todoRoutes"));
 
 app.use((error, req, res, next) => {
   console.error(error);
