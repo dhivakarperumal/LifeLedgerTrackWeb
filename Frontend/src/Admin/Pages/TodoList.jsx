@@ -360,23 +360,23 @@ const TodoList = () => {
             return (
               <article
                 key={card.label}
-                className={`relative isolate min-h-[176px] overflow-hidden rounded-[22px] bg-gradient-to-br ${card.gradient} p-5 text-white shadow-lg shadow-slate-900/10 sm:p-6`}
+                className={`relative isolate min-h-[148px] overflow-hidden rounded-[22px] bg-gradient-to-br ${card.gradient} p-4 text-white shadow-lg shadow-slate-900/10 sm:min-h-[156px] sm:p-5`}
               >
-                <div aria-hidden="true" className="pointer-events-none absolute -right-5 -top-8 z-0 h-36 w-36 rounded-full bg-white/10" />
-                <div aria-hidden="true" className="pointer-events-none absolute -bottom-16 right-10 z-0 h-32 w-32 rounded-full bg-white/[0.08]" />
+                <div aria-hidden="true" className="pointer-events-none absolute -right-5 -top-8 z-0 h-32 w-32 rounded-full bg-white/10" />
+                <div aria-hidden="true" className="pointer-events-none absolute -bottom-16 right-10 z-0 h-28 w-28 rounded-full bg-white/[0.08]" />
                 <div className="relative z-10 flex items-start justify-between gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/25 bg-white/15 shadow-inner">
-                    <Icon size={23} strokeWidth={2.2} />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/25 bg-white/15 shadow-inner">
+                    <Icon size={21} strokeWidth={2.2} />
                   </div>
-                  <span className="rounded-full border border-white/10 bg-white/20 px-3 py-1.5 text-xs font-extrabold backdrop-blur-sm">
+                  <span className="rounded-full border border-white/10 bg-white/20 px-2.5 py-1 text-[11px] font-extrabold backdrop-blur-sm">
                     ↗ {card.share}%
                   </span>
                 </div>
-                <p className="relative z-10 mt-4 text-3xl font-black leading-none tracking-tight sm:text-[34px]">
+                <p className="relative z-10 mt-3 text-3xl font-black leading-none tracking-tight">
                   {card.value}
                 </p>
                 <p className="relative z-10 mt-1.5 text-sm font-semibold text-white/85">{card.label}</p>
-                <div className="relative z-10 mt-4 border-t border-white/20 pt-3 text-xs font-semibold text-white/75">
+                <div className="relative z-10 mt-3 border-t border-white/20 pt-2.5 text-xs font-semibold text-white/75">
                   {card.detail}
                 </div>
               </article>
@@ -522,6 +522,16 @@ const TodoList = () => {
               <option value="Any priority">All Priorities</option>
               {PRIORITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}
             </select>
+            
+            <select
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="h-[52px] rounded-2xl border border-slate-200 bg-slate-50/70 px-4 text-sm font-semibold text-slate-600 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100 xl:w-[180px]"
+            >
+              <option value="All">All</option>
+              {STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}
+            </select>
             <div className="flex h-[52px] shrink-0 items-center rounded-2xl border border-slate-200 bg-slate-100/80 p-1">
               <button
                 type="button"
@@ -542,15 +552,6 @@ const TodoList = () => {
                 <LayoutGrid size={19} />
               </button>
             </div>
-            <select
-              aria-label="Filter by status"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              className="h-[52px] rounded-2xl border border-slate-200 bg-slate-50/70 px-4 text-sm font-semibold text-slate-600 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100 xl:w-[180px]"
-            >
-              <option value="All">All</option>
-              {STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}
-            </select>
             <button
               type="button"
               onClick={openNewTaskForm}

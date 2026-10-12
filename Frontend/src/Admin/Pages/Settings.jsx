@@ -174,7 +174,8 @@ const Settings = () => {
     const credentialLabel = credentialStage === "first" ? "New credential" : "Confirm credential";
 
     return (
-        <div className="mx-auto max-w-5xl space-y-6 pb-8">
+        <div className="-mx-2">
+          <div className="mx-auto max-w-5xl space-y-6 pb-8">
             <header className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#647447]">Security & Access</p>
@@ -342,6 +343,7 @@ const Settings = () => {
                     </button>
                 </div>
             </form>
+          </div>
         </div>
     );
 };
