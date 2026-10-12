@@ -227,7 +227,7 @@ const TodoList = () => {
     return (
       <article
         key={task.id}
-        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md sm:p-5"
+        className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm transition hover:shadow-md sm:p-2"
       >
         <div className="flex items-start gap-3">
           <button
@@ -319,25 +319,8 @@ const TodoList = () => {
   );
 
   return (
-    <div className="min-h-full bg-slate-50/70 px-4 py-5 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-violet-600">
-              Plan your day
-            </p>
-            <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">To-Do List</h1>
-            <p className="mt-1 text-sm text-slate-500">Keep your tasks, notes, and reminders in one place.</p>
-            <button
-              type="button"
-              onClick={openNewTaskForm}
-              className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-violet-700 px-5 py-3 text-sm font-extrabold text-white shadow-md shadow-violet-200 transition hover:bg-violet-800"
-            >
-              <Plus size={18} /> Add Task
-            </button>
-          </div>
-        </div>
-
+    <div className="min-h-full bg-slate-50/70 px-2 py-5 sm:px-2 lg:px-2">
+      <div className="mx-auto max-w-7xl">
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
             {
