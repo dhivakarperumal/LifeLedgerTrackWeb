@@ -336,19 +336,69 @@ const TodoList = () => {
               <Plus size={18} /> Add Task
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:min-w-[420px] sm:grid-cols-4">
-            {[
-              ["Tasks", tasks.length],
-              ["Completed", completedCount],
-              ["Pending", pendingCount],
-              ["In progress", inProgressCount],
-            ].map(([label, count]) => (
-              <div key={label} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center shadow-sm">
-                <p className="text-xl font-black text-slate-800">{count}</p>
-                <p className="text-[11px] font-bold text-slate-500">{label}</p>
-              </div>
-            ))}
-          </div>
+        </div>
+
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            {
+              label: "Total Tasks",
+              value: tasks.length,
+              detail: "All tasks in your list",
+              share: tasks.length ? 100 : 0,
+              icon: ListChecks,
+              gradient: "from-violet-600 to-purple-500",
+            },
+            {
+              label: "Completed",
+              value: completedCount,
+              detail: `${progress}% of tasks completed`,
+              share: progress,
+              icon: CheckCircle2,
+              gradient: "from-blue-600 to-sky-500",
+            },
+            {
+              label: "Pending",
+              value: pendingCount,
+              detail: `${tasks.length ? Math.round((pendingCount / tasks.length) * 100) : 0}% of tasks`,
+              share: tasks.length ? Math.round((pendingCount / tasks.length) * 100) : 0,
+              icon: Circle,
+              gradient: "from-emerald-600 to-teal-500",
+            },
+            {
+              label: "In Progress",
+              value: inProgressCount,
+              detail: `${tasks.length ? Math.round((inProgressCount / tasks.length) * 100) : 0}% of tasks`,
+              share: tasks.length ? Math.round((inProgressCount / tasks.length) * 100) : 0,
+              icon: Clock3,
+              gradient: "from-amber-500 to-yellow-400",
+            },
+          ].map((card) => {
+            const Icon = card.icon;
+            return (
+              <article
+                key={card.label}
+                className={`relative isolate min-h-[176px] overflow-hidden rounded-[22px] bg-gradient-to-br ${card.gradient} p-5 text-white shadow-lg shadow-slate-900/10 sm:p-6`}
+              >
+                <div aria-hidden="true" className="pointer-events-none absolute -right-5 -top-8 z-0 h-36 w-36 rounded-full bg-white/10" />
+                <div aria-hidden="true" className="pointer-events-none absolute -bottom-16 right-10 z-0 h-32 w-32 rounded-full bg-white/[0.08]" />
+                <div className="relative z-10 flex items-start justify-between gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/25 bg-white/15 shadow-inner">
+                    <Icon size={23} strokeWidth={2.2} />
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/20 px-3 py-1.5 text-xs font-extrabold backdrop-blur-sm">
+                    ↗ {card.share}%
+                  </span>
+                </div>
+                <p className="relative z-10 mt-4 text-3xl font-black leading-none tracking-tight sm:text-[34px]">
+                  {card.value}
+                </p>
+                <p className="relative z-10 mt-1.5 text-sm font-semibold text-white/85">{card.label}</p>
+                <div className="relative z-10 mt-4 border-t border-white/20 pt-3 text-xs font-semibold text-white/75">
+                  {card.detail}
+                </div>
+              </article>
+            );
+          })}
         </div>
 
         <div className="mb-6 rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:p-5">
