@@ -568,12 +568,12 @@ const TodoList = () => {
               aria-labelledby="todo-form-title"
               className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-white/70 bg-white shadow-2xl"
             >
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+              <div className="flex items-center justify-between border-b border-[#350866] bg-[#350866] px-5 py-4 sm:px-6">
                 <div>
-                  <p className="text-xs font-extrabold uppercase tracking-[0.15em] text-violet-600">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.15em] text-[#FCD34D]">
                     To-Do List
                   </p>
-                  <h2 id="todo-form-title" className="mt-1 text-xl font-extrabold text-slate-800">
+                  <h2 id="todo-form-title" className="mt-1 text-xl font-extrabold text-white">
                     {editingId !== null ? "Edit task" : "Add a task"}
                   </h2>
                 </div>
@@ -582,7 +582,7 @@ const TodoList = () => {
                   onClick={resetForm}
                   disabled={saving}
                   aria-label="Close task form"
-                  className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                  className="rounded-xl p-2 text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
                 >
                   <X size={20} />
                 </button>
