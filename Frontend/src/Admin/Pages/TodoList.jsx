@@ -216,7 +216,7 @@ const TodoList = () => {
     }
   };
 
-  const renderTask = (task) => {
+  const renderTask = (task, index) => {
     const isCompleted = task.status === "Completed";
     const isGridView = viewMode === "grid";
     const priorityStyle = {
@@ -328,73 +328,92 @@ const TodoList = () => {
     }
 
     return (
-      <article
-        key={task.id}
-        className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm transition hover:shadow-md sm:p-2"
-      >
-        <div className="flex items-start gap-3">
-          <button
-            type="button"
-            onClick={() =>
-              changeTaskStatus(task, isCompleted ? "Pending" : "Completed")
-            }
-            aria-label={isCompleted ? `Reopen ${task.title}` : `Complete ${task.title}`}
-            className={`mt-0.5 shrink-0 rounded-full ${isCompleted ? "text-emerald-600" : "text-slate-300 hover:text-violet-600"}`}
-          >
-            {isCompleted ? <CheckCircle2 size={23} /> : <Circle size={23} />}
-          </button>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className={`break-words text-base font-bold ${isCompleted ? "text-slate-400 line-through" : "text-slate-800"}`}>
+      <tr key={task.id} className="group transition hover:bg-violet-50/40">
+        <td className="whitespace-nowrap px-4 py-4 text-xs font-bold text-slate-400">
+          {String(index + 1).padStart(2, "0")}
+        </td>
+        <td className="px-4 py-4">
+          <div className="flex min-w-[240px] items-start gap-3">
+            <button
+              type="button"
+              onClick={() =>
+                changeTaskStatus(task, isCompleted ? "Pending" : "Completed")
+              }
+              aria-label={isCompleted ? `Reopen ${task.title}` : `Complete ${task.title}`}
+              className={`mt-0.5 shrink-0 rounded-full transition ${isCompleted ? "text-emerald-600" : "text-slate-300 hover:text-violet-600"}`}
+            >
+              {isCompleted ? <CheckCircle2 size={21} /> : <Circle size={21} />}
+            </button>
+            <div className="min-w-0">
+              <p className={`break-words text-sm font-bold ${isCompleted ? "text-slate-400 line-through" : "text-slate-800"}`}>
                 {task.title}
-              </h3>
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${priorityStyle}`}>
-                {task.priority}
-              </span>
-              <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
-                {task.status}
-              </span>
-            </div>
-            {task.description && (
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">
-                {task.description}
               </p>
-            )}
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
-              {task.dueDate && (
-                <span className="inline-flex items-center gap-1.5">
-                  <CalendarDays size={14} /> Due {formatDate(task.dueDate)}
-                </span>
+              {task.description ? (
+                <p className="mt-1 max-w-md whitespace-pre-wrap break-words text-xs leading-5 text-slate-500 line-clamp-2">
+                  {task.description}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-400">No notes</p>
               )}
-              {task.reminderAt && (
-                <span className="inline-flex items-center gap-1.5">
-                  <CalendarClock size={14} /> Reminder {formatDateTime(task.reminderAt)}
-                </span>
-              )}
-              <span>Created {formatDate(task.createdAt)}</span>
-              <span>Updated {formatDate(task.updatedAt)}</span>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+        </td>
+        <td className="whitespace-nowrap px-4 py-4">
+          <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${priorityStyle}`}>
+            {task.priority}
+          </span>
+        </td>
+        <td className="whitespace-nowrap px-4 py-4">
+          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            isCompleted
+              ? "bg-emerald-50 text-emerald-700"
+              : task.status === "In Progress"
+                ? "bg-sky-50 text-sky-700"
+                : "bg-slate-100 text-slate-600"
+          }`}>
+            {task.status}
+          </span>
+        </td>
+        <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+          {task.dueDate ? (
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarDays size={14} className="text-violet-500" />
+              {formatDate(task.dueDate)}
+            </span>
+          ) : <span className="text-slate-400">—</span>}
+        </td>
+        <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+          {task.reminderAt ? (
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarClock size={14} className="text-violet-500" />
+              {formatDateTime(task.reminderAt)}
+            </span>
+          ) : <span className="text-slate-400">—</span>}
+        </td>
+        <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-500">
+          {formatDate(task.updatedAt)}
+        </td>
+        <td className="whitespace-nowrap px-4 py-4 text-right">
+          <div className="flex justify-end gap-1">
             <button
               type="button"
               onClick={() => editTask(task)}
               aria-label={`Edit ${task.title}`}
-              className="rounded-lg p-2 text-slate-400 transition hover:bg-violet-50 hover:text-violet-700"
+              className="rounded-lg p-2 text-slate-400 transition hover:bg-white hover:text-violet-700 hover:shadow-sm"
             >
-              <Pencil size={17} />
+              <Pencil size={16} />
             </button>
             <button
               type="button"
               onClick={() => deleteTask(task)}
               aria-label={`Delete ${task.title}`}
-              className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+              className="rounded-lg p-2 text-slate-400 transition hover:bg-white hover:text-rose-600 hover:shadow-sm"
             >
-              <Trash2 size={17} />
+              <Trash2 size={16} />
             </button>
           </div>
-        </div>
-      </article>
+        </td>
+      </tr>
     );
   };
 
@@ -410,9 +429,33 @@ const TodoList = () => {
         </h2>
       </div>
       {items.length ? (
-        <div className={viewMode === "grid" ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-3" : "space-y-3"}>
-          {items.map(renderTask)}
-        </div>
+        viewMode === "grid" ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {items.map(renderTask)}
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] border-collapse text-left">
+                <thead className="bg-[#350866] text-xs uppercase tracking-wider text-[#FCD34D]">
+                  <tr>
+                    <th scope="col" className="px-4 py-4 font-bold">S No</th>
+                    <th scope="col" className="px-4 py-4 font-bold">Task</th>
+                    <th scope="col" className="px-4 py-4 font-bold">Priority</th>
+                    <th scope="col" className="px-4 py-4 font-bold">Status</th>
+                    <th scope="col" className="px-4 py-4 font-bold">Due date</th>
+                    <th scope="col" className="px-4 py-4 font-bold">Reminder</th>
+                    <th scope="col" className="px-4 py-4 font-bold">Updated</th>
+                    <th scope="col" className="px-4 py-4 text-right font-bold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {items.map(renderTask)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       ) : (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 px-4 py-8 text-center text-sm text-slate-500">
           {emptyMessage}
