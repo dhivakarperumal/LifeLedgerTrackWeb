@@ -213,7 +213,7 @@ const AppLockScreen = () => {
   const disabled = unlocking || busy;
 
   return (
-    <main className="grid h-dvh min-h-[100svh] place-items-center overflow-hidden bg-gradient-to-br from-[#1F0A3C] via-[#2d2041] to-[#334726] px-2 py-3 sm:h-screen sm:px-3 sm:py-6">
+    <main className="grid h-dvh min-h-[100svh] place-items-center overflow-hidden bg-gradient-to-br from-[#1F0A3C] via-[#2d2041] to-[#334726] px-1 py-3 sm:h-screen sm:px-2 sm:py-6">
       <section className="max-h-full min-h-0 w-full max-w-md overflow-hidden rounded-2xl border border-white/40 bg-white p-3 shadow-2xl shadow-black/20 sm:p-6" aria-labelledby="lock-heading">
         <div className="mx-auto mb-2 grid h-11 w-11 place-items-center rounded-2xl bg-[#eef1e8] text-[#53633b] sm:mb-3 sm:h-12 sm:w-12"><LockKeyhole size={22} aria-hidden="true" /></div>
         <p className="text-center text-[10px] font-bold uppercase tracking-[0.16em] text-[#647447] sm:text-xs">Life Ledger</p>
