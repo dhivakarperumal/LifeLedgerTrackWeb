@@ -741,22 +741,34 @@ const TodoList = () => {
           </div>
         ) : (
           <>
-            {pagePendingTasks.length > 0 &&
+            {viewMode === "grid" ? (
+              <>
+                {pagePendingTasks.length > 0 &&
+                  renderTaskGroup(
+                    "Pending & in progress",
+                    pagePendingTasks,
+                    Circle,
+                    "No active tasks match these filters.",
+                    pageStartIndex,
+                  )}
+                {pageCompletedTasks.length > 0 &&
+                  renderTaskGroup(
+                    "Completed",
+                    pageCompletedTasks,
+                    CheckCircle2,
+                    "No completed tasks match these filters.",
+                    pageStartIndex + pagePendingTasks.length,
+                  )}
+              </>
+            ) : (
               renderTaskGroup(
-                "Pending & in progress",
-                pagePendingTasks,
-                Circle,
-                "No active tasks match these filters.",
+                "All tasks",
+                pageTasks,
+                ListChecks,
+                "No tasks match these filters.",
                 pageStartIndex,
-              )}
-            {pageCompletedTasks.length > 0 &&
-              renderTaskGroup(
-                "Completed",
-                pageCompletedTasks,
-                CheckCircle2,
-                "No completed tasks match these filters.",
-                pageStartIndex + pagePendingTasks.length,
-              )}
+              )
+            )}
           </>
         )}
 
