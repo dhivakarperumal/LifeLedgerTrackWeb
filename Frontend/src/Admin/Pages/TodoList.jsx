@@ -6,7 +6,9 @@ import {
   CheckCircle2,
   Circle,
   Clock3,
+  LayoutGrid,
   ListChecks,
+  List,
   Pencil,
   Plus,
   Search,
@@ -64,8 +66,8 @@ const TodoList = () => {
   const [saving, setSaving] = useState(false);
   const saveInFlight = useRef(false);
   const [search, setSearch] = useState("");
-  const [view, setView] = useState("All");
-  const [statusFilter, setStatusFilter] = useState("Any status");
+  const [viewMode, setViewMode] = useState("list");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("Any priority");
   const [dueDateFilter, setDueDateFilter] = useState("Any due date");
 
@@ -106,11 +108,7 @@ const TodoList = () => {
       const matchesSearch =
         !query ||
         `${task.title || ""} ${task.description || ""}`.toLowerCase().includes(query);
-      const matchesView =
-        view === "All" ||
-        (view === "Pending" && task.status !== "Completed") ||
-        (view === "Completed" && task.status === "Completed");
-      const matchesStatus = statusFilter === "Any status" || task.status === statusFilter;
+      const matchesStatus = statusFilter === "All" || task.status === statusFilter;
       const matchesPriority =
         priorityFilter === "Any priority" || task.priority === priorityFilter;
       const matchesDueDate =
@@ -122,9 +120,9 @@ const TodoList = () => {
         (dueDateFilter === "Due today" && task.dueDate === today) ||
         (dueDateFilter === "Upcoming" && task.dueDate && task.dueDate > today) ||
         (dueDateFilter === "No due date" && !task.dueDate);
-      return matchesSearch && matchesView && matchesStatus && matchesPriority && matchesDueDate;
+      return matchesSearch && matchesStatus && matchesPriority && matchesDueDate;
     });
-  }, [tasks, search, view, statusFilter, priorityFilter, dueDateFilter]);
+  }, [tasks, search, statusFilter, priorityFilter, dueDateFilter]);
 
   const pendingTasks = filteredTasks.filter((task) => task.status !== "Completed");
   const completedTasks = filteredTasks.filter((task) => task.status === "Completed");
@@ -309,7 +307,9 @@ const TodoList = () => {
         </h2>
       </div>
       {items.length ? (
-        <div className="space-y-3">{items.map(renderTask)}</div>
+        <div className={viewMode === "grid" ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-3" : "space-y-3"}>
+          {items.map(renderTask)}
+        </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 px-4 py-8 text-center text-sm text-slate-500">
           {emptyMessage}
@@ -518,32 +518,76 @@ const TodoList = () => {
           </div>
         )}
 
-        <section className="mt-7 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
-              {["All", "Pending", "Completed"].map((item) => (
-                <button key={item} type="button" onClick={() => setView(item)} className={`rounded-xl px-4 py-2 text-sm font-bold transition ${view === item ? "bg-violet-700 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-700"}`}>
-                  {item}
-                </button>
-              ))}
+        <section className="mt-7 rounded-[22px] border border-slate-200/80 bg-white p-3 shadow-sm sm:p-4">
+          <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center">
+            <label className="relative min-w-0 flex-1">
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search tasks..."
+                aria-label="Search tasks"
+                className="h-[52px] w-full rounded-2xl border border-slate-200 bg-slate-50/70 py-3 pl-11 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100"
+              />
+            </label>
+            <select
+              aria-label="Filter by priority"
+              value={priorityFilter}
+              onChange={(event) => setPriorityFilter(event.target.value)}
+              className="h-[52px] rounded-2xl border border-slate-200 bg-slate-50/70 px-4 text-sm font-semibold text-slate-600 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100 xl:w-[180px]"
+            >
+              <option value="Any priority">All Priorities</option>
+              {PRIORITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}
+            </select>
+            <div className="flex h-[52px] shrink-0 items-center rounded-2xl border border-slate-200 bg-slate-100/80 p-1">
+              <button
+                type="button"
+                aria-label="List view"
+                aria-pressed={viewMode === "list"}
+                onClick={() => setViewMode("list")}
+                className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${viewMode === "list" ? "bg-white text-violet-700 shadow-sm" : "text-slate-400 hover:text-slate-700"}`}
+              >
+                <List size={20} />
+              </button>
+              <button
+                type="button"
+                aria-label="Grid view"
+                aria-pressed={viewMode === "grid"}
+                onClick={() => setViewMode("grid")}
+                className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${viewMode === "grid" ? "bg-white text-violet-700 shadow-sm" : "text-slate-400 hover:text-slate-700"}`}
+              >
+                <LayoutGrid size={19} />
+              </button>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              <label className="relative sm:col-span-2 lg:col-span-1">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search title or notes" className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
-              </label>
-              <select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-violet-400">
-                <option>Any status</option>
-                {STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}
-              </select>
-              <select aria-label="Filter by priority" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-violet-400">
-                <option>Any priority</option>
-                {PRIORITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}
-              </select>
-              <select aria-label="Filter by due date" value={dueDateFilter} onChange={(event) => setDueDateFilter(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-violet-400">
-                {DATE_FILTERS.map((option) => <option key={option}>{option}</option>)}
-              </select>
-            </div>
+            <select
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="h-[52px] rounded-2xl border border-slate-200 bg-slate-50/70 px-4 text-sm font-semibold text-slate-600 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100 xl:w-[180px]"
+            >
+              <option value="All">All</option>
+              {STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}
+            </select>
+            <button
+              type="button"
+              onClick={openNewTaskForm}
+              className="inline-flex h-[52px] shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-6 text-sm font-extrabold text-white shadow-lg shadow-violet-900/15 transition hover:brightness-110"
+            >
+              <Plus size={19} /> Add Task
+            </button>
+          </div>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <span className="px-1 text-xs font-bold text-slate-500">Due date:</span>
+            {DATE_FILTERS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setDueDateFilter(option)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${dueDateFilter === option ? "bg-violet-100 text-violet-800" : "bg-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-700"}`}
+              >
+                {option}
+              </button>
+            ))}
           </div>
         </section>
 
