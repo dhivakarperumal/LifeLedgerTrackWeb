@@ -301,7 +301,6 @@ const Users = ({ initialTab = "All" }) => {
                                     <thead>
                                         <tr className="bg-gradient-to-r from-[#260642] to-[#4b0b78] text-[11px] font-black text-[#facc15] uppercase tracking-wider">
                                             <th className="px-6 py-4">S No</th>
-                                            <th className="px-6 py-4">Customer ID</th>
                                             <th className="px-6 py-4">Customer</th>
                                             <th className="px-6 py-4">Email</th>
                                             <th className="px-6 py-4">Role</th>
@@ -313,13 +312,13 @@ const Users = ({ initialTab = "All" }) => {
                                     <tbody>
                                         {loading ? (
                                             <tr>
-                                                <td colSpan="8" className="px-6 py-10 text-center text-gray-400 text-sm font-semibold">
+                                                <td colSpan="7" className="px-6 py-10 text-center text-gray-400 text-sm font-semibold">
                                                     Loading customers...
                                                 </td>
                                             </tr>
                                         ) : currentItems.length === 0 ? (
                                             <tr>
-                                                <td colSpan="8" className="px-6 py-10 text-center text-gray-400 text-sm font-semibold">
+                                                <td colSpan="7" className="px-6 py-10 text-center text-gray-400 text-sm font-semibold">
                                                     No customers found.
                                                 </td>
                                             </tr>
@@ -329,9 +328,6 @@ const Users = ({ initialTab = "All" }) => {
                                                     <tr key={user.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
                                                         <td className="px-6 py-4 text-[13px] font-bold text-gray-500">
                                                             {indexOfFirstItem + index + 1}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-[13px] font-black text-[#4318FF]">
-                                                            {user.user_id || user.id}
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center gap-3">
@@ -412,7 +408,6 @@ const Users = ({ initialTab = "All" }) => {
                                                     <div>
                                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.16em]">Customer</p>
                                                         <h4 className="text-[15px] font-black text-[#2B3674] mt-1">{user.name}</h4>
-                                                        <p className="text-[11px] text-gray-500 mt-0.5">{user.user_id || user.id}</p>
                                                     </div>
                                                 </div>
                                                 <button
