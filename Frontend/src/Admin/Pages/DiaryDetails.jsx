@@ -17,6 +17,9 @@ import {
   FiVideo,
   FiMusic,
   FiFileText,
+  FiEye,
+  FiDownload,
+  FiShare2,
 } from "react-icons/fi";
 
 const formatDate = (value) => {
@@ -36,6 +39,16 @@ const getMediaUrl = (value) => {
   if (value.startsWith("http")) return value;
   const base = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "");
   return `${base}${value.startsWith("/") ? value : `/${value}`}`;
+};
+
+const getMediaFileName = (value, fallback) => {
+  const pathname = new URL(getMediaUrl(value), window.location.origin).pathname;
+  const filename = pathname.split("/").pop();
+  try {
+    return filename ? decodeURIComponent(filename) : fallback;
+  } catch {
+    return filename || fallback;
+  }
 };
 
 const DiaryDetails = () => {
@@ -82,6 +95,48 @@ const DiaryDetails = () => {
     }
   };
 
+  const handleDownload = async (mediaUrl, fileName) => {
+    try {
+      const response = await api.get(getMediaUrl(mediaUrl), { responseType: "blob" });
+      const downloadUrl = URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      toast.success("Download started.");
+    } catch (error) {
+      console.error("Diary attachment download failed:", error);
+      toast.error(error.response?.status === 423
+        ? "Unlock the app to download this attachment."
+        : "Failed to download attachment.");
+    }
+  };
+
+  const handleShare = async (text = entry.title) => {
+    const shareData = { title: entry.title, text, url: window.location.href };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (error) {
+        if (error.name === "AbortError") return;
+        console.error("Diary entry sharing failed:", error);
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareData.url);
+      toast.success("Link copied to clipboard.");
+    } catch (error) {
+      console.error("Diary entry link copy failed:", error);
+      toast.error("Unable to share or copy this link.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f3f4f6]">
@@ -109,6 +164,12 @@ const DiaryDetails = () => {
           </button>
 
           <div className="flex gap-3">
+            <button
+              onClick={() => handleShare(entry.content || entry.title)}
+              className="inline-flex items-center gap-2 rounded-xl bg-violet-50 px-4 py-2.5 text-sm font-bold text-violet-700 shadow-sm transition hover:bg-violet-100"
+            >
+              <FiShare2 /> Share
+            </button>
             <button
               onClick={toggleFavorite}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm transition ${entry.is_favorite ? "bg-pink-50 text-pink-600 hover:bg-pink-100" : "bg-white text-slate-700 hover:bg-slate-50"}`}
@@ -202,8 +263,9 @@ const DiaryDetails = () => {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {attachments.map((attachment, index) => {
                     const fileType = String(attachment?.file_type || attachment?.type || "file");
-                    const url = attachment?.file_url || attachment?.url || attachment?.src;
-                    const fileName = attachment?.file_name || attachment?.name || `Attachment ${index + 1}`;
+                    const mediaUrl = attachment?.file_url || attachment?.url || attachment?.path || attachment?.src;
+                    const url = getMediaUrl(mediaUrl);
+                    const fileName = attachment?.file_name || attachment?.name || getMediaFileName(mediaUrl, `Attachment ${index + 1}`);
 
                     if (!url) return null;
 
@@ -232,9 +294,17 @@ const DiaryDetails = () => {
 
                         <div className="flex items-center justify-between gap-3 px-3 py-2">
                           <span className="truncate text-xs text-slate-600">{fileName}</span>
-                          <a href={url} target="_blank" rel="noreferrer" className="rounded-lg bg-violet-100 px-2 py-1 text-[10px] font-semibold text-violet-700">
-                            Open
-                          </a>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <a href={url} target="_blank" rel="noreferrer" aria-label={`Open ${fileName}`} title="Open" className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+                              <FiEye size={14} />
+                            </a>
+                            <button type="button" onClick={() => handleDownload(mediaUrl, fileName)} aria-label={`Download ${fileName}`} title="Download" className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-violet-100 hover:text-violet-700">
+                              <FiDownload size={14} />
+                            </button>
+                            <button type="button" onClick={() => handleShare(`${entry.title} - ${fileName}`)} aria-label={`Share ${fileName}`} title="Share diary entry" className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-violet-100 hover:text-violet-700">
+                              <FiShare2 size={14} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -247,10 +317,31 @@ const DiaryDetails = () => {
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <p className="mb-4 text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Primary media</p>
                 <div className="grid gap-4 md:grid-cols-2">
-                  {entry.image_path && <img src={getMediaUrl(entry.image_path)} alt="Diary media" crossOrigin="use-credentials" className="h-60 w-full rounded-2xl object-cover" />}
-                  {entry.video_path && <video src={getMediaUrl(entry.video_path)} crossOrigin="use-credentials" controls className="h-60 w-full rounded-2xl object-cover" />}
-                  {entry.audio_path && <audio src={getMediaUrl(entry.audio_path)} crossOrigin="use-credentials" controls className="w-full" />}
-                  {entry.file_path && <a href={getMediaUrl(entry.file_path)} target="_blank" rel="noreferrer" className="flex h-60 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm font-semibold text-slate-700">Open attached file</a>}
+                  {[
+                    ["image_path", entry.image_path, "Diary image"],
+                    ["video_path", entry.video_path, "Diary video"],
+                    ["audio_path", entry.audio_path, "Diary audio"],
+                    ["file_path", entry.file_path, "Diary attachment"],
+                  ].filter(([, path]) => path).map(([type, path, label]) => {
+                    const url = getMediaUrl(path);
+                    const fileName = getMediaFileName(path, label);
+                    return (
+                      <div key={type} className="min-w-0 space-y-2">
+                        {type === "image_path" && <img src={url} alt="Diary media" crossOrigin="use-credentials" className="h-60 w-full rounded-2xl object-cover" />}
+                        {type === "video_path" && <video src={url} crossOrigin="use-credentials" controls className="h-60 w-full rounded-2xl object-cover" />}
+                        {type === "audio_path" && <audio src={url} crossOrigin="use-credentials" controls className="w-full" />}
+                        {type === "file_path" && <a href={url} target="_blank" rel="noreferrer" className="flex h-60 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm font-semibold text-slate-700">Open attached file</a>}
+                        <div className="flex justify-end gap-2">
+                          <button type="button" onClick={() => handleDownload(path, fileName)} className="inline-flex items-center gap-1.5 rounded-lg bg-violet-100 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-200">
+                            <FiDownload size={14} /> Download
+                          </button>
+                          <button type="button" onClick={() => handleShare(`${entry.title} - ${fileName}`)} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+                            <FiShare2 size={14} /> Share
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
