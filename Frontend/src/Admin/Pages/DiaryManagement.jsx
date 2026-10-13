@@ -767,17 +767,18 @@ const DiaryManagement = () => {
                   <thead>
                     <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c]">
                       <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider w-16 text-center">S No</th>
-                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Title & Content</th>
                       <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Images</th>
-                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Title</th>
                       <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Category</th>
-                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider text-right">Action</th>
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider">Location</th>
+                      <th className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider text-left">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {paginatedEntries.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-12 text-center">
+                        <td colSpan={7} className="px-4 py-12 text-center">
                           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-violet-100 text-2xl text-violet-600">📖</div>
                           <p className="mt-4 font-bold text-slate-900">No diary entries found</p>
                           <p className="mt-1 text-sm text-slate-500">Start writing about your day, thoughts and special moments.</p>
@@ -795,10 +796,6 @@ const DiaryManagement = () => {
                       <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-4 whitespace-nowrap text-center font-bold text-slate-400">
                           {(safeCurrentPage - 1) * pageSize + index + 1}
-                        </td>
-                        <td className="px-4 py-4">
-                          <p className="font-bold text-slate-900 max-w-[200px] truncate">{entry.title}</p>
-                          <p className="text-xs text-slate-500 max-w-[250px] truncate">{entry.content.replace(/<[^>]+>/g, "")}</p>
                         </td>
                         <td className="px-4 py-3">
                           {firstImage ? (
@@ -820,16 +817,23 @@ const DiaryManagement = () => {
                             </button>
                           ) : <span className="text-xs text-slate-400">No images</span>}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-slate-800 font-bold">{formatDate(entry.entry_date)}</div>
+                        <td className="px-4 py-4">
+                          <p className="font-bold text-slate-900 max-w-[200px] truncate">{entry.title}</p>
+                          <p className="text-xs text-slate-500 max-w-[250px] truncate">{entry.content.replace(/<[^>]+>/g, "")}</p>
                         </td>
                         <td className="px-4 py-4">
                           <span className="rounded-lg bg-violet-50 border border-violet-100 px-2.5 py-1 text-xs font-bold text-violet-700 whitespace-nowrap">
                             {entry.category_name || "General"}
                           </span>
                         </td>
-                        <td className="px-4 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="text-slate-800 font-bold">{formatDate(entry.entry_date)}</div>
+                        </td>
+                        <td className="px-4 py-4 text-slate-700">
+                          <span className="block max-w-[180px] truncate" title={entry.location || ""}>{entry.location || "—"}</span>
+                        </td>
+                        <td className="px-4 py-4 text-left">
+                          <div className="flex items-center justify-start gap-2">
                             <button onClick={() => favoriteEntry(entry.id)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${entry.is_favorite ? "bg-rose-50 text-rose-500" : "bg-slate-50 text-slate-400 hover:bg-slate-100"}`} title="Favorite">
                               <FiHeart size={13} className={entry.is_favorite ? "fill-current" : ""} />
                             </button>
