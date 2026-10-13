@@ -310,9 +310,9 @@ const Header = ({ onMenuClick }) => {
             </span>
           </button>
 
-          <div className="hidden sm:flex flex-col">
-            <h1 className="text-xl sm:text-2xl font-black 
-              text-slate-800 tracking-tight truncate leading-none">
+          <div className="flex min-w-0 flex-col">
+            <h1 className="max-w-[110px] truncate text-base font-black
+              leading-none tracking-tight text-slate-800 sm:max-w-none sm:text-xl md:text-2xl">
               {getPageTitle()}
             </h1>
             <p className="hidden sm:block text-[10px] text-blue-600 font-bold uppercase tracking-[0.2em] mt-1 opacity-70">
