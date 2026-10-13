@@ -418,11 +418,10 @@ const Category = () => {
                             <table className="w-full table-fixed text-left whitespace-nowrap">
                                 <thead>
                                     <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] border-b border-[#3c096c]">
-                                        <th className="w-[5%] px-4 py-4 text-center"><input type="checkbox" className="rounded accent-white w-4 h-4 border-violet-300" /></th>
                                         <th className="w-[8%] px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">S.NO.</th>
-                                        <th className="w-[48%] px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">CATEGORY</th>
-                                        <th className="w-[8%] px-2 py-4 text-center text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">TYPE</th>
-                                        <th className="w-[8%] px-2 py-4 text-center text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">STATUS</th>
+                                        <th className="w-[49%] px-4 py-4 text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">CATEGORY</th>
+                                        <th className="w-[10%] px-2 py-4 text-center text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">TYPE</th>
+                                        <th className="w-[10%] px-2 py-4 text-center text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">STATUS</th>
                                         <th className="w-[23%] px-4 py-4 text-center text-[10px] font-bold text-[#FCD34D] uppercase tracking-wider">ACTIONS</th>
                                     </tr>
                                 </thead>
@@ -434,7 +433,6 @@ const Category = () => {
 
                                         return (
                                             <tr key={cat.catId} className="hover:bg-gray-50/50 transition-colors group">
-                                                <td className="px-6 py-4 text-center"><input type="checkbox" className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4 border-gray-300" /></td>
                                                 <td className="px-4 py-4 text-sm font-bold text-gray-500">{sNo}</td>
                                                 <td className="px-4 py-4">
                                                     <div className="flex items-center gap-4">
