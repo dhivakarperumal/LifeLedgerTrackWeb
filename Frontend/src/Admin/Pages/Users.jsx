@@ -192,10 +192,6 @@ const Users = ({ initialTab = "All" }) => {
     const totalUsers = users.length;
     const activeUsers = users.filter(u => u.status === 'Active').length;
     const inactiveUsers = users.filter(u => u.status === 'Inactive').length;
-    const adminUsers = users.filter(u => u.role === 'admin').length;
-    const regularUsers = users.filter(u => u.role === 'user' || !u.role).length;
-    const adminPct = totalUsers ? Math.round((adminUsers / totalUsers) * 100) : 0;
-    const userPct = totalUsers ? Math.round((regularUsers / totalUsers) * 100) : 0;
 
     return (
         <div className="bg-[#f8f9fc] min-h-screen pb-10 font-sans">
@@ -205,7 +201,7 @@ const Users = ({ initialTab = "All" }) => {
                
 
                 {/* Stat Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-5">
                     <div className="min-h-[116px] bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
                         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shrink-0">
                             <FiUserPlus size={22} />
@@ -234,26 +230,6 @@ const Users = ({ initialTab = "All" }) => {
                             <p className="text-xs text-gray-400 font-medium">Inactive Customers</p>
                             <h3 className="text-3xl font-black text-slate-800 leading-none my-0.5">{inactiveUsers.toLocaleString()}</h3>
                             <p className="text-[10px] text-gray-400">Inactive accounts</p>
-                        </div>
-                    </div>
-                    <div className="min-h-[116px] bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-lg shrink-0">
-                            <FiUserPlus size={22} />
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-400 font-medium">Admin Users</p>
-                            <h3 className="text-3xl font-black text-slate-800 leading-none my-0.5">{adminUsers.toLocaleString()}</h3>
-                            <p className="text-[10px] text-gray-400">{adminPct}% of total</p>
-                        </div>
-                    </div>
-                    <div className="min-h-[116px] bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center text-white shadow-lg shrink-0">
-                            <FiUserPlus size={22} />
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-400 font-medium">Regular Users</p>
-                            <h3 className="text-3xl font-black text-slate-800 leading-none my-0.5">{regularUsers.toLocaleString()}</h3>
-                            <p className="text-[10px] text-gray-400">{userPct}% of total</p>
                         </div>
                     </div>
                 </div>
@@ -324,7 +300,7 @@ const Users = ({ initialTab = "All" }) => {
                                 <table className="w-full text-left border-collapse whitespace-nowrap">
                                     <thead>
                                         <tr className="bg-gradient-to-r from-[#260642] to-[#4b0b78] text-[11px] font-black text-[#facc15] uppercase tracking-wider">
-                                            <th className="px-6 py-4 w-12"><input type="checkbox" className="rounded border-white/70 text-[#facc15] focus:ring-[#facc15]" aria-label="Select all customers" /></th>
+                                            <th className="px-6 py-4">S No</th>
                                             <th className="px-6 py-4">Customer ID</th>
                                             <th className="px-6 py-4">Customer</th>
                                             <th className="px-6 py-4">Email</th>
@@ -348,11 +324,11 @@ const Users = ({ initialTab = "All" }) => {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            currentItems.map((user) => {
+                                            currentItems.map((user, index) => {
                                                 return (
                                                     <tr key={user.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
-                                                        <td className="px-6 py-4">
-                                                            <input type="checkbox" className="rounded border-gray-300 text-[#4318FF] focus:ring-[#4318FF]" />
+                                                        <td className="px-6 py-4 text-[13px] font-bold text-gray-500">
+                                                            {indexOfFirstItem + index + 1}
                                                         </td>
                                                         <td className="px-6 py-4 text-[13px] font-black text-[#4318FF]">
                                                             {user.user_id || user.id}
