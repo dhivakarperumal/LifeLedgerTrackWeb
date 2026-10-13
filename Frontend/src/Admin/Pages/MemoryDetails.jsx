@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api";
 import { formatDateOnly } from "../../utils/date";
 import { toast } from "react-hot-toast";
-import { FiImage, FiVideo, FiMusic, FiCalendar, FiMapPin, FiClock, FiTag, FiBookOpen, FiArrowLeft, FiHeart, FiEdit2, FiTrash2, FiEye } from "react-icons/fi";
+import { FiImage, FiVideo, FiMusic, FiCalendar, FiMapPin, FiClock, FiTag, FiBookOpen, FiArrowLeft, FiHeart, FiEdit2, FiTrash2, FiEye, FiDownload, FiShare2 } from "react-icons/fi";
 
 const formatDate = (value) => {
   if (!value) return "—";
@@ -15,6 +15,25 @@ const getMediaUrl = (value) => {
   if (value.startsWith("http")) return value;
   const base = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "");
   return `${base}${value.startsWith("/") ? value : `/${value}`}`;
+};
+
+const getMediaFileName = (media, index) => {
+  if (typeof media === "object" && media) {
+    const name = media.file_name || media.name;
+    if (name) return name;
+  }
+
+  const mediaUrl = typeof media === "string"
+    ? media
+    : media?.file_url || media?.url || media?.path || media?.src || "";
+  const pathname = new URL(getMediaUrl(mediaUrl), window.location.origin).pathname;
+  const filename = pathname.split("/").pop();
+
+  try {
+    return filename ? decodeURIComponent(filename) : `Attachment ${index + 1}`;
+  } catch {
+    return filename || `Attachment ${index + 1}`;
+  }
 };
 
 const MemoryDetails = () => {
@@ -59,6 +78,48 @@ const MemoryDetails = () => {
     }
   };
 
+  const handleDownload = async (mediaUrl, fileName) => {
+    try {
+      const response = await api.get(getMediaUrl(mediaUrl), { responseType: "blob" });
+      const downloadUrl = URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      toast.success("Download started.");
+    } catch (error) {
+      console.error("Memory media download failed:", error);
+      toast.error(error.response?.status === 423
+        ? "Unlock the app to download this attachment."
+        : "Failed to download attachment.");
+    }
+  };
+
+  const handleShare = async (url, text = memory.title) => {
+    const shareData = { title: memory.title, text, url };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (error) {
+        if (error.name === "AbortError") return;
+        console.error("Memory sharing failed:", error);
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied to clipboard.");
+    } catch (error) {
+      console.error("Memory link copy failed:", error);
+      toast.error("Unable to share or copy this link.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f3f4f6]">
@@ -83,6 +144,9 @@ const MemoryDetails = () => {
           </button>
           
           <div className="flex gap-3">
+             <button onClick={() => handleShare(window.location.href, memory.description || memory.title)} className="inline-flex items-center gap-2 rounded-xl bg-violet-50 px-4 py-2.5 text-sm font-bold text-violet-700 shadow-sm transition hover:bg-violet-100">
+               <FiShare2 /> Share
+             </button>
              <button onClick={toggleFavorite} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm transition ${memory.is_favorite ? 'bg-pink-50 text-pink-600 hover:bg-pink-100' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
                <FiHeart className={memory.is_favorite ? "fill-current" : ""} /> {memory.is_favorite ? "Favorited" : "Favorite"}
              </button>
@@ -194,13 +258,16 @@ const MemoryDetails = () => {
 
                   <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                     {uniqueGallery.map((mediaUrl, idx) => {
-                      const resolvedUrl = getMediaUrl(mediaUrl);
-                      const isVideo = /(\.(mp4|webm|ogg|mov|m4v))$/i.test(mediaUrl || "");
-                      const isAudio = /(\.(mp3|wav|ogg|m4a|aac))$/i.test(mediaUrl || "");
-                      const fileName = (mediaUrl || "").split("/").pop() || `Attachment ${idx + 1}`;
+                      const sourceUrl = typeof mediaUrl === "string"
+                        ? mediaUrl
+                        : mediaUrl?.file_url || mediaUrl?.url || mediaUrl?.path || mediaUrl?.src || "";
+                      const resolvedUrl = getMediaUrl(sourceUrl);
+                      const fileName = getMediaFileName(mediaUrl, idx);
+                      const isVideo = /(\.(mp4|webm|ogg|mov|m4v))$/i.test(fileName);
+                      const isAudio = /(\.(mp3|wav|ogg|m4a|aac))$/i.test(fileName);
 
                       return (
-                        <div key={`${mediaUrl}-${idx}`} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
+                        <div key={`${sourceUrl}-${idx}`} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
                           <div className={isAudio ? "flex h-[220px] items-center justify-center bg-gradient-to-r from-violet-500 to-pink-500 p-4" : "h-[220px] overflow-hidden bg-black"}>
                             {isVideo ? (
                               <video src={resolvedUrl} crossOrigin="use-credentials" controls className="h-full w-full object-cover" />
@@ -218,9 +285,17 @@ const MemoryDetails = () => {
 
                           <div className="flex items-center justify-between gap-3 px-3 py-3">
                             <span className="truncate text-[12px] text-slate-700">{fileName}</span>
-                            <a href={resolvedUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100">
-                              Open
-                            </a>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <a href={resolvedUrl} target="_blank" rel="noreferrer" aria-label={`Open ${fileName}`} title="Open" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100">
+                                <FiEye size={14} />
+                              </a>
+                              <button type="button" onClick={() => handleDownload(sourceUrl, fileName)} aria-label={`Download ${fileName}`} title="Download" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">
+                                <FiDownload size={14} />
+                              </button>
+                              <button type="button" onClick={() => handleShare(window.location.href, `${memory.title} - ${fileName}`)} aria-label={`Share ${fileName}`} title="Share memory" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">
+                                <FiShare2 size={14} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
