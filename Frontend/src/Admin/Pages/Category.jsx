@@ -351,6 +351,7 @@ const Category = () => {
                             <option value="Transfer">Transfer</option>
                             <option value="Memories">Memories</option>
                             <option value="Diary">Diary</option>
+                            <option value="CalendarEvent">Calendar Event</option>
                         </select>
                         <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     </div>
