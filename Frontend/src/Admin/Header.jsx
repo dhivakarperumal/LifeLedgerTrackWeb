@@ -7,11 +7,7 @@ import {
   User,
   LogOut,
   ChevronDown,
-  ShoppingBag,
-  Package,
   X,
-  AlertTriangle,
-  TrendingDown,
   CalendarDays,
 } from "lucide-react";
 
@@ -72,9 +68,7 @@ const Header = ({ onMenuClick }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [notifications, setNotifications] = useState({ today: [], earlier: [] });
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [todayCalendarEvents, setTodayCalendarEvents] = useState([]);
+  const [todayReminders, setTodayReminders] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Search state
@@ -123,11 +117,6 @@ const Header = ({ onMenuClick }) => {
     }
   };
 
-  const fetchNotifications = () => {
-    setNotifications({ today: [], earlier: [] });
-    setUnreadCount(0);
-  };
-
   const fetchSearchIndex = async () => {
     try {
       const [usersRes, expensesRes, eventsRes] = await Promise.all([
@@ -174,39 +163,37 @@ const Header = ({ onMenuClick }) => {
     }
   };
 
-  const fetchCalendarNotifications = async () => {
+  const fetchTodayReminders = async () => {
     try {
-      const res = await api.get("/calendar/events");
-      const eventList = Array.isArray(res?.data?.data) ? res.data.data : [];
-
-      const today = new Date();
-      const todayKey = toLocalDateKey(today);
-
-      const todayEvents = eventList.filter((event) => {
-        const candidate = event?.startDate || event?.reminderDate || event?.event_date || event?.date || event?.created_at;
-        if (!candidate) return false;
-
-        return toLocalDateKey(candidate) === todayKey;
-      });
-
-      setTodayCalendarEvents(todayEvents);
+      const response = await api.get("/calendar/reminders");
+      const payload = response?.data;
+      const reminderList = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.reminders)
+            ? payload.reminders
+            : [];
+      const todayKey = toLocalDateKey();
+      setTodayReminders(reminderList.filter((reminder) => (
+        toLocalDateKey(reminder?.reminderDate || reminder?.reminder_date) === todayKey
+      )));
     } catch (error) {
-      console.error("Calendar notification fetch failed", error);
-      setTodayCalendarEvents([]);
+      console.error("Today's reminders fetch failed", error);
+      setTodayReminders([]);
     }
   };
 
   useEffect(() => {
     setAllOrders([]);
-    fetchNotifications();
     fetchSearchIndex();
-    fetchCalendarNotifications();
+    fetchTodayReminders();
   }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-      fetchCalendarNotifications();
+      fetchTodayReminders();
     }, 60000);
 
     return () => clearInterval(timer);
@@ -289,11 +276,6 @@ const Header = ({ onMenuClick }) => {
   useEffect(() => {
     setLowStockItems([]);
   }, []);
-
-  const handleNotificationClick = (orderId) => {
-    navigate(`/admin/orders/${orderId}`);
-    setShowNotifications(false);
-  };
 
   // ✅ Safe values
   const userName = profileName || "Admin";
@@ -430,9 +412,9 @@ const Header = ({ onMenuClick }) => {
                 : 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/20 hover:shadow-lg hover:scale-105'}`}
             >
               <Bell className="w-[18px] h-[18px]" />
-              {(unreadCount > 0 || todayCalendarEvents.length > 0) && (
+              {todayReminders.length > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-white text-[9px] font-black text-blue-600 ring-2 ring-blue-400">
-                  {unreadCount + todayCalendarEvents.length}
+                  {todayReminders.length}
                 </span>
               )}
             </button>
@@ -445,140 +427,63 @@ const Header = ({ onMenuClick }) => {
 
                   <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between bg-white sticky top-0">
                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">
-                      {todayCalendarEvents.length > 0 ? "Today Events" : "New Orders"}
+                      Today's Reminders
                     </h3>
                     <span className="text-[10px] font-black bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg uppercase">
-                      {todayCalendarEvents.length > 0 ? todayCalendarEvents.length : (notifications.today?.length || 0) + (notifications.earlier?.length || 0)}
+                      {todayReminders.length}
                     </span>
                   </div>
 
                   <div className="max-h-[450px] overflow-y-auto custom-scrollbar">
-                    {todayCalendarEvents.length > 0 || todayCalendarEvents.length > 0 || notifications.today?.length > 0 || notifications.earlier?.length > 0 ? (
+                    {todayReminders.length > 0 ? (
                       <div className="divide-y divide-slate-50">
-                        {todayCalendarEvents.length > 0 && (
-                          <>
-                            <div className="px-5 py-2 bg-violet-50/50 sticky top-0 z-10 backdrop-blur-sm">
-                              <p className="text-[9px] font-black text-violet-600 uppercase tracking-[0.2em]">Today Calendar Events</p>
+                        {todayReminders.map((reminder, index) => (
+                          <button
+                            key={reminder.id || `reminder-${index}`}
+                            onClick={() => {
+                              navigate("/admin/planner/reminders");
+                              setShowNotifications(false);
+                            }}
+                            className="w-full px-5 py-4 flex items-start gap-4 text-left transition-all hover:bg-violet-50/40"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center text-violet-600 shrink-0">
+                              <CalendarDays className="w-5 h-5" />
                             </div>
-                            {todayCalendarEvents.map((event, index) => (
-                              <button
-                                key={`${event.id || index}-calendar`}
-                                onClick={() => navigate("/admin/planner/calendar")}
-                                className="w-full px-5 py-4 flex items-start gap-4 hover:bg-violet-50/40 transition-all text-left group"
-                              >
-                                <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center text-violet-600 shrink-0 group-hover:scale-110 transition-transform shadow-sm">
-                                  <CalendarDays className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between mb-0.5">
-                                    <p className="text-sm font-black text-slate-800 tracking-tight">{event.title || "Calendar Event"}</p>
-                                    <span className="text-[9px] bg-violet-100 text-violet-700 font-black px-1.5 py-0.5 rounded uppercase">
-                                      {event.category || "Event"}
-                                    </span>
-                                  </div>
-                                  <p className="text-[10px] text-slate-500 font-bold">
-                                    {(event.startDate || event.reminderDate || event.event_date || event.date || "Today")}
-                                  </p>
-                                </div>
-                              </button>
-                            ))}
-                          </>
-                        )}
-
-                        {/* Today Section */}
-                        {notifications.today?.length > 0 && (
-                          <>
-                            <div className="px-5 py-2 bg-slate-50/50 sticky top-0 z-10 backdrop-blur-sm">
-                              <p className="text-[9px] font-black text-blue-600 uppercase tracking-[0.2em]">Today's Orders</p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="truncate text-sm font-black text-slate-800">{reminder.title || "Reminder"}</p>
+                                <span className="shrink-0 text-[9px] bg-violet-100 text-violet-700 font-black px-1.5 py-0.5 rounded uppercase">
+                                  {reminder.priority || "Reminder"}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-[10px] text-slate-500 font-bold">
+                                {reminder.reminderTime || reminder.reminder_time || "All day"}
+                                {reminder.category ? ` · ${reminder.category}` : ""}
+                              </p>
+                              {reminder.notes && (
+                                <p className="mt-1 truncate text-[10px] text-slate-400">{reminder.notes}</p>
+                              )}
                             </div>
-                            {notifications.today.map((order) => (
-                              <button
-                                key={order.id}
-                                onClick={() => handleNotificationClick(order.id)}
-                                className="w-full px-5 py-4 flex items-start gap-4 hover:bg-blue-50/30 transition-all text-left group  "
-                              >
-                                <div className="w-10 h-10 rounded-xl bg-blue-100/50 flex items-center justify-center text-blue-600 shrink-0 group-hover:scale-110 transition-transform shadow-sm">
-                                  <ShoppingBag className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between mb-0.5">
-                                    <p className="text-sm font-black text-slate-800 tracking-tight">ORD-0{order.id}</p>
-                                    <p className="text-[12px] text-blue-600 font-black">₹{Number(order.total_amount).toLocaleString('en-IN')}</p>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-[10px] text-slate-500 font-bold truncate">
-                                      {order.customer_name || "New Customer"}
-                                    </p>
-                                    <span className="text-[9px] bg-blue-50 text-green-600 font-black px-1.5 py-0.5 rounded uppercase">
-                                      {order.status}
-                                    </span>
-                                  </div>
-
-                                </div>
-
-                              </button>
-                            ))}
-                          </>
-                        )}
-
-                        {/* Earlier Section */}
-                        {notifications.earlier?.length > 0 && (
-                          <>
-                            <div className="px-5 py-2 bg-slate-50/50 sticky top-0 z-10 backdrop-blur-sm">
-                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Earlier Pending</p>
-                            </div>
-                            {notifications.earlier.map((order) => (
-                              <button
-                                key={order.id}
-                                onClick={() => handleNotificationClick(order.id)}
-                                className="w-full px-5 py-4 flex items-start gap-4 hover:bg-slate-50 transition-all text-left group opacity-80 hover:opacity-100"
-                              >
-                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 shrink-0 group-hover:scale-110 transition-transform">
-                                  <ShoppingBag className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between mb-0.5">
-                                    <p className="text-sm font-black text-slate-800 tracking-tight">#ORD-0{order.id}</p>
-                                    <p className="text-[12px] text-slate-600 font-black">₹{Number(order.total_amount).toLocaleString('en-IN')}</p>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-[10px] text-slate-400 font-bold truncate">
-                                      {order.customer_name || "New Customer"}
-                                    </p>
-                                    <span className="text-[9px] bg-slate-100 text-slate-500 font-black px-1.5 py-0.5 rounded uppercase">
-                                      {order.status}
-                                    </span>
-                                  </div>
-                                  <p className="text-[8px] text-slate-300 font-bold uppercase tracking-widest mt-2 flex items-center justify-between">
-                                    <span>{new Date(order.created_at).toLocaleDateString()}</span>
-                                    <span>{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                  </p>
-                                </div>
-
-                              </button>
-                            ))}
-                          </>
-                        )}
+                          </button>
+                        ))}
                       </div>
                     ) : (
                       <div className="px-6 py-12 text-center text-slate-400">
-                        <Package className="mx-auto w-12 h-12 opacity-10 mb-3" />
+                        <CalendarDays className="mx-auto w-12 h-12 opacity-10 mb-3" />
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">
-                          All orders processed
+                          No reminders for today
                         </p>
                       </div>
                     )}
                   </div>
 
-                  {(notifications.today?.length > 0 || notifications.earlier?.length > 0 || todayCalendarEvents.length > 0) && (
-                    <Link
-                      to={todayCalendarEvents.length > 0 ? "/admin/planner/calendar" : "/admin/orders/new"}
-                      onClick={() => setShowNotifications(false)}
-                      className="block w-full py-4 text-center text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] bg-blue-50/50 hover:bg-blue-50 transition-colors border-t border-slate-50"
-                    >
-                      {todayCalendarEvents.length > 0 ? "View Calendar" : "View All Manifests"}
-                    </Link>
-                  )}
+                  <Link
+                    to="/admin/planner/reminders"
+                    onClick={() => setShowNotifications(false)}
+                    className="block w-full py-4 text-center text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] bg-blue-50/50 hover:bg-blue-50 transition-colors border-t border-slate-50"
+                  >
+                    View Today's Reminders
+                  </Link>
                 </div>
             )}
           </div>
