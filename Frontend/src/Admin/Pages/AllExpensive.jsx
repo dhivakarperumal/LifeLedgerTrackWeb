@@ -284,6 +284,15 @@ const AllExpensive = () => {
         });
     }, [expenses, searchTerm, categoryFilter, dateFilter, customStartDate, customEndDate]);
 
+    const todayTotal = useMemo(() => {
+        const todayKey = toLocalDateKey();
+        return expenses.reduce((total, expense) => (
+            toLocalDateKey(expense.expense_date) === todayKey
+                ? total + Number(expense.expense_amount || 0)
+                : total
+        ), 0);
+    }, [expenses]);
+
     const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
     const safeCurrentPage = Math.min(currentPage, totalPages);
     const paginatedExpenses = visible.slice(
@@ -318,18 +327,18 @@ const AllExpensive = () => {
                         gradient: "from-rose-500 to-pink-500",
                     },
                     {
+                        label: "Today's Total Expense",
+                        value: `₹${fmt(todayTotal)}`,
+                        sub: "Sum of today's expenses",
+                        icon: <FiCalendar size={20} />,
+                        gradient: "from-blue-500 to-indigo-500",
+                    },
+                    {
                         label: "Total Transferred",
                         value: `₹${fmt(stats.totalTransfer)}`,
                         sub: "Sum of transfer amounts",
                         icon: <FiRepeat size={20} />,
                         gradient: "from-amber-400 to-orange-500",
-                    },
-                    {
-                        label: "Recurring",
-                        value: stats.recurring,
-                        sub: "Recurring expenses",
-                        icon: <FiRefreshCw size={20} />,
-                        gradient: "from-emerald-400 to-teal-500",
                     },
                 ].map((s, i) => (
                     <div key={i} className="min-w-0 rounded-[22px] border border-gray-100 bg-white p-3 shadow-sm transition-all hover:shadow-md sm:p-4 md:min-h-[122px]">
