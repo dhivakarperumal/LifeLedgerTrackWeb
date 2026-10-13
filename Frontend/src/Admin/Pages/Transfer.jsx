@@ -379,7 +379,7 @@ const Transfer = () => {
                 ) : viewMode === "table" ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] text-xs uppercase tracking-wider text-[#FCD34D]">
+                            <thead className="whitespace-nowrap bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] text-xs uppercase tracking-wider text-[#FCD34D]">
                                 <tr>
                                     <th className="px-4 py-4">S No</th>
                                     <th className="px-6 py-4">Title</th>
