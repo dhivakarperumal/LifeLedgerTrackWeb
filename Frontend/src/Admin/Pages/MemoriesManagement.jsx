@@ -716,27 +716,35 @@ const MemoriesManagement = () => {
       {viewMode === "table" ? (
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="w-full overflow-x-auto overscroll-x-contain">
-            <table className="min-w-[1100px] w-full text-left text-sm">
+            <table className="min-w-[1050px] w-full table-fixed text-left text-sm">
+              <colgroup>
+                <col className="w-[6%]" />
+                <col className="w-[30%]" />
+                <col className="w-[15%]" />
+                <col className="w-[14%]" />
+                <col className="w-[17%]" />
+                <col className="w-[18%]" />
+              </colgroup>
               <thead>
                 <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] text-[#FCD34D]">
-                  {['S No', 'Title', 'Category', 'Date', 'Location', 'Mood', 'Tags', 'Favorite', 'Action'].map((header) => (
-                    <th key={header} className="whitespace-nowrap px-4 py-4 text-[11px] font-bold uppercase tracking-wider">{header}</th>
+                  {['S No', 'Title', 'Category', 'Date', 'Location', 'Action'].map((header) => (
+                    <th key={header} className="whitespace-nowrap px-3 py-4 text-[11px] font-bold uppercase tracking-wider">{header}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {paginatedMemories.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-sm font-medium text-slate-400">
+                    <td colSpan={6} className="px-4 py-12 text-center text-sm font-medium text-slate-400">
                       No memories found.
                     </td>
                   </tr>
                 ) : paginatedMemories.map((memory, index) => (
                   <tr key={memory.id} className="bg-white hover:bg-violet-50/40">
-                    <td className="px-4 py-4 font-bold text-slate-700">{(safeCurrentPage - 1) * pageSize + index + 1}</td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-14 w-20 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-violet-600">
+                    <td className="whitespace-nowrap px-3 py-4 font-bold text-slate-700">{(safeCurrentPage - 1) * pageSize + index + 1}</td>
+                    <td className="min-w-0 px-3 py-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-violet-600">
                           {memory.media_type === "video" ? (
                             <video src={getMediaUrl(memory.media_url)} crossOrigin="use-credentials" className="h-full w-full object-cover" controls playsInline muted />
                           ) : memory.media_type === "audio" ? (
@@ -750,34 +758,24 @@ const MemoriesManagement = () => {
                             </div>
                           )}
                         </div>
-                        <div>
-                          <p className="font-semibold text-slate-800">{memory.title}</p>
-                          <p className="text-xs text-gray-400">{memory.status || "published"}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-slate-800">{memory.title}</p>
+                          <p className="truncate text-xs text-gray-400">{memory.status || "published"}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4">
-                      <span className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700">
+                    <td className="min-w-0 px-3 py-4">
+                      <span className="inline-block max-w-full truncate rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700">
                         {memory.category_name || "General"}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-slate-700">{formatDate(memory.memory_date)}</td>
-                    <td className="px-4 py-4 text-slate-700">{memory.location || "—"}</td>
-                    <td className="px-4 py-4 text-slate-700">{memory.mood || "Happy"}</td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {(memory.tags || []).slice(0, 2).map((tag, idx) => (
-                          <span key={`${tag}-${idx}`} className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600">#{tag}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <button onClick={() => toggleFavorite(memory.id)} className={`rounded-full p-2 ${memory.is_favorite ? "bg-pink-100 text-pink-600" : "bg-slate-100 text-slate-500"}`}>
-                        <FiHeart className={memory.is_favorite ? "fill-pink-500 text-pink-500" : ""} size={15} />
-                      </button>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
+                    <td className="whitespace-nowrap px-3 py-4 text-slate-700">{formatDate(memory.memory_date)}</td>
+                    <td className="px-3 py-4 text-slate-700"><span className="block truncate" title={memory.location || ""}>{memory.location || "—"}</span></td>
+                    <td className="whitespace-nowrap px-3 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => toggleFavorite(memory.id)} aria-label={memory.is_favorite ? "Remove from favorites" : "Add to favorites"} title={memory.is_favorite ? "Remove from favorites" : "Add to favorites"} className={`rounded-lg p-2 transition ${memory.is_favorite ? "bg-pink-100 text-pink-600 hover:bg-pink-200" : "bg-slate-100 text-slate-500 hover:bg-pink-100 hover:text-pink-600"}`}>
+                          <FiHeart className={memory.is_favorite ? "fill-pink-500 text-pink-500" : ""} size={15} />
+                        </button>
                         <button onClick={() => navigate(`/admin/users/memories/${memory.id}`)} className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200">
                           <FiEye size={15} />
                         </button>
@@ -836,12 +834,6 @@ const MemoriesManagement = () => {
                 <div className="mb-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
                   {memory.location && <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><FiMapPin size={11} /> {memory.location}</span>}
                   {memory.memory_date && <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"><FiCalendar size={11} /> {formatDate(memory.memory_date)}</span>}
-                </div>
-
-                <div className="mb-4 flex flex-wrap gap-1">
-                  {(memory.tags || []).slice(0, 3).map((tag, index) => (
-                    <span key={`${tag}-${index}`} className="rounded-full bg-violet-50 px-2 py-1 text-[10px] font-medium text-violet-700">#{tag}</span>
-                  ))}
                 </div>
 
                 <div className="flex items-center justify-between">
