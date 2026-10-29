@@ -6,14 +6,14 @@ import { useAppLock } from "../../PrivateRouter/AppLockContext.jsx";
 import { checkPlatformAuthenticatorSupport, PasswordField, PatternGrid, PinKeypad } from "../../PrivateRouter/AppLockScreen.jsx";
 
 const lockMethods = [
-    { id: "biometric", label: "Fingerprint", detail: "Platform authenticator", icon: Fingerprint },
+    { id: "fingerprint", label: "Fingerprint", detail: "Platform authenticator", icon: Fingerprint },
     { id: "pin", label: "PIN", detail: "4 to 6 digits", icon: KeyRound },
     { id: "pattern", label: "Pattern", detail: "Connect at least 4 dots", icon: Grid3X3 },
     { id: "password", label: "Password", detail: "12 characters minimum", icon: LockKeyhole },
 ];
 
 const getConfiguredLockMethod = (savedSettings) => {
-    if (savedSettings?.method === "biometric" && savedSettings.biometricEnrolled) return "biometric";
+    if (savedSettings?.method === "biometric" && savedSettings.biometricEnrolled) return "fingerprint";
     if (["pin", "pattern", "password"].includes(savedSettings?.method) && savedSettings.hasCredential) return savedSettings.method;
     return null;
 };
@@ -45,14 +45,14 @@ const Settings = () => {
         if (!settings || selectedLockMethod !== null) return;
         const configuredMethod = getConfiguredLockMethod(settings);
         setConfiguredLockMethod(configuredMethod);
-        setSelectedLockMethod(configuredMethod);
+        setSelectedLockMethod(settings.enabled ? configuredMethod : null);
         setEnabled(Boolean(settings.enabled && configuredMethod));
         setLockOnHidden(settings.lockOnHidden !== false);
         setIdleTimeoutMinutes(Number(settings.idleTimeoutMinutes ?? 5));
         setBiometricEnabled(Boolean(settings.biometricEnabled));
     }, [settings]);
 
-    const needsCredential = selectedLockMethod && selectedLockMethod !== "biometric" && (
+    const needsCredential = selectedLockMethod && selectedLockMethod !== "fingerprint" && (
         selectedLockMethod !== configuredLockMethod || changeCredential
     );
 
@@ -62,7 +62,7 @@ const Settings = () => {
         setConfirmCredential("");
         setCredentialStage("first");
         setChangeCredential(false);
-        if (value === "biometric") setBiometricEnabled(true);
+        setBiometricEnabled(Boolean(settings?.biometricEnabled));
         setError("");
     };
 
@@ -79,7 +79,7 @@ const Settings = () => {
             const response = await startRegistration({ optionsJSON: options });
             await api.post("/app-lock/webauthn/register/verify", { response });
             await refreshStatus();
-            setConfiguredLockMethod("biometric");
+            setConfiguredLockMethod("fingerprint");
             setBiometricEnabled(true);
             setNotice("Platform authenticator registered and verified.");
         } catch (requestError) {
@@ -107,7 +107,7 @@ const Settings = () => {
             setError("Confirm that you want to disable App Lock.");
             return;
         }
-        if (enabled && biometricSupport !== true && (selectedLockMethod === "biometric" || biometricEnabled)) {
+        if (enabled && biometricSupport !== true && (selectedLockMethod === "fingerprint" || biometricEnabled)) {
             setError("This browser or device cannot use platform biometrics. Choose another method.");
             return;
         }
@@ -147,10 +147,10 @@ const Settings = () => {
             const body = {
                 currentPassword,
                 enabled,
-                method: selectedLockMethod,
+                method: selectedLockMethod === "fingerprint" ? "biometric" : selectedLockMethod,
                 lockOnHidden,
                 idleTimeoutMinutes: Number(idleTimeoutMinutes),
-                biometricEnabled: biometricEnabled || selectedLockMethod === "biometric",
+                biometricEnabled: biometricEnabled || selectedLockMethod === "fingerprint",
                 confirmDisable: confirmDisable && !enabled,
             };
             if (needsCredential) {
@@ -165,6 +165,7 @@ const Settings = () => {
             setChangeCredential(false);
             setConfirmDisable(false);
             setConfiguredLockMethod(getConfiguredLockMethod(data.settings));
+            setSelectedLockMethod(data.settings.enabled ? getConfiguredLockMethod(data.settings) : null);
             setEnabled(Boolean(data.settings.enabled));
             if (data.settings.enabled) {
                 await applySettings(data.settings);
@@ -225,11 +226,17 @@ const Settings = () => {
                                             : "Choose and configure a lock method before enabling App Lock.");
                                         return;
                                     }
-                                    if (event.target.checked && selectedLockMethod === "biometric" && biometricSupport !== true) {
+                                    if (event.target.checked && selectedLockMethod === "fingerprint" && biometricSupport !== true) {
                                         setError("This browser or device cannot use platform biometrics. Choose another method.");
                                         return;
                                     }
                                     setEnabled(event.target.checked);
+                                    if (!event.target.checked) {
+                                        setSelectedLockMethod(null);
+                                        setChangeCredential(false);
+                                        setCredential("");
+                                        setConfirmCredential("");
+                                    }
                                     setConfirmDisable(false);
                                     setError("");
                                 }}
@@ -248,14 +255,14 @@ const Settings = () => {
                                     key={id}
                                     type="button"
                                     aria-pressed={selectedLockMethod === id}
-                                    disabled={id === "biometric" && biometricSupport === false}
+                                    disabled={id === "fingerprint" && biometricSupport === false}
                                     onClick={() => selectMethod(id)}
                                     className={`flex min-h-20 items-center gap-3 rounded-xl border p-4 text-left transition ${selectedLockMethod === id ? "border-[#647447] bg-[#f3f5ef] ring-1 ring-[#647447]" : "border-slate-200 bg-white hover:border-slate-300"} disabled:cursor-not-allowed disabled:opacity-50`}
                                 >
                                     <Icon size={20} className={selectedLockMethod === id ? "text-[#53633b]" : "text-slate-500"} aria-hidden="true" />
                                     <span className="min-w-0 flex-1">
                                         <span className="block font-semibold text-slate-800">{label}</span>
-                                        <span className="mt-0.5 block text-xs text-slate-500">{id === "biometric" && biometricSupport === null ? "Checking device support..." : detail}</span>
+                                        <span className="mt-0.5 block text-xs text-slate-500">{id === "fingerprint" && biometricSupport === null ? "Checking device support..." : detail}</span>
                                     </span>
                                     {selectedLockMethod === id && <span className="sr-only">Selected</span>}
                                 </button>
@@ -264,7 +271,7 @@ const Settings = () => {
                         {biometricSupport === false && <p className="mt-3 text-sm text-amber-800">Platform biometric unlock is unavailable. Use HTTPS or localhost and a supported browser/device.</p>}
                     </div>
 
-                    {selectedLockMethod === "biometric" || biometricEnabled ? (
+                    {selectedLockMethod === "fingerprint" || biometricEnabled ? (
                         <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div>
@@ -277,7 +284,7 @@ const Settings = () => {
                                 </button>
                             </div>
                             <label className="mt-4 flex items-start gap-3 border-t border-slate-200 pt-4 text-sm text-slate-700">
-                                <input type="checkbox" checked={biometricEnabled || selectedLockMethod === "biometric"} disabled={!settings?.biometricEnrolled && selectedLockMethod !== "biometric"} onChange={(event) => setBiometricEnabled(event.target.checked)} className="mt-0.5 accent-[#647447]" />
+                                <input type="checkbox" checked={biometricEnabled || selectedLockMethod === "fingerprint"} disabled={!settings?.biometricEnrolled && selectedLockMethod !== "fingerprint"} onChange={(event) => setBiometricEnabled(event.target.checked)} className="mt-0.5 accent-[#647447]" />
                                 <span>Allow biometric unlock as an alternate method</span>
                             </label>
                         </div>
@@ -317,7 +324,7 @@ const Settings = () => {
                         </div>
                     )}
 
-                    {enabled && selectedLockMethod !== "biometric" && selectedLockMethod === configuredLockMethod && (
+                    {enabled && selectedLockMethod !== "fingerprint" && selectedLockMethod === configuredLockMethod && (
                         <label className="mt-5 flex items-start gap-3 text-sm text-slate-600">
                             <input type="checkbox" checked={changeCredential} onChange={(event) => { setChangeCredential(event.target.checked); setCredential(""); setConfirmCredential(""); setCredentialStage("first"); }} className="mt-0.5 accent-[#647447]" />
                             <span>Change my {lockMethods.find((item) => item.id === selectedLockMethod)?.label.toLowerCase()}</span>
