@@ -136,14 +136,20 @@ const AllExpensive = () => {
         }
 
         if (name === "category") {
+            const nextIsTravel = isTravelCategory(value);
             setForm((f) => ({
                 ...f,
                 category: value,
+                location: nextIsTravel ? "" : f.location,
+                from: nextIsTravel ? f.from : "",
+                to: nextIsTravel ? f.to : "",
             }));
             setValidationErrors((current) => {
                 const next = { ...current };
                 delete next.category;
-                if (!isTravelCategory(value)) {
+                if (nextIsTravel) {
+                    delete next.location;
+                } else {
                     delete next.from;
                     delete next.to;
                 }
@@ -229,14 +235,15 @@ const AllExpensive = () => {
         if (!form.title.trim()) errors.title = "Expense title is required.";
         if (!form.expense_amount || !Number.isFinite(amount) || amount <= 0) errors.expense_amount = "Enter an amount greater than 0.";
         if (!form.category) errors.category = "Select an expense category.";
-        if (!form.location.trim()) errors.location = "Enter a location.";
-        if (!validDate) errors.date = "Select a valid date.";
-        if (!validTime(form.time)) errors.time = "Select a valid time.";
-        if (!PAYMENT_METHODS.includes(form.payment_method)) errors.payment_method = "Select a payment method.";
         if (isTravel) {
             if (!form.from.trim()) errors.from = "Enter the travel starting location.";
             if (!form.to.trim()) errors.to = "Enter the travel destination.";
+        } else if (!form.location.trim()) {
+            errors.location = "Enter a location.";
         }
+        if (!validDate) errors.date = "Select a valid date.";
+        if (!validTime(form.time)) errors.time = "Select a valid time.";
+        if (!PAYMENT_METHODS.includes(form.payment_method)) errors.payment_method = "Select a payment method.";
 
         setValidationErrors(errors);
         if (Object.keys(errors).length) {
@@ -253,8 +260,7 @@ const AllExpensive = () => {
                     return;
                 }
 
-                if ((k === "from" || k === "to") && !isTravel) {
-                    payload.append(k, "");
+                if (k === "location" && isTravel) {
                     return;
                 }
 
@@ -901,7 +907,7 @@ const AllExpensive = () => {
                                 </Field>
                             </div>
 
-                            {isTravelCategory(form.category) && (
+                            {isTravelCategory(form.category) ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <Field label="Travel From *" icon={<FiMapPin />} error={validationErrors.from}>
                                         <input
@@ -924,18 +930,18 @@ const AllExpensive = () => {
                                         />
                                     </Field>
                                 </div>
+                            ) : (
+                                <Field label="Location *" icon={<FiMapPin />} error={validationErrors.location}>
+                                    <input
+                                        type="text"
+                                        name="location"
+                                        value={form.location}
+                                        onChange={handleChange}
+                                        placeholder="Where did you make this expense?"
+                                        className={fieldClass("location", inputCls)}
+                                    />
+                                </Field>
                             )}
-
-                            <Field label="Location *" icon={<FiMapPin />} error={validationErrors.location}>
-                                <input
-                                    type="text"
-                                    name="location"
-                                    value={form.location}
-                                    onChange={handleChange}
-                                    placeholder="Where did you make this expense?"
-                                    className={fieldClass("location", inputCls)}
-                                />
-                            </Field>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <Field label="Date *" icon={<FiCalendar />} error={validationErrors.date}>

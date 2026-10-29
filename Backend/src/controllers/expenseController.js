@@ -94,7 +94,8 @@ exports.createExpense = async (req, res) => {
         const isTravelExpense = isTravelCategory(category);
         const expenseTime = time || expense_time;
 
-        if (!title || !expense_amount || !String(category || "").trim() || !String(location || "").trim() || !isValidExpenseDate(date)
+        if (!title || !expense_amount || !String(category || "").trim()
+            || (!isTravelExpense && !String(location || "").trim()) || !isValidExpenseDate(date)
             || !isValidExpenseTime(expenseTime) || !PAYMENT_METHODS.includes(payment_method)) {
             return res.status(400).json({
                 message: "Title, amount, category, location, valid date and time, and payment method are required.",
@@ -224,7 +225,7 @@ exports.updateExpense = async (req, res) => {
 
         const effectiveFrom = String(from ?? existingExpense.from ?? "").trim();
         const effectiveTo = String(to ?? existingExpense.to ?? "").trim();
-        if (!String(effectiveCategory || "").trim() || !effectiveLocation
+        if (!String(effectiveCategory || "").trim() || (!isTravelExpense && !effectiveLocation)
             || !isValidExpenseDate(effectiveDate) || !isValidExpenseTime(String(effectiveTime || "").slice(0, 5))
             || !PAYMENT_METHODS.includes(effectivePaymentMethod)) {
             return res.status(400).json({
@@ -263,7 +264,7 @@ exports.updateExpense = async (req, res) => {
         const attachmentPath = req.file ? `/uploads/expense-receipts/${req.file.filename}` : existingExpense.attachment;
         const normalizedFrom = isTravelExpense ? String(from ?? existingExpense.from ?? "").trim() : "";
         const normalizedTo = isTravelExpense ? String(to ?? existingExpense.to ?? "").trim() : "";
-        const normalizedLocation = effectiveLocation || null;
+        const normalizedLocation = isTravelExpense ? null : effectiveLocation || null;
 
         await db.query(
             `UPDATE expenses
