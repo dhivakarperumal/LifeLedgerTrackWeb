@@ -308,6 +308,7 @@ const initializeDatabase = async () => {
       payment_method VARCHAR(100) DEFAULT 'Cash',
       expense_date DATE NOT NULL,
       expense_time TIME NULL,
+      travel_time TIME NULL,
       notes TEXT,
       location VARCHAR(255) NULL,
       recurring ENUM('Yes', 'No') NOT NULL DEFAULT 'No',
@@ -498,6 +499,7 @@ const initializeDatabase = async () => {
   await ensureColumn("expenses", "user_id", "VARCHAR(50) NULL");
   await ensureColumn("expenses", "transfer_id", "INT NULL");
   await ensureColumn("expenses", "expense_time", "TIME NULL");
+  await ensureColumn("expenses", "travel_time", "TIME NULL");
   await ensureColumn("expenses", "from", "VARCHAR(255) NULL");
   await ensureColumn("expenses", "to", "VARCHAR(255) NULL");
   await ensureColumn("expenses", "location", "VARCHAR(255) NULL");

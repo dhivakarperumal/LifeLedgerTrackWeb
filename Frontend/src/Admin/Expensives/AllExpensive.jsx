@@ -30,7 +30,8 @@ const emptyForm = () => ({
     location: "",
     from: "",
     to: "",
-    payment_method: "Cash",
+    travelTime: "",
+    payment_method: "",
     date: toLocalDateKey(),
     time: getCurrentTime(),
     notes: "",
@@ -70,6 +71,7 @@ const AllExpensive = () => {
     const [editId, setEditId] = useState(null);
     const [form, setForm] = useState(emptyForm());
     const [saving, setSaving] = useState(false);
+    const [validationErrors, setValidationErrors] = useState({});
     // toggle: false = select from list, true = enter manually
     const [manualTransfer, setManualTransfer] = useState(false);
 
@@ -78,6 +80,9 @@ const AllExpensive = () => {
     const selectedTransfer = form.transfer_id ? transfers.find((t) => String(t.id) === String(form.transfer_id)) : null;
     const trfAmt = Number(form.transfer_amount !== "" ? form.transfer_amount : (selectedTransfer?.remaining_amount ?? selectedTransfer?.amount ?? 0));
     const remaining = form.transfer_amount !== "" || selectedTransfer ? trfAmt - expAmt : null;
+    const fieldClass = (name, baseClass) => validationErrors[name]
+        ? `${baseClass} !border-red-300 focus:!border-red-400 focus:!ring-rose-100`
+        : baseClass;
 
     // ── fetch ─────────────────────────────────────────────────────────────────
     const fetchAll = async () => {
@@ -132,23 +137,37 @@ const AllExpensive = () => {
         }
 
         if (name === "category") {
-            const nextIsTravel = isTravelCategory(value);
             setForm((f) => ({
                 ...f,
                 category: value,
-                from: nextIsTravel ? f.from : "",
-                to: nextIsTravel ? f.to : "",
             }));
+            setValidationErrors((current) => {
+                const next = { ...current };
+                delete next.category;
+                if (!isTravelCategory(value)) {
+                    delete next.from;
+                    delete next.to;
+                    delete next.travelTime;
+                }
+                return next;
+            });
             return;
         }
 
         setForm((f) => ({ ...f, [name]: value }));
+        setValidationErrors((current) => {
+            if (!current[name]) return current;
+            const next = { ...current };
+            delete next[name];
+            return next;
+        });
     };
 
     const openCreateModal = () => {
         setEditId(null);
         setModalMode("add");
         setForm(emptyForm());
+        setValidationErrors({});
         setManualTransfer(false);
         setIsOpen(true);
     };
@@ -165,14 +184,16 @@ const AllExpensive = () => {
             location: expense.location || "",
             from: expense.from || "",
             to: expense.to || "",
-            payment_method: expense.payment_method || "Cash",
+            payment_method: expense.payment_method || "",
             date: toLocalDateKey(expense.expense_date) || toLocalDateKey(),
             time: expense.expense_time ? String(expense.expense_time).slice(0, 5) : getCurrentTime(),
+            travelTime: expense.travel_time ? String(expense.travel_time).slice(0, 5) : "",
             notes: expense.notes || "",
             attachment: null,
         });
         setManualTransfer(!expense.transfer_id);
         setIsOpen(true);
+        setValidationErrors({});
     };
 
     const openViewExpense = (expense) => {
@@ -191,22 +212,42 @@ const AllExpensive = () => {
         setEditId(null);
         setModalMode("add");
         setForm(emptyForm());
+        setValidationErrors({});
         setManualTransfer(false);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         const isTravel = isTravelCategory(form.category);
+        const errors = {};
+        const amount = Number(form.expense_amount);
+        const [year, month, day] = form.date.split("-").map(Number);
+        const parsedDate = new Date(Date.UTC(year, month - 1, day));
+        const validDate = /^\d{4}-\d{2}-\d{2}$/.test(form.date)
+            && parsedDate.getUTCFullYear() === year
+            && parsedDate.getUTCMonth() === month - 1
+            && parsedDate.getUTCDate() === day;
+        const validTime = (value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 
-        if (!form.title || !form.expense_amount || !form.category || !form.date) {
-            toast.error("Please fill all required fields.");
+        if (!form.title.trim()) errors.title = "Expense title is required.";
+        if (!form.expense_amount || !Number.isFinite(amount) || amount <= 0) errors.expense_amount = "Enter an amount greater than 0.";
+        if (!form.category) errors.category = "Select an expense category.";
+        if (!form.location.trim()) errors.location = "Enter a location.";
+        if (!validDate) errors.date = "Select a valid date.";
+        if (!validTime(form.time)) errors.time = "Select a valid time.";
+        if (!PAYMENT_METHODS.includes(form.payment_method)) errors.payment_method = "Select a payment method.";
+        if (isTravel) {
+            if (!form.from.trim()) errors.from = "Enter the travel starting location.";
+            if (!form.to.trim()) errors.to = "Enter the travel destination.";
+            if (!validTime(form.travelTime)) errors.travelTime = "Select a valid travel time.";
+        }
+
+        setValidationErrors(errors);
+        if (Object.keys(errors).length) {
+            toast.error("Please correct the highlighted required fields.");
             return;
         }
 
-        if (isTravel && (!String(form.from || "").trim() || !String(form.to || "").trim())) {
-            toast.error("Travel expenses require both From and To locations.");
-            return;
-        }
         setSaving(true);
         try {
             const payload = new FormData();
@@ -221,7 +262,11 @@ const AllExpensive = () => {
                     return;
                 }
 
-                if (k === "from" || k === "to") {
+                if (k === "from" || k === "to" || k === "travelTime") {
+                    if (!isTravel) {
+                        if (k === "travelTime") payload.append(k, "");
+                        return;
+                    }
                     if (v !== null && v !== undefined && String(v).trim() !== "") {
                         payload.append(k, String(v));
                     }
@@ -688,36 +733,34 @@ const AllExpensive = () => {
                         </div>
 
                         {/* ── body ── */}
-                        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-8 py-6 space-y-5">
+                        <form noValidate onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-8 py-6 space-y-5">
 
                             {/* Expense Title */}
-                            <Field label="Expense Title *" icon={<FiFileText />}>
+                            <Field label="Expense Title *" icon={<FiFileText />} error={validationErrors.title}>
                                 <input
                                     autoFocus
                                     type="text"
                                     name="title"
-                                    required
                                     value={form.title}
                                     onChange={handleChange}
                                     placeholder="e.g. Monthly Grocery"
-                                    className={inputCls}
+                                    className={fieldClass("title", inputCls)}
                                 />
                             </Field>
 
                             {/* Amount row */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {/* Expense Amount */}
-                                <Field label="Expense Amount ₹ *" icon={<FaRupeeSign />}>
+                                <Field label="Expense Amount ₹ *" icon={<FaRupeeSign />} error={validationErrors.expense_amount}>
                                     <input
                                         type="number"
                                         name="expense_amount"
-                                        required
                                         min="0.01"
                                         step="0.01"
                                         value={form.expense_amount}
                                         onChange={handleChange}
                                         placeholder="0.00"
-                                        className={inputCls}
+                                        className={fieldClass("expense_amount", inputCls)}
                                     />
                                 </Field>
 
@@ -838,89 +881,94 @@ const AllExpensive = () => {
 
                             {/* Category + Payment Method */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Field label="Expense Category *" icon={<FiTag />}>
+                                <Field label="Expense Category *" icon={<FiTag />} error={validationErrors.category}>
                                     <select
                                         name="category"
-                                        required
                                         value={form.category}
                                         onChange={handleChange}
-                                        className={selectCls}
+                                        className={fieldClass("category", selectCls)}
                                     >
                                         <option value="">{categoryOptions.length ? "Select a category" : "No categories available"}</option>
                                         {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </Field>
 
-                                <Field label="Payment Method" icon={<FiCreditCard />}>
+                                <Field label="Payment Method *" icon={<FiCreditCard />} error={validationErrors.payment_method}>
                                     <select
                                         name="payment_method"
                                         value={form.payment_method}
                                         onChange={handleChange}
-                                        className={selectCls}
+                                        className={fieldClass("payment_method", selectCls)}
                                     >
+                                        <option value="">Select a payment method</option>
                                         {PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}
                                     </select>
                                 </Field>
                             </div>
 
-                            <Field label="Location" icon={<FiMapPin />}>
+                            {isTravelCategory(form.category) && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field label="Travel From *" icon={<FiMapPin />} error={validationErrors.from}>
+                                        <input
+                                            type="text"
+                                            name="from"
+                                            value={form.from}
+                                            onChange={handleChange}
+                                            placeholder="Starting location"
+                                            className={fieldClass("from", inputCls)}
+                                        />
+                                    </Field>
+                                    <Field label="Travel To *" icon={<FiMapPin />} error={validationErrors.to}>
+                                        <input
+                                            type="text"
+                                            name="to"
+                                            value={form.to}
+                                            onChange={handleChange}
+                                            placeholder="Destination"
+                                            className={fieldClass("to", inputCls)}
+                                        />
+                                    </Field>
+                                    <Field label="Travel Time" icon={<FiCalendar />} error={validationErrors.travelTime}>
+                                        <input
+                                            type="time"
+                                            name="travelTime"
+                                            value={form.travelTime}
+                                            onChange={handleChange}
+                                            className={fieldClass("travelTime", inputCls)}
+                                        />
+                                    </Field>
+                                </div>
+                            )}
+
+                            <Field label="Location *" icon={<FiMapPin />} error={validationErrors.location}>
                                 <input
                                     type="text"
                                     name="location"
                                     value={form.location}
                                     onChange={handleChange}
                                     placeholder="Where did you make this expense?"
-                                    className={inputCls}
+                                    className={fieldClass("location", inputCls)}
                                 />
                             </Field>
 
-                            {isTravelCategory(form.category) && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <Field label="From *" icon={<FiMapPin />}>
-                                        <input
-                                            type="text"
-                                            name="from"
-                                            value={form.from}
-                                            onChange={handleChange}
-                                            placeholder="Ambur"
-                                            className={inputCls}
-                                            required
-                                        />
-                                    </Field>
-
-                                    <Field label="To *" icon={<FiMapPin />}>
-                                        <input
-                                            type="text"
-                                            name="to"
-                                            value={form.to}
-                                            onChange={handleChange}
-                                            placeholder="Chennai"
-                                            className={inputCls}
-                                            required
-                                        />
-                                    </Field>
-                                </div>
-                            )}
-
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Field label="Date *" icon={<FiCalendar />}>
+                                <Field label="Date *" icon={<FiCalendar />} error={validationErrors.date}>
                                     <input
                                         type="date"
                                         name="date"
-                                        required
                                         value={form.date}
                                         onChange={handleChange}
-                                        className={inputCls}
+                                        className={fieldClass("date", inputCls)}
                                     />
                                 </Field>
 
-                                <Field label="Time" icon={<FiCalendar />}>
+                                <Field label="Time *" icon={<FiCalendar />} error={validationErrors.time}>
                                     <input
                                         type="time"
                                         name="time"
-                                        value={form.time || getCurrentTime()}
+                                        value={form.time}
                                         onChange={handleChange}
-                                        className={inputCls}
+                                        className={fieldClass("time", inputCls)}
                                     />
                                 </Field>
                             </div>
@@ -983,13 +1031,16 @@ const inputCls =
 const selectCls =
     "w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#7b2cbf]/30 rounded-xl outline-none font-medium text-slate-700 transition-all text-sm cursor-pointer";
 
-const Field = ({ label, icon, children }) => (
+const Field = ({ label, icon, children, error }) => (
     <div className="space-y-1.5">
         <label className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
             <span className="text-[#7b2cbf]">{icon}</span>
-            {label}
+            {label.endsWith(" *") ? (
+                <>{label.slice(0, -2)} <span className="text-red-500">*</span></>
+            ) : label}
         </label>
         {children}
+        {error && <p role="alert" className="text-xs font-medium text-red-600">{error}</p>}
     </div>
 );
 

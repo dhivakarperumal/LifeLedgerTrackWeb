@@ -1,6 +1,13 @@
 const db = require("../config/db");
 
 const isTravelCategory = (value) => String(value || "").replace(/[^a-z]/gi, "").toLowerCase() === "travel";
+const isValidExpenseDate = (value) => {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const date = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+const isValidExpenseTime = (value) => typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+const PAYMENT_METHODS = ["Cash", "UPI", "Bank Transfer", "Card", "Cheque", "Other"];
 
 const getTransferRemaining = async (transferId, excludedExpenseId = null) => {
     const expenseQuery = excludedExpenseId
@@ -82,19 +89,22 @@ exports.createExpense = async (req, res) => {
             recurring,
             from,
             to,
+            travelTime,
         } = req.body;
 
         const isTravelExpense = isTravelCategory(category);
+        const expenseTime = time || expense_time;
 
-        if (!title || !expense_amount || !category || !date) {
+        if (!title || !expense_amount || !String(category || "").trim() || !String(location || "").trim() || !isValidExpenseDate(date)
+            || !isValidExpenseTime(expenseTime) || !PAYMENT_METHODS.includes(payment_method)) {
             return res.status(400).json({
-                message: "Title, expense amount, category, and date are required.",
+                message: "Title, amount, category, location, valid date and time, and payment method are required.",
             });
         }
 
-        if (isTravelExpense && (!String(from || "").trim() || !String(to || "").trim())) {
+        if (isTravelExpense && (!String(from || "").trim() || !String(to || "").trim() || !isValidExpenseTime(travelTime))) {
             return res.status(400).json({
-                message: "Travel expenses require both From and To locations.",
+                message: "Travel expenses require From, To, and a valid travel time.",
             });
         }
 
@@ -133,16 +143,15 @@ exports.createExpense = async (req, res) => {
         const attachmentPath = req.file
             ? `/uploads/expense-receipts/${req.file.filename}`
             : null;
-        const expenseTime = time || expense_time || null;
-
         const normalizedFrom = isTravelExpense ? String(from || "").trim() : null;
         const normalizedTo = isTravelExpense ? String(to || "").trim() : null;
         const normalizedLocation = String(location || "").trim() || null;
+        const normalizedTravelTime = isTravelExpense ? travelTime : null;
 
         const [result] = await db.query(
             `INSERT INTO expenses
-                (user_id, title, expense_amount, transfer_amount, transfer_id, remaining_amount, category, payment_method, expense_date, expense_time, notes, location, recurring, attachment, \`from\`, \`to\`, created_by, updated_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                (user_id, title, expense_amount, transfer_amount, transfer_id, remaining_amount, category, payment_method, expense_date, expense_time, travel_time, notes, location, recurring, attachment, \`from\`, \`to\`, created_by, updated_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 req.user?.user_id || null,
                 title.trim(),
@@ -154,6 +163,7 @@ exports.createExpense = async (req, res) => {
                 payment_method || "Cash",
                 date,
                 expenseTime,
+                normalizedTravelTime,
                 notes || null,
                 normalizedLocation,
                 recurring === "Yes" ? "Yes" : "No",
@@ -195,6 +205,7 @@ exports.updateExpense = async (req, res) => {
             recurring,
             from,
             to,
+            travelTime,
         } = req.body;
 
         const [existingRows] = await db.query("SELECT * FROM expenses WHERE id = ? AND user_id = ?", [id, req.user?.user_id]);
@@ -206,13 +217,27 @@ exports.updateExpense = async (req, res) => {
 
         const effectiveCategory = category || existingExpense.category;
         const isTravelExpense = isTravelCategory(effectiveCategory);
+        const effectiveDate = date || existingExpense.expense_date;
+        const effectiveTime = time || expense_time || existingExpense.expense_time;
+        const effectivePaymentMethod = payment_method || existingExpense.payment_method;
+        const effectiveLocation = location !== undefined ? String(location || "").trim() : String(existingExpense.location || "").trim();
         const numericExpense = expense_amount ? Number(expense_amount) : Number(existingExpense.expense_amount);
         const numericTransfer = transfer_amount ? Number(transfer_amount) : existingExpense.transfer_amount;
         const currentTransferId = existingExpense.transfer_id ? Number(existingExpense.transfer_id) : null;
         const validTransferId = transfer_id !== undefined ? (transfer_id ? Number(transfer_id) : null) : currentTransferId;
 
-        if (isTravelExpense && (!String(from ?? existingExpense.from ?? "").trim() || !String(to ?? existingExpense.to ?? "").trim())) {
-            return res.status(400).json({ message: "Travel expenses require both From and To locations." });
+        const effectiveFrom = String(from ?? existingExpense.from ?? "").trim();
+        const effectiveTo = String(to ?? existingExpense.to ?? "").trim();
+        const effectiveTravelTime = travelTime ?? existingExpense.travel_time;
+        if (!String(effectiveCategory || "").trim() || !effectiveLocation
+            || !isValidExpenseDate(effectiveDate) || !isValidExpenseTime(String(effectiveTime || "").slice(0, 5))
+            || !PAYMENT_METHODS.includes(effectivePaymentMethod)) {
+            return res.status(400).json({
+                message: "Category, location, valid date and time, and payment method are required.",
+            });
+        }
+        if (isTravelExpense && (!effectiveFrom || !effectiveTo || !isValidExpenseTime(String(effectiveTravelTime || "").slice(0, 5)))) {
+            return res.status(400).json({ message: "Travel expenses require From, To, and a valid travel time." });
         }
 
         if (!Number.isFinite(numericExpense) || numericExpense <= 0) {
@@ -241,16 +266,14 @@ exports.updateExpense = async (req, res) => {
 
         const remaining = numericTransfer !== null ? numericTransfer - numericExpense : null;
         const attachmentPath = req.file ? `/uploads/expense-receipts/${req.file.filename}` : existingExpense.attachment;
-        const expenseTime = time || expense_time || existingExpense.expense_time || null;
         const normalizedFrom = isTravelExpense ? String(from ?? existingExpense.from ?? "").trim() : "";
         const normalizedTo = isTravelExpense ? String(to ?? existingExpense.to ?? "").trim() : "";
-        const normalizedLocation = location !== undefined
-            ? String(location || "").trim() || null
-            : existingExpense.location;
+        const normalizedLocation = effectiveLocation || null;
+        const normalizedTravelTime = isTravelExpense ? effectiveTravelTime : null;
 
         await db.query(
             `UPDATE expenses
-             SET user_id = ?, title = ?, expense_amount = ?, transfer_amount = ?, transfer_id = ?, remaining_amount = ?, category = ?, payment_method = ?, expense_date = ?, expense_time = ?, notes = ?, location = ?, recurring = ?, attachment = ?, \`from\` = ?, \`to\` = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+             SET user_id = ?, title = ?, expense_amount = ?, transfer_amount = ?, transfer_id = ?, remaining_amount = ?, category = ?, payment_method = ?, expense_date = ?, expense_time = ?, travel_time = ?, notes = ?, location = ?, recurring = ?, attachment = ?, \`from\` = ?, \`to\` = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ? AND user_id = ?`,
             [
                 req.user?.user_id || existingExpense.user_id,
@@ -259,10 +282,11 @@ exports.updateExpense = async (req, res) => {
                 numericTransfer,
                 validTransferId,
                 remaining,
-                category || existingExpense.category,
-                payment_method || existingExpense.payment_method,
-                date || existingExpense.expense_date,
-                expenseTime,
+                effectiveCategory,
+                effectivePaymentMethod,
+                effectiveDate,
+                effectiveTime,
+                normalizedTravelTime,
                 notes !== undefined ? notes : existingExpense.notes,
                 normalizedLocation,
                 recurring === "Yes" ? "Yes" : (recurring === "No" ? "No" : existingExpense.recurring),
