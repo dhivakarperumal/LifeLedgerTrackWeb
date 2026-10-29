@@ -447,7 +447,7 @@ const AllExpensive = () => {
                         <table className="w-full text-left text-sm">
                             <thead>
                                 <tr className="bg-gradient-to-r from-[#1F0A3C] to-[#3c096c]">
-                                    {["S No", "Title", "Category", "Expense Amt", "Transfer Amt", "Remaining", "Payment", "Date",  "Action"].map((h) => (
+                                    {["S No", "Title", "Category", "Expense Amt", "Transfer Amt", "Remaining", "Payment", "Date", "Action"].map((h) => (
                                         <th key={h} className="px-4 py-4 text-[11px] font-bold text-[#FCD34D] uppercase tracking-wider whitespace-nowrap">{h}</th>
                                     ))}
                                 </tr>
@@ -461,6 +461,8 @@ const AllExpensive = () => {
                                             <td className="px-4 py-4 text-gray-500 font-medium">{(safeCurrentPage - 1) * pageSize + i + 1}</td>
                                             <td className="px-4 py-4">
                                                 <p className="font-bold text-slate-800 max-w-[160px] truncate">{ex.title}</p>
+                                                {ex.from && <p className="text-[11px] text-violet-600 truncate max-w-[160px]">From: {ex.from}</p>}
+                                                {ex.to && <p className="text-[11px] text-violet-600 truncate max-w-[160px]">To: {ex.to}</p>}
                                                 {ex.location && <p className="text-[11px] text-violet-600 truncate max-w-[160px]">{ex.location}</p>}
                                                 {ex.notes && <p className="text-[11px] text-gray-400 truncate max-w-[160px]">{ex.notes}</p>}
                                             </td>

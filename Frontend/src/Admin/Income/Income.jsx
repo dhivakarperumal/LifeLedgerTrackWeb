@@ -47,7 +47,7 @@ const formatDateTime = (value) => value ? new Date(value).toLocaleString("en-IN"
   minute: "2-digit",
 }) : "-";
 
-const Billing = () => {
+const Income = () => {
   const location = useLocation();
   const { monthlyBudget, setMonthlyBudget } = useContext(StoreContext);
   const isIncomePage =
@@ -1481,4 +1481,4 @@ const IncomeStatCard = ({
   </div>
 );
 
-export default Billing;
+export default Income;

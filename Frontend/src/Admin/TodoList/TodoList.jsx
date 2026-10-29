@@ -716,6 +716,18 @@ const TodoList = () => {
               <option value="All">All</option>
               {STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}
             </select>
+
+            <label className=" flex items-center gap-2 text-xs font-bold text-slate-500">
+           
+            <select
+              aria-label="Filter by due date"
+              value={dueDateFilter}
+              onChange={(event) => setDueDateFilter(event.target.value)}
+              className="h-13 min-w-40 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+            >
+              {DATE_FILTERS.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
             <div className="flex h-[52px] shrink-0 items-center rounded-2xl border border-slate-200 bg-slate-100/80 p-1">
               <button
                 type="button"
@@ -744,17 +756,7 @@ const TodoList = () => {
               <Plus size={19} /> Add Task
             </button>
           </div>
-          <label className="mt-2.5 flex items-center gap-2 text-xs font-bold text-slate-500">
-            Due date:
-            <select
-              aria-label="Filter by due date"
-              value={dueDateFilter}
-              onChange={(event) => setDueDateFilter(event.target.value)}
-              className="h-10 min-w-40 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-            >
-              {DATE_FILTERS.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </label>
+          
         </section>
 
         {loading ? (

@@ -19,25 +19,25 @@ const Register = React.lazy(() => import("./Components/Auth/Register.jsx"));
 const AdminPanel = React.lazy(() => import("./Admin/AdminPanel.jsx"));
 const Dashboard = React.lazy(() => import("./Admin/Dashboard.jsx"));
 
-const AllExpensive = React.lazy(() => import("./Admin/Pages/AllExpensive.jsx"));
-const ExpenseDetails = React.lazy(() => import("./Admin/Pages/ExpenseDetails.jsx"));
-const Category = React.lazy(() => import("./Admin/Pages/Category.jsx"));
-const DiaryManagement = React.lazy(() => import("./Admin/Pages/DiaryManagement.jsx"));
-const DiaryDetails = React.lazy(() => import("./Admin/Pages/DiaryDetails.jsx"));
-const MemoriesManagement = React.lazy(() => import("./Admin/Pages/MemoriesManagement.jsx"));
-const MemoryDetails = React.lazy(() => import("./Admin/Pages/MemoryDetails.jsx"));
+const AllExpensive = React.lazy(() => import("./Admin/Expensives/AllExpensive.jsx"));
+const ExpenseDetails = React.lazy(() => import("./Admin/Expensives/ExpenseDetails.jsx"));
+const Category = React.lazy(() => import("./Admin/Category/Category.jsx"));
+const DiaryManagement = React.lazy(() => import("./Admin/Diary/DiaryManagement.jsx"));
+const DiaryDetails = React.lazy(() => import("./Admin/Diary/DiaryDetails.jsx"));
+const MemoriesManagement = React.lazy(() => import("./Admin/Memories/MemoriesManagement.jsx"));
+const MemoryDetails = React.lazy(() => import("./Admin/Memories/MemoryDetails.jsx"));
 
-const Users = React.lazy(() => import("./Admin/Pages/Users.jsx"));
-const UserDetails = React.lazy(() => import("./Admin/Pages/UserDetails.jsx"));
+const Users = React.lazy(() => import("./Admin/Customers/Users.jsx"));
+const UserDetails = React.lazy(() => import("./Admin/Customers/UserDetails.jsx"));
 
 const ErrorPage = React.lazy(() => import("./Admin/Pages/ErrorPage.jsx"));
-const Transfer = React.lazy(() => import("./Admin/Pages/Transfer.jsx"));
-const Income = React.lazy(() => import("./Admin/Pages/Billing.jsx"));
-const Reports = React.lazy(() => import("./Admin/Pages/Reports.jsx"));
-const CalendarReminder = React.lazy(() => import("./Admin/Pages/CalendarReminder.jsx"));
-const TodoList = React.lazy(() => import("./Admin/Pages/TodoList.jsx"));
-const Profile = React.lazy(() => import("./Admin/Pages/Profile.jsx"));
-const Settings = React.lazy(() => import("./Admin/Pages/Settings.jsx"));
+const Transfer = React.lazy(() => import("./Admin/Tranfers/Transfer.jsx"));
+const Income = React.lazy(() => import("./Admin/Income/Income.jsx"));
+const Reports = React.lazy(() => import("./Admin/Reports/Reports.jsx"));
+const CalendarReminder = React.lazy(() => import("./Admin/Calender/CalendarReminder.jsx"));
+const TodoList = React.lazy(() => import("./Admin/TodoList/TodoList.jsx"));
+const Profile = React.lazy(() => import("./Admin/Customers/Profile.jsx"));
+const Settings = React.lazy(() => import("./Admin/Securitys/Settings.jsx"));
 
 const router = createHashRouter([
   {
