@@ -91,11 +91,14 @@ export const AppLockProvider = ({ children }) => {
         setLocked(Boolean(data.enabled));
         if (data.enabled) channelRef.current?.postMessage({ type: "lock" });
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
-        setSettings({ enabled: true, method: "password", biometricEnabled: false, biometricEnrolled: false });
+        setSettings(null);
         setLocked(true);
-        setLoadError("Security status could not be verified. Retry before opening private data.");
+        setLoadError(
+          error?.response?.data?.message
+            || "Security status could not be verified. Retry before opening private data.",
+        );
       })
       .finally(() => active && setLoading(false));
 
