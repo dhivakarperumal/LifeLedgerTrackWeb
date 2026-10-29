@@ -243,12 +243,15 @@ exports.configure = async (req, res) => {
   try {
     const { currentPassword, enabled, method, credential, confirmCredential, lockOnHidden, idleTimeoutMinutes, confirmDisable } = req.body;
     const prior = await getSettings(req.user.user_id);
-    const biometricEnabled = Boolean(req.body.biometricEnabled || (enabled && method === "biometric"));
+    const selectedMethod = methods.has(method) ? method : null;
+    const biometricEnabled = req.body.biometricEnabled === undefined
+      ? Boolean(prior?.biometric_enabled || (enabled && selectedMethod === "biometric"))
+      : Boolean(req.body.biometricEnabled || (enabled && selectedMethod === "biometric"));
     if (!await verifyAccountPassword(req.user.user_id, currentPassword)) {
       return res.status(401).json({ message: "Confirm your account password to change security settings." });
     }
     if (typeof enabled !== "boolean") return res.status(400).json({ message: "Choose whether App Lock is enabled." });
-    if (enabled && !methods.has(method)) return res.status(400).json({ message: "Choose a valid lock method." });
+    if (enabled && !selectedMethod) return res.status(400).json({ message: "Choose a valid lock method." });
     if (!enabled && prior?.enabled && confirmDisable !== true) return res.status(400).json({ message: "Confirm before disabling App Lock." });
 
     const timeout = Number(idleTimeoutMinutes);
@@ -257,18 +260,21 @@ exports.configure = async (req, res) => {
     }
 
     let credentialHash;
-    if (enabled && method !== "biometric") {
+    if (selectedMethod && selectedMethod !== "biometric") {
       const replacingCredential = credential !== undefined || confirmCredential !== undefined;
       if (replacingCredential) {
-        const validationError = validateCredential(method, credential);
+        const validationError = validateCredential(selectedMethod, credential);
         if (validationError) return res.status(400).json({ message: validationError });
         if (credential !== confirmCredential) return res.status(400).json({ message: "The lock credentials do not match." });
         credentialHash = await bcrypt.hash(credential, 12);
-      } else if (method !== prior?.method || !prior?.credential_hash) {
+      } else if (selectedMethod !== prior?.method || !prior?.credential_hash) {
         return res.status(400).json({ message: "Set and confirm a lock credential for this method." });
       }
     }
 
+    if (selectedMethod === "biometric" && !prior?.webauthn_credential_id) {
+      return res.status(400).json({ message: "Register a platform authenticator before selecting biometric unlock." });
+    }
     if (enabled && biometricEnabled && !prior?.webauthn_credential_id) {
       return res.status(400).json({ message: "Register a platform authenticator before enabling biometric unlock." });
     }
@@ -281,7 +287,7 @@ exports.configure = async (req, res) => {
        credential_hash = COALESCE(VALUES(credential_hash), credential_hash),
        lock_on_hidden = VALUES(lock_on_hidden), idle_timeout_minutes = VALUES(idle_timeout_minutes),
        biometric_enabled = VALUES(biometric_enabled)`,
-      [req.user.user_id, enabled ? 1 : 0, enabled ? method : prior?.method || "pin", credentialHash || null,
+      [req.user.user_id, enabled ? 1 : 0, selectedMethod || prior?.method || "pin", credentialHash || null,
         lockOnHidden === false ? 0 : 1, timeout, biometricEnabled ? 1 : 0]
     );
 

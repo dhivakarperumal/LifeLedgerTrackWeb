@@ -12,10 +12,17 @@ const lockMethods = [
     { id: "password", label: "Password", detail: "12 characters minimum", icon: LockKeyhole },
 ];
 
+const getConfiguredLockMethod = (savedSettings) => {
+    if (savedSettings?.method === "biometric" && savedSettings.biometricEnrolled) return "biometric";
+    if (["pin", "pattern", "password"].includes(savedSettings?.method) && savedSettings.hasCredential) return savedSettings.method;
+    return null;
+};
+
 const Settings = () => {
     const { settings, applySettings, refreshStatus, lock } = useAppLock();
     const [enabled, setEnabled] = useState(false);
-    const [method, setMethod] = useState("pin");
+    const [selectedLockMethod, setSelectedLockMethod] = useState(null);
+    const [configuredLockMethod, setConfiguredLockMethod] = useState(null);
     const [lockOnHidden, setLockOnHidden] = useState(true);
     const [idleTimeoutMinutes, setIdleTimeoutMinutes] = useState(5);
     const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -35,24 +42,26 @@ const Settings = () => {
     }, []);
 
     useEffect(() => {
-        if (!settings) return;
-        setEnabled(Boolean(settings.enabled));
-        setMethod(settings.method || "pin");
+        if (!settings || selectedLockMethod !== null) return;
+        const configuredMethod = getConfiguredLockMethod(settings);
+        setConfiguredLockMethod(configuredMethod);
+        setSelectedLockMethod(configuredMethod);
+        setEnabled(Boolean(settings.enabled && configuredMethod));
         setLockOnHidden(settings.lockOnHidden !== false);
         setIdleTimeoutMinutes(Number(settings.idleTimeoutMinutes ?? 5));
         setBiometricEnabled(Boolean(settings.biometricEnabled));
     }, [settings]);
 
-    const needsCredential = enabled && method !== "biometric" && (
-        method !== settings?.method || !settings?.hasCredential || changeCredential
+    const needsCredential = selectedLockMethod && selectedLockMethod !== "biometric" && (
+        selectedLockMethod !== configuredLockMethod || changeCredential
     );
 
     const selectMethod = (value) => {
-        setMethod(value);
+        setSelectedLockMethod(value);
         setCredential("");
         setConfirmCredential("");
         setCredentialStage("first");
-        setChangeCredential(value !== settings?.method || !settings?.hasCredential);
+        setChangeCredential(false);
         if (value === "biometric") setBiometricEnabled(true);
         setError("");
     };
@@ -70,6 +79,7 @@ const Settings = () => {
             const response = await startRegistration({ optionsJSON: options });
             await api.post("/app-lock/webauthn/register/verify", { response });
             await refreshStatus();
+            setConfiguredLockMethod("biometric");
             setBiometricEnabled(true);
             setNotice("Platform authenticator registered and verified.");
         } catch (requestError) {
@@ -85,6 +95,10 @@ const Settings = () => {
         event.preventDefault();
         setError("");
         setNotice("");
+        if (enabled && !selectedLockMethod) {
+            setError("Choose and configure a lock method before enabling App Lock.");
+            return;
+        }
         if (!currentPassword) {
             setError("Enter your account password to confirm security changes.");
             return;
@@ -93,7 +107,7 @@ const Settings = () => {
             setError("Confirm that you want to disable App Lock.");
             return;
         }
-        if (enabled && biometricSupport === false && (method === "biometric" || biometricEnabled)) {
+        if (enabled && biometricSupport !== true && (selectedLockMethod === "biometric" || biometricEnabled)) {
             setError("This browser or device cannot use platform biometrics. Choose another method.");
             return;
         }
@@ -102,11 +116,11 @@ const Settings = () => {
             return;
         }
         if (needsCredential) {
-            if (method !== "password" && credentialStage !== "ready") {
+            if (selectedLockMethod !== "password" && credentialStage !== "ready") {
                 setError("Enter and confirm the new lock credential.");
                 return;
             }
-            if (method === "password" && (!credential || !confirmCredential)) {
+            if (selectedLockMethod === "password" && (!credential || !confirmCredential)) {
                 setError("Enter and confirm the new lock password.");
                 return;
             }
@@ -114,15 +128,15 @@ const Settings = () => {
                 setError("The new lock credentials do not match.");
                 return;
             }
-            if (method === "pin" && !/^\d{4,6}$/.test(credential)) {
+            if (selectedLockMethod === "pin" && !/^\d{4,6}$/.test(credential)) {
                 setError("PIN must contain 4 to 6 digits.");
                 return;
             }
-            if (method === "pattern" && (credential.split(",").length < 4 || new Set(credential.split(",")).size !== credential.split(",").length)) {
+            if (selectedLockMethod === "pattern" && (credential.split(",").length < 4 || new Set(credential.split(",")).size !== credential.split(",").length)) {
                 setError("Pattern must use at least 4 different dots.");
                 return;
             }
-            if (method === "password" && (credential.length < 12 || credential.length > 128)) {
+            if (selectedLockMethod === "password" && (credential.length < 12 || credential.length > 128)) {
                 setError("Lock password must be between 12 and 128 characters.");
                 return;
             }
@@ -133,10 +147,10 @@ const Settings = () => {
             const body = {
                 currentPassword,
                 enabled,
-                method,
+                method: selectedLockMethod,
                 lockOnHidden,
                 idleTimeoutMinutes: Number(idleTimeoutMinutes),
-                biometricEnabled: biometricEnabled || method === "biometric",
+                biometricEnabled: biometricEnabled || selectedLockMethod === "biometric",
                 confirmDisable: confirmDisable && !enabled,
             };
             if (needsCredential) {
@@ -150,6 +164,8 @@ const Settings = () => {
             setCurrentPassword("");
             setChangeCredential(false);
             setConfirmDisable(false);
+            setConfiguredLockMethod(getConfiguredLockMethod(data.settings));
+            setEnabled(Boolean(data.settings.enabled));
             if (data.settings.enabled) {
                 await applySettings(data.settings);
             } else {
@@ -199,7 +215,27 @@ const Settings = () => {
                         </div>
                         <label className="inline-flex cursor-pointer items-center gap-3">
                             <span className="text-sm font-semibold text-slate-700">{enabled ? "Enabled" : "Disabled"}</span>
-                            <input type="checkbox" checked={enabled} onChange={(event) => { setEnabled(event.target.checked); setConfirmDisable(false); }} className="peer sr-only" aria-label="Enable App Lock" />
+                            <input
+                                type="checkbox"
+                                checked={enabled}
+                                onChange={(event) => {
+                                    if (event.target.checked && (!selectedLockMethod || configuredLockMethod !== selectedLockMethod)) {
+                                        setError(selectedLockMethod
+                                            ? `Set up and save ${lockMethods.find((item) => item.id === selectedLockMethod)?.label} before enabling App Lock.`
+                                            : "Choose and configure a lock method before enabling App Lock.");
+                                        return;
+                                    }
+                                    if (event.target.checked && selectedLockMethod === "biometric" && biometricSupport !== true) {
+                                        setError("This browser or device cannot use platform biometrics. Choose another method.");
+                                        return;
+                                    }
+                                    setEnabled(event.target.checked);
+                                    setConfirmDisable(false);
+                                    setError("");
+                                }}
+                                className="peer sr-only"
+                                aria-label="Enable App Lock"
+                            />
                             <span className="relative h-7 w-12 rounded-full bg-slate-300 transition peer-checked:bg-[#647447] after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-[#647447] peer-focus-visible:ring-offset-2" />
                         </label>
                     </div>
@@ -211,24 +247,24 @@ const Settings = () => {
                                 <button
                                     key={id}
                                     type="button"
-                                    aria-pressed={method === id}
+                                    aria-pressed={selectedLockMethod === id}
                                     disabled={id === "biometric" && biometricSupport === false}
                                     onClick={() => selectMethod(id)}
-                                    className={`flex min-h-20 items-center gap-3 rounded-xl border p-4 text-left transition ${method === id ? "border-[#647447] bg-[#f3f5ef] ring-1 ring-[#647447]" : "border-slate-200 bg-white hover:border-slate-300"} disabled:cursor-not-allowed disabled:opacity-50`}
+                                    className={`flex min-h-20 items-center gap-3 rounded-xl border p-4 text-left transition ${selectedLockMethod === id ? "border-[#647447] bg-[#f3f5ef] ring-1 ring-[#647447]" : "border-slate-200 bg-white hover:border-slate-300"} disabled:cursor-not-allowed disabled:opacity-50`}
                                 >
-                                    <Icon size={20} className={method === id ? "text-[#53633b]" : "text-slate-500"} aria-hidden="true" />
+                                    <Icon size={20} className={selectedLockMethod === id ? "text-[#53633b]" : "text-slate-500"} aria-hidden="true" />
                                     <span className="min-w-0 flex-1">
                                         <span className="block font-semibold text-slate-800">{label}</span>
                                         <span className="mt-0.5 block text-xs text-slate-500">{id === "biometric" && biometricSupport === null ? "Checking device support..." : detail}</span>
                                     </span>
-                                    {method === id && <span className="sr-only">Selected</span>}
+                                    {selectedLockMethod === id && <span className="sr-only">Selected</span>}
                                 </button>
                             ))}
                         </div>
                         {biometricSupport === false && <p className="mt-3 text-sm text-amber-800">Platform biometric unlock is unavailable. Use HTTPS or localhost and a supported browser/device.</p>}
                     </div>
 
-                    {method === "biometric" || biometricEnabled ? (
+                    {selectedLockMethod === "biometric" || biometricEnabled ? (
                         <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div>
@@ -241,29 +277,29 @@ const Settings = () => {
                                 </button>
                             </div>
                             <label className="mt-4 flex items-start gap-3 border-t border-slate-200 pt-4 text-sm text-slate-700">
-                                <input type="checkbox" checked={biometricEnabled || method === "biometric"} disabled={!settings?.biometricEnrolled && method !== "biometric"} onChange={(event) => setBiometricEnabled(event.target.checked)} className="mt-0.5 accent-[#647447]" />
+                                <input type="checkbox" checked={biometricEnabled || selectedLockMethod === "biometric"} disabled={!settings?.biometricEnrolled && selectedLockMethod !== "biometric"} onChange={(event) => setBiometricEnabled(event.target.checked)} className="mt-0.5 accent-[#647447]" />
                                 <span>Allow biometric unlock as an alternate method</span>
                             </label>
                         </div>
                     ) : null}
 
-                    {enabled && needsCredential && method !== "biometric" && (
+                    {needsCredential && (
                         <div className="mt-6 rounded-xl border border-slate-200 p-4 sm:p-5">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
-                                    <h3 className="font-bold text-slate-800">Set up {lockMethods.find((item) => item.id === method)?.label}</h3>
-                                    <p className="mt-1 text-sm text-slate-500">{method === "password" ? "Use 12 to 128 characters." : method === "pin" ? "Choose 4 to 6 digits." : "Draw at least 4 different dots."}</p>
+                                    <h3 className="font-bold text-slate-800">Set up {lockMethods.find((item) => item.id === selectedLockMethod)?.label}</h3>
+                                    <p className="mt-1 text-sm text-slate-500">{selectedLockMethod === "password" ? "Use 12 to 128 characters." : selectedLockMethod === "pin" ? "Choose 4 to 6 digits." : "Draw at least 4 different dots."}</p>
                                 </div>
                             </div>
 
-                            {method === "pin" && credentialStage !== "ready" && (
+                            {selectedLockMethod === "pin" && credentialStage !== "ready" && (
                                 <div className="mt-5">
                                     <p className="mb-2 text-center text-sm font-semibold text-slate-700">{credentialStage === "first" ? "Enter a new PIN" : "Enter the PIN again"}</p>
                                     <PinKeypad value={credentialStage === "first" ? credential : confirmCredential} onChange={credentialStage === "first" ? setCredential : setConfirmCredential} onSubmit={advanceCredential} actionLabel={credentialStage === "first" ? "Continue" : "Confirm PIN"} disabled={busy} />
                                 </div>
                             )}
 
-                            {method === "pattern" && credentialStage !== "ready" && (
+                            {selectedLockMethod === "pattern" && credentialStage !== "ready" && (
                                 <div className="mt-5">
                                     <p className="mb-3 text-center text-sm font-semibold text-slate-700">{credentialStage === "first" ? "Draw a new pattern" : "Draw it again to confirm"}</p>
                                     <PatternGrid value={credentialStage === "first" ? credential : confirmCredential} onChange={credentialStage === "first" ? setCredential : setConfirmCredential} disabled={busy} />
@@ -271,20 +307,20 @@ const Settings = () => {
                                 </div>
                             )}
 
-                            {method === "password" && (
+                            {selectedLockMethod === "password" && (
                                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                                     <PasswordField value={credential} onChange={setCredential} label="New lock password" autoComplete="new-password" disabled={busy} />
                                     <PasswordField value={confirmCredential} onChange={setConfirmCredential} label="Confirm lock password" autoComplete="new-password" disabled={busy} />
                                 </div>
                             )}
-                            {credentialStage === "ready" && method !== "password" && <p className="mt-4 text-sm font-medium text-emerald-800">Credential entered twice. It will be hashed on the server when you save.</p>}
+                            {credentialStage === "ready" && selectedLockMethod !== "password" && <p className="mt-4 text-sm font-medium text-emerald-800">Credential entered twice. It will be hashed on the server when you save.</p>}
                         </div>
                     )}
 
-                    {enabled && method !== "biometric" && settings?.hasCredential && method === settings?.method && (
+                    {enabled && selectedLockMethod !== "biometric" && selectedLockMethod === configuredLockMethod && (
                         <label className="mt-5 flex items-start gap-3 text-sm text-slate-600">
                             <input type="checkbox" checked={changeCredential} onChange={(event) => { setChangeCredential(event.target.checked); setCredential(""); setConfirmCredential(""); setCredentialStage("first"); }} className="mt-0.5 accent-[#647447]" />
-                            <span>Change my {lockMethods.find((item) => item.id === method)?.label.toLowerCase()}</span>
+                            <span>Change my {lockMethods.find((item) => item.id === selectedLockMethod)?.label.toLowerCase()}</span>
                         </label>
                     )}
                 </section>
