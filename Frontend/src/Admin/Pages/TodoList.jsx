@@ -467,17 +467,19 @@ const TodoList = () => {
     );
   };
 
-  const renderTaskGroup = (title, items, Icon, emptyMessage, serialOffset = 0) => (
+  const renderTaskGroup = (title, items, Icon, emptyMessage, serialOffset = 0, showHeading = true) => (
     <section className="mt-7">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-extrabold text-slate-800">
-          <Icon size={19} className="text-violet-600" />
-          {title}
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
-            {items.length}
-          </span>
-        </h2>
-      </div>
+      {showHeading && (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-lg font-extrabold text-slate-800">
+            <Icon size={19} className="text-violet-600" />
+            {title}
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+              {items.length}
+            </span>
+          </h2>
+        </div>
+      )}
       {items.length ? (
         viewMode === "grid" ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -518,16 +520,8 @@ const TodoList = () => {
   return (
     <div className="min-h-full bg-slate-50/70 px-2 py-5 sm:px-2 lg:px-2">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {[
-            {
-              label: "Total Tasks",
-              value: tasks.length,
-              detail: "All tasks in your list",
-              share: tasks.length ? 100 : 0,
-              icon: ListChecks,
-              gradient: "from-violet-600 to-purple-500",
-            },
             {
               label: "Completed",
               value: completedCount,
@@ -750,19 +744,17 @@ const TodoList = () => {
               <Plus size={19} /> Add Task
             </button>
           </div>
-          <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            <span className="px-1 text-xs font-bold text-slate-500">Due date:</span>
-            {DATE_FILTERS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setDueDateFilter(option)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${dueDateFilter === option ? "bg-violet-100 text-violet-800" : "bg-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-700"}`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
+          <label className="mt-2.5 flex items-center gap-2 text-xs font-bold text-slate-500">
+            Due date:
+            <select
+              aria-label="Filter by due date"
+              value={dueDateFilter}
+              onChange={(event) => setDueDateFilter(event.target.value)}
+              className="h-10 min-w-40 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+            >
+              {DATE_FILTERS.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
         </section>
 
         {loading ? (
@@ -807,6 +799,7 @@ const TodoList = () => {
                 ListChecks,
                 "No tasks match these filters.",
                 pageStartIndex,
+                false,
               )
             )}
           </>
