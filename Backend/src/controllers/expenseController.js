@@ -89,7 +89,6 @@ exports.createExpense = async (req, res) => {
             recurring,
             from,
             to,
-            travelTime,
         } = req.body;
 
         const isTravelExpense = isTravelCategory(category);
@@ -102,9 +101,9 @@ exports.createExpense = async (req, res) => {
             });
         }
 
-        if (isTravelExpense && (!String(from || "").trim() || !String(to || "").trim() || !isValidExpenseTime(travelTime))) {
+        if (isTravelExpense && (!String(from || "").trim() || !String(to || "").trim())) {
             return res.status(400).json({
-                message: "Travel expenses require From, To, and a valid travel time.",
+                message: "Travel expenses require both From and To locations.",
             });
         }
 
@@ -146,12 +145,11 @@ exports.createExpense = async (req, res) => {
         const normalizedFrom = isTravelExpense ? String(from || "").trim() : null;
         const normalizedTo = isTravelExpense ? String(to || "").trim() : null;
         const normalizedLocation = String(location || "").trim() || null;
-        const normalizedTravelTime = isTravelExpense ? travelTime : null;
 
         const [result] = await db.query(
             `INSERT INTO expenses
-                (user_id, title, expense_amount, transfer_amount, transfer_id, remaining_amount, category, payment_method, expense_date, expense_time, travel_time, notes, location, recurring, attachment, \`from\`, \`to\`, created_by, updated_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                (user_id, title, expense_amount, transfer_amount, transfer_id, remaining_amount, category, payment_method, expense_date, expense_time, notes, location, recurring, attachment, \`from\`, \`to\`, created_by, updated_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 req.user?.user_id || null,
                 title.trim(),
@@ -163,7 +161,6 @@ exports.createExpense = async (req, res) => {
                 payment_method || "Cash",
                 date,
                 expenseTime,
-                normalizedTravelTime,
                 notes || null,
                 normalizedLocation,
                 recurring === "Yes" ? "Yes" : "No",
@@ -205,7 +202,6 @@ exports.updateExpense = async (req, res) => {
             recurring,
             from,
             to,
-            travelTime,
         } = req.body;
 
         const [existingRows] = await db.query("SELECT * FROM expenses WHERE id = ? AND user_id = ?", [id, req.user?.user_id]);
@@ -228,7 +224,6 @@ exports.updateExpense = async (req, res) => {
 
         const effectiveFrom = String(from ?? existingExpense.from ?? "").trim();
         const effectiveTo = String(to ?? existingExpense.to ?? "").trim();
-        const effectiveTravelTime = travelTime ?? existingExpense.travel_time;
         if (!String(effectiveCategory || "").trim() || !effectiveLocation
             || !isValidExpenseDate(effectiveDate) || !isValidExpenseTime(String(effectiveTime || "").slice(0, 5))
             || !PAYMENT_METHODS.includes(effectivePaymentMethod)) {
@@ -236,8 +231,8 @@ exports.updateExpense = async (req, res) => {
                 message: "Category, location, valid date and time, and payment method are required.",
             });
         }
-        if (isTravelExpense && (!effectiveFrom || !effectiveTo || !isValidExpenseTime(String(effectiveTravelTime || "").slice(0, 5)))) {
-            return res.status(400).json({ message: "Travel expenses require From, To, and a valid travel time." });
+        if (isTravelExpense && (!effectiveFrom || !effectiveTo)) {
+            return res.status(400).json({ message: "Travel expenses require both From and To locations." });
         }
 
         if (!Number.isFinite(numericExpense) || numericExpense <= 0) {
@@ -269,11 +264,10 @@ exports.updateExpense = async (req, res) => {
         const normalizedFrom = isTravelExpense ? String(from ?? existingExpense.from ?? "").trim() : "";
         const normalizedTo = isTravelExpense ? String(to ?? existingExpense.to ?? "").trim() : "";
         const normalizedLocation = effectiveLocation || null;
-        const normalizedTravelTime = isTravelExpense ? effectiveTravelTime : null;
 
         await db.query(
             `UPDATE expenses
-             SET user_id = ?, title = ?, expense_amount = ?, transfer_amount = ?, transfer_id = ?, remaining_amount = ?, category = ?, payment_method = ?, expense_date = ?, expense_time = ?, travel_time = ?, notes = ?, location = ?, recurring = ?, attachment = ?, \`from\` = ?, \`to\` = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+             SET user_id = ?, title = ?, expense_amount = ?, transfer_amount = ?, transfer_id = ?, remaining_amount = ?, category = ?, payment_method = ?, expense_date = ?, expense_time = ?, notes = ?, location = ?, recurring = ?, attachment = ?, \`from\` = ?, \`to\` = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ? AND user_id = ?`,
             [
                 req.user?.user_id || existingExpense.user_id,
@@ -286,7 +280,6 @@ exports.updateExpense = async (req, res) => {
                 effectivePaymentMethod,
                 effectiveDate,
                 effectiveTime,
-                normalizedTravelTime,
                 notes !== undefined ? notes : existingExpense.notes,
                 normalizedLocation,
                 recurring === "Yes" ? "Yes" : (recurring === "No" ? "No" : existingExpense.recurring),

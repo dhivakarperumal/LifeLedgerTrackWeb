@@ -30,7 +30,6 @@ const emptyForm = () => ({
     location: "",
     from: "",
     to: "",
-    travelTime: "",
     payment_method: "",
     date: toLocalDateKey(),
     time: getCurrentTime(),
@@ -147,7 +146,6 @@ const AllExpensive = () => {
                 if (!isTravelCategory(value)) {
                     delete next.from;
                     delete next.to;
-                    delete next.travelTime;
                 }
                 return next;
             });
@@ -187,7 +185,6 @@ const AllExpensive = () => {
             payment_method: expense.payment_method || "",
             date: toLocalDateKey(expense.expense_date) || toLocalDateKey(),
             time: expense.expense_time ? String(expense.expense_time).slice(0, 5) : getCurrentTime(),
-            travelTime: expense.travel_time ? String(expense.travel_time).slice(0, 5) : "",
             notes: expense.notes || "",
             attachment: null,
         });
@@ -239,7 +236,6 @@ const AllExpensive = () => {
         if (isTravel) {
             if (!form.from.trim()) errors.from = "Enter the travel starting location.";
             if (!form.to.trim()) errors.to = "Enter the travel destination.";
-            if (!validTime(form.travelTime)) errors.travelTime = "Select a valid travel time.";
         }
 
         setValidationErrors(errors);
@@ -262,9 +258,8 @@ const AllExpensive = () => {
                     return;
                 }
 
-                if (k === "from" || k === "to" || k === "travelTime") {
+                if (k === "from" || k === "to") {
                     if (!isTravel) {
-                        if (k === "travelTime") payload.append(k, "");
                         return;
                     }
                     if (v !== null && v !== undefined && String(v).trim() !== "") {
@@ -926,15 +921,6 @@ const AllExpensive = () => {
                                             onChange={handleChange}
                                             placeholder="Destination"
                                             className={fieldClass("to", inputCls)}
-                                        />
-                                    </Field>
-                                    <Field label="Travel Time" icon={<FiCalendar />} error={validationErrors.travelTime}>
-                                        <input
-                                            type="time"
-                                            name="travelTime"
-                                            value={form.travelTime}
-                                            onChange={handleChange}
-                                            className={fieldClass("travelTime", inputCls)}
                                         />
                                     </Field>
                                 </div>
