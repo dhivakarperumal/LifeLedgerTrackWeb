@@ -15,6 +15,7 @@ const rowToTask = (row) => ({
   id: row.id,
   title: row.title,
   description: row.description || "",
+  amount: row.amount === null || row.amount === undefined ? "" : String(row.amount),
   status: row.status,
   priority: row.priority,
   dueDate: row.due_date || "",
@@ -28,6 +29,11 @@ const rowToTask = (row) => ({
 const parsePayload = (payload, existing = null) => {
   const title = String(payload.title ?? existing?.title ?? "").trim();
   const description = String(payload.description ?? existing?.description ?? "").trim();
+  const amount = String(
+    Object.prototype.hasOwnProperty.call(payload, "amount")
+      ? payload.amount ?? ""
+      : existing?.amount ?? ""
+  ).trim();
   const status = payload.status ?? existing?.status ?? "Pending";
   const priority = payload.priority ?? existing?.priority ?? "Medium";
   const dueDate = String(payload.dueDate ?? existing?.due_date ?? "").trim();
@@ -42,6 +48,9 @@ const parsePayload = (payload, existing = null) => {
 
   if (!title) return { error: "Task title is required." };
   if (title.length > 255) return { error: "Task title must be 255 characters or fewer." };
+  if (amount && (!/^\d{1,10}(\.\d{1,2})?$/.test(amount) || !Number.isFinite(Number(amount)))) {
+    return { error: "Amount must be a non-negative number with up to 2 decimal places." };
+  }
   if (!STATUSES.includes(status)) return { error: "Choose a valid task status." };
   if (!PRIORITIES.includes(priority)) return { error: "Choose a valid task priority." };
   if (dueDate && !isValidDate(dueDate)) return { error: "Enter a valid due date." };
@@ -64,6 +73,7 @@ const parsePayload = (payload, existing = null) => {
     values: [
       title,
       description || null,
+      amount || null,
       status,
       priority,
       dueDate || null,
@@ -97,8 +107,8 @@ exports.createTask = async (req, res) => {
 
   try {
     const [result] = await db.query(
-      `INSERT INTO todo_tasks (user_id, title, description, status, priority, due_date, reminder_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO todo_tasks (user_id, title, description, amount, status, priority, due_date, reminder_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [userId, ...parsed.values]
     );
     const [rows] = await db.query("SELECT * FROM todo_tasks WHERE id = ? AND user_id = ?", [result.insertId, userId]);
@@ -127,7 +137,7 @@ exports.updateTask = async (req, res) => {
 
     await db.query(
       `UPDATE todo_tasks
-       SET title = ?, description = ?, status = ?, priority = ?, due_date = ?, reminder_at = ?, updated_at = NOW()
+       SET title = ?, description = ?, amount = ?, status = ?, priority = ?, due_date = ?, reminder_at = ?, updated_at = NOW()
        WHERE id = ? AND user_id = ?`,
       [...parsed.values, req.params.id, userId]
     );

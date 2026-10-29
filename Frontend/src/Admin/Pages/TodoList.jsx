@@ -21,14 +21,28 @@ import { toast } from "react-hot-toast";
 import api from "../../api";
 import { formatDateOnly } from "../../utils/date";
 
-const EMPTY_FORM = {
-  title: "",
-  description: "",
-  priority: "Medium",
-  status: "Pending",
-  dueDate: "",
-  reminderAt: "",
+const createEmptyForm = () => {
+  const now = new Date();
+  const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const localDateTime = `${localDate}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+  return {
+    title: "",
+    description: "",
+    amount: "",
+    priority: "Medium",
+    status: "Pending",
+    dueDate: localDate,
+    reminderAt: localDateTime,
+  };
 };
+
+const formatAmount = (value) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(Number(value));
 
 const STATUS_OPTIONS = ["Pending", "In Progress", "Completed"];
 const PRIORITY_OPTIONS = ["High", "Medium", "Low"];
@@ -62,7 +76,7 @@ const todayKey = () => {
 
 const TodoList = () => {
   const [tasks, setTasks] = useState([]);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(createEmptyForm);
   const [editingId, setEditingId] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -151,13 +165,13 @@ const TodoList = () => {
   }, [currentPage, totalPages]);
 
   const resetForm = () => {
-    setForm(EMPTY_FORM);
+    setForm(createEmptyForm());
     setEditingId(null);
     setFormOpen(false);
   };
 
   const openNewTaskForm = () => {
-    setForm(EMPTY_FORM);
+    setForm(createEmptyForm());
     setEditingId(null);
     setFormOpen(true);
   };
@@ -205,6 +219,7 @@ const TodoList = () => {
     setForm({
       title: task.title || "",
       description: task.description || "",
+      amount: task.amount ?? "",
       priority: task.priority || "Medium",
       status: task.status || "Pending",
       dueDate: task.dueDate || "",
@@ -325,6 +340,12 @@ const TodoList = () => {
 
             <div className="mt-auto pt-5">
               <div className="space-y-2 border-t border-slate-100 pt-3 text-xs text-slate-500">
+                {task.amount !== null && task.amount !== undefined && task.amount !== "" && (
+                  <span className="flex items-center gap-2 font-semibold text-slate-700">
+                    <span className="text-violet-500">₹</span>
+                    <span>{formatAmount(task.amount)}</span>
+                  </span>
+                )}
                 {task.dueDate && (
                   <span className="flex items-center gap-2">
                     <CalendarDays size={15} className="shrink-0 text-violet-500" />
@@ -381,6 +402,11 @@ const TodoList = () => {
               )}
             </div>
           </div>
+        </td>
+        <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-slate-700">
+          {task.amount !== null && task.amount !== undefined && task.amount !== ""
+            ? formatAmount(task.amount)
+            : <span className="font-normal text-slate-400">—</span>}
         </td>
         <td className="whitespace-nowrap px-4 py-4">
           <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${priorityStyle}`}>
@@ -465,6 +491,7 @@ const TodoList = () => {
                   <tr>
                     <th scope="col" className="px-4 py-4 font-bold">S No</th>
                     <th scope="col" className="px-4 py-4 font-bold">Task</th>
+                    <th scope="col" className="px-4 py-4 font-bold">Amount</th>
                     <th scope="col" className="px-4 py-4 font-bold">Priority</th>
                     <th scope="col" className="px-4 py-4 font-bold">Status</th>
                     <th scope="col" className="px-4 py-4 font-bold">Due date</th>
@@ -609,6 +636,19 @@ const TodoList = () => {
                       onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
                       placeholder="Add any helpful details..."
                       className="w-full resize-y rounded-xl border border-slate-200 px-3.5 py-3 text-sm outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                    />
+                  </label>
+                  <label>
+                    <span className="mb-1.5 block text-xs font-bold text-slate-600">Amount (₹)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="9999999999.99"
+                      step="0.01"
+                      value={form.amount}
+                      onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
+                      placeholder="Enter amount"
+                      className="w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                     />
                   </label>
                   <label>

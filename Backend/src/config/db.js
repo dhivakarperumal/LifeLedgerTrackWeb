@@ -425,6 +425,7 @@ const initializeDatabase = async () => {
       user_id VARCHAR(50) NOT NULL,
       title VARCHAR(255) NOT NULL,
       description TEXT NULL,
+      amount DECIMAL(12,2) NULL,
       status ENUM('Pending', 'In Progress', 'Completed') NOT NULL DEFAULT 'Pending',
       priority ENUM('High', 'Medium', 'Low') NOT NULL DEFAULT 'Medium',
       due_date DATE NULL,
@@ -484,6 +485,7 @@ const initializeDatabase = async () => {
   }
 
   await ensureColumn("users", "monthly_budget", "DECIMAL(12,2) NOT NULL DEFAULT 0");
+  await ensureColumn("todo_tasks", "amount", "DECIMAL(12,2) NULL");
   await ensureColumn("memories", "media_gallery", "JSON NULL");
   await ensureColumn("memories", "media_type", "VARCHAR(50) DEFAULT 'image'");
   await ensureColumn("memories", "voice_note", "TEXT NULL");
