@@ -223,7 +223,15 @@ const AppLockScreen = () => {
         {loadError ? (
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <p>{loadError}</p>
-            <button type="button" onClick={() => refreshStatus().catch(() => setLoadError("Security status is still unavailable."))} className="mt-3 font-bold underline">Retry</button>
+            <button
+              type="button"
+              onClick={() => refreshStatus().catch((requestError) => setLoadError(
+                requestError.response?.data?.message || "Security status is still unavailable.",
+              ))}
+              className="mt-3 font-bold underline"
+            >
+              Retry
+            </button>
           </div>
         ) : (
           <div className="mt-4 sm:mt-7">
