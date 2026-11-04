@@ -126,7 +126,13 @@ export const AppLockProvider = ({ children }) => {
         checkIdleTime();
       }
     };
-    const onPageHide = () => { void idleLockRef.current?.(); };
+    const onPageHide = () => {
+      const idleTimeoutReached = timeoutMs > 0
+        && Date.now() - lastActivityAtRef.current >= timeoutMs;
+      if (settings.lockOnHidden || idleTimeoutReached) {
+        void idleLockRef.current?.();
+      }
+    };
     const events = ["pointerdown", "keydown", "touchstart", "pointermove"];
     events.forEach((eventName) => window.addEventListener(eventName, markActivity, { passive: true }));
     document.addEventListener("visibilitychange", onVisibility);
