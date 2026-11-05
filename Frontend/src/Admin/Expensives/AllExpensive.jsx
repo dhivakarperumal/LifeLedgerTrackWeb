@@ -62,6 +62,9 @@ const AllExpensive = () => {
 
     // ── transfer records for dropdown ─────────────────────────────────────────
     const [transfers, setTransfers] = useState([]);
+    const availableTransfers = transfers.filter(
+        (transfer) => Number(transfer.remaining_amount ?? transfer.amount ?? 0) > 0
+    );
 
     // ── modal state ───────────────────────────────────────────────────────────
     const [isOpen, setIsOpen] = useState(false);
@@ -828,18 +831,15 @@ const AllExpensive = () => {
                                             className={selectCls}
                                         >
                                             <option value="">— No transfer / select record —</option>
-                                            {transfers.length === 0 && (
-                                                <option disabled>No transfer records found</option>
+                                            {availableTransfers.length === 0 && (
+                                                <option disabled>No available transfer records</option>
                                             )}
-                                            {transfers.map((t) => {
-                                                const dateStr = t.transfer_date
-                                                    ? String(t.transfer_date).split("T")[0]
-                                                    : "";
+                                            {availableTransfers.map((t) => {
                                                 const remAmt = Number(t.remaining_amount ?? t.amount ?? 0);
                                                 const remStr = remAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 });
                                                 return (
-                                                    <option key={t.id} value={t.id} disabled={remAmt <= 0}>
-                                                        {t.title} — ₹{remStr} 
+                                                    <option key={t.id} value={t.id}>
+                                                        {t.title} — ₹{remStr}
                                                     </option>
                                                 );
                                             })}
