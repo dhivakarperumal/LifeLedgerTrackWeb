@@ -8,6 +8,7 @@ import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import { toLocalDateKey } from "../../utils/date";
+import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
 const fmt = (v) =>
@@ -53,6 +54,9 @@ const Transfer = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("All Transfers");
+    const [dateFilter, setDateFilter] = useState("This Month");
+    const [customStartDate, setCustomStartDate] = useState("");
+    const [customEndDate, setCustomEndDate] = useState("");
     const [viewMode, setViewMode] = useState("table");
     const [currentPage, setCurrentPage] = useState(1);
     const [deletingId, setDeletingId] = useState(null);
@@ -129,7 +133,7 @@ const Transfer = () => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, categoryFilter]);
+    }, [searchTerm, categoryFilter, dateFilter, customStartDate, customEndDate]);
 
     /* ── selected income helpers ──────────────────────────────────────── */
     const selectedIncome = useMemo(
@@ -293,13 +297,16 @@ const Transfer = () => {
 
     /* ── filtered list ────────────────────────────────────────────────── */
     const visible = useMemo(() => {
+        const dateRange = resolveDateRange(dateFilter, customStartDate, customEndDate);
+
         return transfers.filter((t) => {
             const hay = `${t.title || ""} ${t.category || ""}`.toLowerCase();
             const matchSearch = hay.includes(searchTerm.toLowerCase());
             const matchFilter = categoryFilter === "All Transfers" || t.category === categoryFilter;
-            return matchSearch && matchFilter;
+            const matchDate = matchesDateRange(t.transfer_date, dateRange);
+            return matchSearch && matchFilter && matchDate;
         });
-    }, [transfers, searchTerm, categoryFilter]);
+    }, [transfers, searchTerm, categoryFilter, dateFilter, customStartDate, customEndDate]);
 
     const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
     const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -360,6 +367,42 @@ const Transfer = () => {
                         ><FiGrid size={17} /></button>
                     </div>
                 </div>
+
+                <select
+                    value={dateFilter}
+                    onChange={(event) => setDateFilter(event.target.value)}
+                    aria-label="Filter transfers by date"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf] md:w-auto"
+                >
+                    {DATE_FILTER_OPTIONS.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                    ))}
+                </select>
+
+                {dateFilter === "Custom Date Range" && (
+                    <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 md:w-auto">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                            From
+                            <input
+                                type="date"
+                                value={customStartDate}
+                                onChange={(event) => setCustomStartDate(event.target.value)}
+                                aria-label="Transfer start date"
+                                className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#7b2cbf]"
+                            />
+                        </label>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                            To
+                            <input
+                                type="date"
+                                value={customEndDate}
+                                onChange={(event) => setCustomEndDate(event.target.value)}
+                                aria-label="Transfer end date"
+                                className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#7b2cbf]"
+                            />
+                        </label>
+                    </div>
+                )}
 
                 <button type="button" onClick={openAddTransfer}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#240046] to-[#7b2cbf] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/30 transition-all hover:from-[#10002b] hover:to-[#5a189a] active:scale-95 md:w-auto"
