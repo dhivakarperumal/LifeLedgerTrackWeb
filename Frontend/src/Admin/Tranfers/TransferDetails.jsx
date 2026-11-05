@@ -40,7 +40,7 @@ const formatDateTime = (value) => {
 };
 
 const Detail = ({ icon: Icon, label, children }) => (
-    <div className="flex items-start gap-3 border-b border-slate-100 py-4 last:border-b-0">
+    <div className="flex items-start gap-3 border-b border-slate-100 py-2.5 last:border-b-0">
         <Icon size={16} className="mt-0.5 shrink-0 text-violet-600" aria-hidden="true" />
         <div className="min-w-0">
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
@@ -189,7 +189,7 @@ const TransferDetails = () => {
 
             <div className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
                 <section className="rounded-2xl border border-slate-200 bg-white px-5 shadow-sm sm:px-6">
-                    <h2 className="border-b border-slate-100 py-4 text-base font-bold text-slate-900">Transfer information</h2>
+                    <h2 className="border-b border-slate-100 py-3 text-base font-bold text-slate-900">Transfer information</h2>
                     <dl>
                         <Detail icon={FiCalendar} label="Date">{formatDate(transfer.transfer_date)}</Detail>
                         <Detail icon={FiCreditCard} label="Payment method">{transfer.payment_method}</Detail>
@@ -197,7 +197,7 @@ const TransferDetails = () => {
                         <Detail icon={FiFileText} label="Notes">{transfer.notes}</Detail>
                     </dl>
                     {receiptUrl && (
-                        <div className="border-t border-slate-100 py-4">
+                        <div className="border-t border-slate-100 py-3">
                             <a
                                 href={receiptUrl}
                                 target="_blank"

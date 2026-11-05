@@ -601,16 +601,14 @@ const Income = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
-                            {income.attachment && (
-                              <button
-                                type="button"
-                                onClick={() => openViewIncome(income)}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
-                                title="View income"
-                              >
-                                <FiEye size={14} />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => openViewIncome(income)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
+                              title="View income"
+                            >
+                              <FiEye size={14} />
+                            </button>
                             <button
                               type="button"
                               onClick={() => openEditIncome(income)}
@@ -671,16 +669,14 @@ const Income = () => {
                       {formatDateOnly(income.income_date)} · {income.payment_method || "-"}
                     </p>
                     <div className="mt-4 flex items-center justify-end gap-2">
-                      {income.attachment && (
-                        <button
-                          type="button"
-                          onClick={() => openViewIncome(income)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
-                          title="View income"
-                        >
-                          <FiEye size={14} />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => openViewIncome(income)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
+                        title="View income"
+                      >
+                        <FiEye size={14} />
+                      </button>
                       <button
                         type="button"
                         onClick={() => openEditIncome(income)}
