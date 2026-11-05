@@ -43,7 +43,6 @@ const Transfer = () => {
     const [incomes, setIncomes] = useState([]);
     const [transferCategoryOptions, setTransferCategoryOptions] = useState([]);
     const [selectedIncomeId, setSelectedIncomeId] = useState("");
-    const [selectedTransfer, setSelectedTransfer] = useState(null);
     const [editingTransferId, setEditingTransferId] = useState(null);
     const [formData, setFormData] = useState(emptyForm());
     const [receiptFile, setReceiptFile] = useState(null);
@@ -154,7 +153,6 @@ const Transfer = () => {
     const closeModal = () => {
         setIsModalOpen(false);
         setSelectedIncomeId("");
-        setSelectedTransfer(null);
         setEditingTransferId(null);
         setExistingReceipt(null);
         setFormData(emptyForm());
@@ -163,7 +161,6 @@ const Transfer = () => {
     };
 
     const openAddTransfer = () => {
-        setSelectedTransfer(null);
         setEditingTransferId(null);
         setExistingReceipt(null);
         setSelectedIncomeId("");
@@ -173,7 +170,6 @@ const Transfer = () => {
     };
 
     const openEditTransfer = (transfer) => {
-        setSelectedTransfer(null);
         setEditingTransferId(transfer.id);
         setExistingReceipt(transfer.receipt || null);
         setSelectedIncomeId(transfer.source_income_id ? String(transfer.source_income_id) : "");
@@ -189,7 +185,7 @@ const Transfer = () => {
         setIsModalOpen(true);
     };
 
-    const openViewTransfer = (transfer) => setSelectedTransfer(transfer);
+    const openViewTransfer = (transfer) => navigate(`/admin/more/transfer/${transfer.id}`);
 
     /* ── submit ───────────────────────────────────────────────────────── */
     const handleSubmit = async (e) => {
@@ -418,16 +414,14 @@ const Transfer = () => {
                                             </td>
                                             <td className="whitespace-nowrap px-4 py-4 text-center">
                                                 <div className="flex flex-nowrap items-center justify-center gap-1.5">
-                                                    {t.receipt && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => openViewTransfer(t)}
-                                                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
-                                                            title="View transfer"
-                                                        >
-                                                            <FiEye size={14} />
-                                                        </button>
-                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openViewTransfer(t)}
+                                                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
+                                                        title="View transfer"
+                                                    >
+                                                        <FiEye size={14} />
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         onClick={() => handleReturnRemainingToIncome(t)}
@@ -480,16 +474,14 @@ const Transfer = () => {
                                     <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                                         <span>S No {(safeCurrentPage - 1) * pageSize + index + 1}</span>
                                         <div className="flex items-center gap-2">
-                                            {t.receipt && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openViewTransfer(t)}
-                                                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
-                                                    title="View transfer"
-                                                >
-                                                    <FiEye size={12} />
-                                                </button>
-                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => openViewTransfer(t)}
+                                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-all hover:bg-blue-500 hover:text-white"
+                                                title="View transfer"
+                                            >
+                                                <FiEye size={12} />
+                                            </button>
                                             <button
                                                 type="button"
                                                 onClick={() => openEditTransfer(t)}
@@ -606,57 +598,6 @@ const Transfer = () => {
                         >
                             Next
                         </button>
-                    </div>
-                </div>
-            )}
-
-            {selectedTransfer && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-                    <div className="absolute inset-0" onClick={() => setSelectedTransfer(null)} />
-                    <div className="relative z-10 w-full max-w-xl overflow-hidden rounded-[1.8rem] bg-white shadow-2xl">
-                        <div className="flex items-center justify-between border-b border-[#3c096c]/20 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">Transfer Details</p>
-                                <h2 className="mt-1 text-2xl font-black text-white">{selectedTransfer.title}</h2>
-                            </div>
-                            <button type="button" onClick={() => setSelectedTransfer(null)} className="rounded-lg p-2 text-white/80 hover:bg-white/10 hover:text-white" aria-label="Close transfer details">
-                                <FiX size={22} />
-                            </button>
-                        </div>
-                        <div className="space-y-4 p-6 text-sm text-slate-700">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Amount</p>
-                                    <p className="mt-2 font-black text-slate-800">{fmt(selectedTransfer.amount)}</p>
-                                </div>
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Category</p>
-                                    <p className="mt-2 font-bold text-slate-800">{selectedTransfer.category || "—"}</p>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Date</p>
-                                    <p className="mt-2 font-bold text-slate-800">{selectedTransfer.transfer_date ? String(selectedTransfer.transfer_date).split("T")[0] : "—"}</p>
-                                </div>
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Payment</p>
-                                    <p className="mt-2 font-bold text-slate-800">{selectedTransfer.payment_method || "—"}</p>
-                                </div>
-                            </div>
-                            {selectedTransfer.notes && (
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Notes</p>
-                                    <p className="mt-2 leading-6 text-slate-700">{selectedTransfer.notes}</p>
-                                </div>
-                            )}
-                            {selectedTransfer.receipt && (
-                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Receipt</p>
-                                    <a href={`${(import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "")}${selectedTransfer.receipt}`} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-lg bg-violet-100 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-200">Open receipt</a>
-                                </div>
-                            )}
-                        </div>
                     </div>
                 </div>
             )}

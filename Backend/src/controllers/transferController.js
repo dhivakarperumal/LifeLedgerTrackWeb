@@ -387,10 +387,29 @@ exports.getTransferHistory = async (req, res) => {
                 FROM transfer_adjustments adjustment
                 LEFT JOIN income i ON i.id = adjustment.income_id
                 WHERE adjustment.transfer_id = ? AND adjustment.user_id = ?
+                UNION ALL
+                SELECT CONCAT('allocation-', allocation.id) AS history_key, allocation.id, allocation.user_id,
+                    allocation.transfer_id, allocation.previous_amount, allocation.amount,
+                    allocation.remaining_amount, allocation.purpose, allocation.reason,
+                    allocation.transfer_date, allocation.created_by, allocation.updated_by,
+                    allocation.created_at, allocation.updated_at, 'Transfer Allocation' AS event_type,
+                    NULL AS income_title
+                FROM transfer_allocations allocation
+                WHERE allocation.transfer_id = ? AND allocation.user_id = ?
+                UNION ALL
+                SELECT CONCAT('return-', returned.id) AS history_key, returned.id, returned.user_id,
+                    returned.transfer_id, NULL AS previous_amount, returned.amount,
+                    0 AS remaining_amount, 'Returned to Income' AS purpose, NULL AS reason,
+                    DATE(returned.created_at) AS transfer_date, returned.created_by, returned.updated_by,
+                    returned.created_at, returned.updated_at, 'Returned to Income' AS event_type,
+                    i.title AS income_title
+                FROM transfer_returns returned
+                LEFT JOIN income i ON i.id = returned.income_id
+                WHERE returned.transfer_id = ? AND returned.user_id = ?
              ) history
              LEFT JOIN users u ON u.user_id = history.created_by
-             ORDER BY history.id ASC, history.created_at ASC`,
-            [id, userId, id, userId, id, userId]
+             ORDER BY history.created_at ASC, history.id ASC, history.history_key ASC`,
+            [id, userId, id, userId, id, userId, id, userId, id, userId]
         );
 
         res.json(rows);
