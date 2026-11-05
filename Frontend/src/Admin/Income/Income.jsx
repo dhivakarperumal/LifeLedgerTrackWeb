@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   FiPlus,
   FiX,
@@ -49,6 +49,7 @@ const formatDateTime = (value) => value ? new Date(value).toLocaleString("en-IN"
 
 const Income = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { monthlyBudget, setMonthlyBudget } = useContext(StoreContext);
   const isIncomePage =
     location.pathname.replace(/\/$/, "") === "/admin/more/income";
@@ -58,7 +59,6 @@ const Income = () => {
   const [budgetDraft, setBudgetDraft] = useState("0");
   const [incomes, setIncomes] = useState([]);
   const [incomeCategoryOptions, setIncomeCategoryOptions] = useState([]);
-  const [selectedIncome, setSelectedIncome] = useState(null);
   const [editingIncomeId, setEditingIncomeId] = useState(null);
   const [existingAttachment, setExistingAttachment] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -176,14 +176,12 @@ const Income = () => {
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setSelectedIncome(null);
     setEditingIncomeId(null);
     setExistingAttachment(null);
     setForm(initialForm);
   };
 
   const openAddIncome = () => {
-    setSelectedIncome(null);
     setEditingIncomeId(null);
     setExistingAttachment(null);
     setForm(initialForm);
@@ -306,7 +304,6 @@ const Income = () => {
   };
 
   const openEditIncome = (income) => {
-    setSelectedIncome(null);
     setEditingIncomeId(income.id);
     setExistingAttachment(income.attachment || null);
     setForm({
@@ -322,7 +319,7 @@ const Income = () => {
     setIsModalOpen(true);
   };
 
-  const openViewIncome = (income) => setSelectedIncome(income);
+  const openViewIncome = (income) => navigate(`/admin/more/income/${income.id}`);
 
   const handleDeleteIncome = async (id) => {
     if (!window.confirm("Delete this income record?")) return;
@@ -330,7 +327,6 @@ const Income = () => {
     try {
       await api.delete(`/incomes/${id}`);
       setIncomes((current) => current.filter((item) => item.id !== id));
-      if (selectedIncome?.id === id) setSelectedIncome(null);
       toast.success("Income deleted successfully!");
     } catch (error) {
       console.error("Delete Income Error:", error);
@@ -757,77 +753,6 @@ const Income = () => {
         </div>
       )}
 
-      {selectedIncome && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-          <div className="absolute inset-0" onClick={() => setSelectedIncome(null)} />
-          <div className="relative z-10 w-full max-w-xl overflow-hidden rounded-[1.8rem] bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#3c096c]/20 bg-gradient-to-r from-[#1F0A3C] to-[#3c096c] px-6 py-5 text-white">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
-                  Income Details
-                </p>
-                <h2 className="mt-1 text-2xl font-black text-white">
-                  {selectedIncome.title}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedIncome(null)}
-                className="rounded-lg p-2 text-white/80 hover:bg-white/10 hover:text-white"
-                aria-label="Close income details"
-              >
-                <FiX size={22} />
-              </button>
-            </div>
-
-            <div className="space-y-4 p-6 text-sm text-slate-700">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Category</p>
-                  <p className="mt-2 font-bold text-slate-800">{selectedIncome.category || "-"}</p>
-                </div>
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Amount</p>
-                  <p className="mt-2 font-black text-emerald-600">₹{Number(selectedIncome.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Date</p>
-                  <p className="mt-2 font-bold text-slate-800">{formatDateOnly(selectedIncome.income_date)}</p>
-                </div>
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Payment</p>
-                  <p className="mt-2 font-bold text-slate-800">{selectedIncome.payment_method || "-"}</p>
-                </div>
-              </div>
-
-              {selectedIncome.notes && (
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Notes</p>
-                  <p className="mt-2 leading-6 text-slate-700">{selectedIncome.notes}</p>
-                </div>
-              )}
-
-              {selectedIncome.attachment && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Attachment</p>
-                  <a
-                    href={`${import.meta.env.VITE_API_URL.replace("/api", "")}${selectedIncome.attachment}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-flex rounded-lg bg-violet-100 px-3 py-2 text-sm font-bold text-violet-700 hover:bg-violet-200"
-                  >
-                    Open attachment
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {isBudgetModalOpen && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-2xl">
@@ -955,12 +880,12 @@ const Income = () => {
                     <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
                       <tr>
                         <th className="px-3 py-3">Transfer ID / Date</th>
-                        <th className="px-3 py-3">From</th>
-                        <th className="px-3 py-3">To</th>
+                        <th className="px-3 py-3">Income Title</th>
+                        <th className="px-3 py-3">Transfer Title</th>
                         <th className="px-3 py-3 text-right">Previous</th>
                         <th className="px-3 py-3 text-right">Transfer</th>
                         <th className="px-3 py-3 text-right">Remaining</th>
-                        <th className="px-3 py-3">Purpose / Reason</th>
+                        <th className="px-3 py-3">Notes</th>
                         <th className="px-3 py-3">Created by / at</th>
                       </tr>
                     </thead>
@@ -981,14 +906,13 @@ const Income = () => {
                               <span className="block font-bold text-slate-800">TR{String(transfer.id).padStart(3, "0")}</span>
                               <span className="mt-1 block text-slate-500">{formatDateOnly(transfer.transfer_date)}</span>
                             </td>
-                            <td className="max-w-28 px-3 py-3 text-slate-600">{transfer.source_income_category || transfer.transfer_from || "Account"}</td>
-                            <td className="max-w-28 px-3 py-3 text-slate-600">{transfer.category || transfer.transfer_to || "Account"}</td>
+                            <td className="max-w-36 px-3 py-3 font-medium text-slate-700">{transfer.source_income_title || transfer.source_income_category || transfer.transfer_from || "Account"}</td>
+                            <td className="max-w-36 px-3 py-3 font-medium text-slate-700">{transfer.title || transfer.category || transfer.transfer_to || "Account"}</td>
                             <td className="whitespace-nowrap px-3 py-3 text-right font-semibold text-slate-700">{formatMoney(transfer.amount)}</td>
                             <td className="whitespace-nowrap px-3 py-3 text-right font-semibold text-slate-700">{formatMoney(transfer.amount)}</td>
                             <td className="whitespace-nowrap px-3 py-3 text-right font-bold text-teal-700">{formatMoney(transfer.remaining_amount ?? transfer.amount)}</td>
                             <td className="max-w-44 px-3 py-3">
-                              <span className="block font-semibold text-slate-700">{transfer.title || transfer.category || "-"}</span>
-                              <span className="mt-1 block line-clamp-2 text-slate-500">{transfer.notes || "-"}</span>
+                              <span className="block line-clamp-2 text-slate-600">{transfer.notes || "-"}</span>
                             </td>
                             <td className="max-w-40 px-3 py-3">
                               <span className="block text-slate-700">{transfer.created_by_name || transfer.created_by || "-"}</span>

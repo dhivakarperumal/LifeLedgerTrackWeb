@@ -73,6 +73,112 @@ exports.getAllIncome = async (req, res) => {
     }
 };
 
+exports.getIncomeDetails = async (req, res) => {
+    try {
+        const userId = req.user?.user_id;
+        const { id } = req.params;
+        const [incomeRows] = await db.query(
+            "SELECT * FROM income WHERE id = ? AND user_id = ?",
+            [id, userId]
+        );
+        const income = incomeRows[0];
+
+        if (!income) {
+            return res.status(404).json({ message: "Income record not found." });
+        }
+
+        const [transfers] = await db.query(
+            `SELECT t.*,
+                COALESCE(e.total_expense, 0) AS total_expense,
+                COALESCE(a.total_allocated, 0) AS total_allocated,
+                COALESCE(r.total_returned, 0) AS total_returned,
+                COALESCE(g.total_transferred, t.amount) AS group_total_transferred,
+                GREATEST(
+                    COALESCE(g.total_transferred, t.amount)
+                    - COALESCE(e.total_expense, 0)
+                    - COALESCE(a.total_allocated, 0)
+                    - COALESCE(r.total_returned, 0),
+                    0
+                ) AS remaining_amount
+             FROM transfers t
+             LEFT JOIN (
+                SELECT COALESCE(member.parent_transfer_id, member.id) AS transfer_id,
+                    SUM(expense.expense_amount) AS total_expense
+                FROM expenses expense
+                INNER JOIN transfers member
+                    ON member.id = expense.transfer_id AND member.user_id = expense.user_id
+                WHERE expense.user_id = ?
+                GROUP BY COALESCE(member.parent_transfer_id, member.id)
+             ) e ON e.transfer_id = t.id
+             LEFT JOIN (
+                SELECT transfer_id, SUM(amount) AS total_allocated
+                FROM transfer_allocations
+                WHERE user_id = ?
+                GROUP BY transfer_id
+             ) a ON a.transfer_id = t.id
+             LEFT JOIN (
+                SELECT transfer_id, SUM(amount) AS total_returned
+                FROM transfer_returns
+                WHERE user_id = ?
+                GROUP BY transfer_id
+             ) r ON r.transfer_id = t.id
+             LEFT JOIN (
+                SELECT COALESCE(parent_transfer_id, id) AS transfer_id, SUM(amount) AS total_transferred
+                FROM transfers
+                WHERE user_id = ?
+                GROUP BY COALESCE(parent_transfer_id, id)
+             ) g ON g.transfer_id = t.id
+             WHERE t.user_id = ? AND t.parent_transfer_id IS NULL
+                AND (
+                    t.source_income_id = ?
+                    OR EXISTS (
+                        SELECT 1 FROM transfer_adjustments adjustment
+                        WHERE adjustment.transfer_id = t.id
+                            AND adjustment.income_id = ? AND adjustment.user_id = ?
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM transfers child
+                        WHERE child.parent_transfer_id = t.id
+                            AND child.source_income_id = ? AND child.user_id = ?
+                    )
+                )
+             ORDER BY t.transfer_date DESC, t.created_at DESC`,
+            [userId, userId, userId, userId, userId, id, id, userId, id, userId]
+        );
+
+        const [expenses] = await db.query(
+            `SELECT expense.*, root.id AS linked_transfer_id, root.title AS linked_transfer_title
+             FROM expenses expense
+             INNER JOIN transfers member
+                ON member.id = expense.transfer_id AND member.user_id = expense.user_id
+             INNER JOIN transfers root
+                ON root.id = COALESCE(member.parent_transfer_id, member.id)
+                    AND root.user_id = expense.user_id
+             WHERE expense.user_id = ? AND root.parent_transfer_id IS NULL
+                AND (
+                    root.source_income_id = ?
+                    OR EXISTS (
+                        SELECT 1 FROM transfer_adjustments adjustment
+                        WHERE adjustment.transfer_id = root.id
+                            AND adjustment.income_id = ? AND adjustment.user_id = ?
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM transfers child
+                        WHERE child.parent_transfer_id = root.id
+                            AND child.source_income_id = ? AND child.user_id = ?
+                    )
+                )
+             ORDER BY expense.expense_date DESC, expense.created_at DESC`,
+            [userId, id, id, userId, id, userId]
+        );
+
+        res.json({ income, transfers, expenses });
+    } catch (error) {
+        console.error("Fetch Income Details Error:", error);
+        res.status(500).json({ message: "Failed to fetch income details", error: error.message });
+    }
+};
+
 exports.createIncome = async (req, res) => {
     try {
 const { title, amount, category, date, paymentMethod, notes, recurring, monthly_budget } = req.body;

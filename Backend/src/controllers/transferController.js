@@ -59,7 +59,8 @@ exports.getAllTransfers = async (req, res) => {
                                 ), t.amount) AS group_total_transferred,
                                 GREATEST(t.amount - COALESCE(e.total_expense, 0) - COALESCE(a.total_transferred, 0) - COALESCE(r.total_returned, 0), 0) AS computed_remaining,
                 i.amount AS source_income_amount,
-                i.category AS source_income_category,
+                                i.title AS source_income_title,
+                                i.category AS source_income_category,
                 COALESCE(u.name, u.username, t.created_by) AS created_by_name
             FROM transfers t
             LEFT JOIN (

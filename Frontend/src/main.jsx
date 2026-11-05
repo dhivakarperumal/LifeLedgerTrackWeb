@@ -34,6 +34,7 @@ const ErrorPage = React.lazy(() => import("./Admin/Pages/ErrorPage.jsx"));
 const Transfer = React.lazy(() => import("./Admin/Tranfers/Transfer.jsx"));
 const TransferDetails = React.lazy(() => import("./Admin/Tranfers/TransferDetails.jsx"));
 const Income = React.lazy(() => import("./Admin/Income/Income.jsx"));
+const IncomeDetails = React.lazy(() => import("./Admin/Income/IncomeDetails.jsx"));
 const Reports = React.lazy(() => import("./Admin/Reports/Reports.jsx"));
 const CalendarReminder = React.lazy(() => import("./Admin/Calender/CalendarReminder.jsx"));
 const TodoList = React.lazy(() => import("./Admin/TodoList/TodoList.jsx"));
@@ -72,6 +73,7 @@ const router = createHashRouter([
       { path: "users/memories", element: <MemoriesManagement /> },
       { path: "users/memories/:id", element: <MemoryDetails /> },
       { path: "more/income", element: <Income /> },
+      { path: "more/income/:id", element: <IncomeDetails /> },
       { path: "more/transfer", element: <Transfer /> },
       { path: "more/transfer/:id", element: <TransferDetails /> },
       { path: "more/add", element: <Transfer /> },
