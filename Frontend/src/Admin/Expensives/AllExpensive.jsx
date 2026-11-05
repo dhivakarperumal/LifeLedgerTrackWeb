@@ -49,7 +49,6 @@ const AllExpensive = () => {
     const location = useLocation();
     // ── list state ────────────────────────────────────────────────────────────
     const [expenses, setExpenses] = useState([]);
-    const [stats, setStats] = useState({ total: 0, totalAmount: 0, totalTransfer: 0, recurring: 0 });
     const [categoryOptions, setCategoryOptions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -87,9 +86,8 @@ const AllExpensive = () => {
     const fetchAll = async () => {
         setLoading(true);
         try {
-            const [expRes, statsRes, transRes, categoriesRes] = await Promise.all([
+            const [expRes, transRes, categoriesRes] = await Promise.all([
                 api.get("/expenses"),
-                api.get("/expenses/stats"),
                 api.get("/transfers"),
                 api.get("/categories"),
             ]);
@@ -103,14 +101,8 @@ const AllExpensive = () => {
                 .map((category) => category.name);
 
             const transfersList = transRes.data || [];
-            const computedTotalTransfer = transfersList.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-            const backendStats = statsRes.data || { total: 0, totalAmount: 0, totalTransfer: 0, recurring: 0 };
 
             setExpenses(expRes.data || []);
-            setStats({
-                ...backendStats,
-                totalTransfer: Number(backendStats.totalTransfer) || computedTotalTransfer,
-            });
             setTransfers(transfersList);
             setCategoryOptions(expenseCategories);
         } catch (err) {
@@ -318,26 +310,47 @@ const AllExpensive = () => {
         const dateRange = resolveDateRange(dateFilter, customStartDate, customEndDate);
 
         return expenses.filter((ex) => {
-            const q = searchTerm.toLowerCase();
+            const q = searchTerm.trim().toLowerCase();
             const matchSearch =
                 (ex.title || "").toLowerCase().includes(q) ||
                 (ex.category || "").toLowerCase().includes(q) ||
                 (ex.location || "").toLowerCase().includes(q) ||
                 (ex.notes || "").toLowerCase().includes(q);
-            const matchCat = categoryFilter === "All" || ex.category === categoryFilter;
+            const matchCat = categoryFilter === "All"
+                || String(ex.category || "").trim().toLowerCase() === categoryFilter.trim().toLowerCase();
             const matchDate = matchesDateRange(ex.expense_date, dateRange);
             return matchSearch && matchCat && matchDate;
         });
     }, [expenses, searchTerm, categoryFilter, dateFilter, customStartDate, customEndDate]);
 
-    const todayTotal = useMemo(() => {
+    const filteredExpenseTotal = useMemo(
+        () => visible.reduce((total, expense) => total + Number(expense.expense_amount || 0), 0),
+        [visible],
+    );
+
+    const filteredTodayTotal = useMemo(() => {
         const todayKey = toLocalDateKey();
-        return expenses.reduce((total, expense) => (
+        return visible.reduce((total, expense) => (
             toLocalDateKey(expense.expense_date) === todayKey
                 ? total + Number(expense.expense_amount || 0)
                 : total
         ), 0);
-    }, [expenses]);
+    }, [visible]);
+
+    const filteredTransferTotal = useMemo(() => {
+        const transfersById = new Map(transfers.map((transfer) => [String(transfer.id), transfer]));
+        const countedTransferIds = new Set();
+        return visible.reduce((total, expense) => {
+            if (expense.transfer_id) {
+                const transferId = String(expense.transfer_id);
+                if (countedTransferIds.has(transferId)) return total;
+                countedTransferIds.add(transferId);
+                const transfer = transfersById.get(transferId);
+                return total + Number(transfer?.amount ?? expense.transfer_amount ?? 0);
+            }
+            return total + Number(expense.transfer_amount || 0);
+        }, 0);
+    }, [visible, transfers]);
 
     const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
     const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -360,29 +373,29 @@ const AllExpensive = () => {
                 {[
                     {
                         label: "Total Expenses",
-                        value: stats.total,
-                        sub: "All records",
+                        value: visible.length,
+                        sub: "Matching records",
                         icon: <FiTrendingDown size={20} />,
                         gradient: "from-[#240046] to-[#7b2cbf]",
                     },
                     {
                         label: "Total Spent",
-                        value: `₹${fmt(stats.totalAmount)}`,
-                        sub: "Sum of expense amounts",
+                        value: `₹${fmt(filteredExpenseTotal)}`,
+                        sub: "Sum of matching expenses",
                         icon: <FaRupeeSign size={18} />,
                         gradient: "from-rose-500 to-pink-500",
                     },
                     {
                         label: "Today's Total Expense",
-                        value: `₹${fmt(todayTotal)}`,
-                        sub: "Sum of today's expenses",
+                        value: `₹${fmt(filteredTodayTotal)}`,
+                        sub: "Matching expenses from today",
                         icon: <FiCalendar size={20} />,
                         gradient: "from-blue-500 to-indigo-500",
                     },
                     {
                         label: "Total Transferred",
-                        value: `₹${fmt(stats.totalTransfer)}`,
-                        sub: "Sum of transfer amounts",
+                        value: `₹${fmt(filteredTransferTotal)}`,
+                        sub: "Transfers linked to matching expenses",
                         icon: <FiRepeat size={20} />,
                         gradient: "from-amber-400 to-orange-500",
                     },
