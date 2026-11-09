@@ -91,6 +91,7 @@ const Dashboard = () => {
     const [recentMemories,  setRecentMemories]  = useState([]);
     const [recentDiary,     setRecentDiary]     = useState([]);
     const [recentEvents,    setRecentEvents]    = useState([]);
+    const [todayTasks,      setTodayTasks]      = useState([]);
     const [activityLoading, setActivityLoading] = useState(true);
 
     useEffect(() => {
@@ -132,12 +133,13 @@ const Dashboard = () => {
     const fetchRecentActivity = async () => {
         setActivityLoading(true);
         try {
-            const [expRes, trfRes, memRes, diaRes, eveRes] = await Promise.allSettled([
+            const [expRes, trfRes, memRes, diaRes, eveRes, todoRes] = await Promise.allSettled([
                 api.get("/expenses"),
                 api.get("/transfers"),
                 api.get("/memories"),
                 api.get("/diary"),
                 api.get("/calendar/events"),
+                api.get("/todos"),
             ]);
 
             if (expRes.status === "fulfilled") {
@@ -167,6 +169,16 @@ const Dashboard = () => {
                             ? payload.events
                             : [];
                 setRecentEvents(getTodayItems(all, "startDate").slice(0, 5));
+            }
+            if (todoRes.status === "fulfilled") {
+                const tasks = Array.isArray(todoRes.value?.data?.data)
+                    ? todoRes.value.data.data
+                    : [];
+                const todayKey = toLocalDateKey();
+                setTodayTasks(tasks.filter((task) => toLocalDateKey(task.dueDate) === todayKey));
+            } else {
+                console.error("Fetch Dashboard Tasks Error:", todoRes.reason);
+                toast.error("Failed to load tasks.");
             }
         } catch (err) {
             console.error("Fetch Recent Activity Error:", err);
@@ -730,6 +742,83 @@ const Dashboard = () => {
                 )}
             </div>
 
+            {/* Today's Todo Tasks */}
+            <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                            <FiCheckCircle size={19} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">Today's Todo List</h3>
+                            <p className="text-xs font-medium text-slate-500">{todayTasks.length} task{todayTasks.length === 1 ? "" : "s"} due today</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => navigate("/admin/planner/todos")}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 hover:underline"
+                    >
+                        View All <FiArrowRight size={12} />
+                    </button>
+                </div>
+                <div className="overflow-x-auto px-4">
+                    <table className="w-full min-w-[600px] text-left text-sm">
+                        <thead className="bg-[#1F0A3C] text-xs uppercase tracking-wide text-[#FCD34D]">
+                            <tr>
+                                <th className="rounded-tl-xl px-4 py-4 font-bold">S No</th>
+                                <th className="px-4 py-4 font-bold">Task</th>
+                                <th className="px-4 py-4 font-bold">Priority</th>
+                                <th className="px-4 py-4 font-bold">Status</th>
+                                <th className="rounded-tr-xl px-4 py-4 font-bold">Due Date</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {todayTasks.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-5 py-8 text-center font-medium text-slate-400">
+                                        No tasks due today.
+                                    </td>
+                                </tr>
+                            ) : todayTasks.map((task, index) => (
+                                <tr key={task.id} className="text-slate-700 hover:bg-violet-50/40">
+                                    <td className="px-5 py-3 font-bold text-slate-500">{index + 1}</td>
+                                    <td className="px-5 py-3">
+                                        <p className="font-bold text-slate-800">{task.title}</p>
+                                        {task.description && (
+                                            <p className="mt-0.5 max-w-xl truncate text-xs text-slate-500">{task.description}</p>
+                                        )}
+                                    </td>
+                                    <td className="px-5 py-3">
+                                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                                            task.priority === "High"
+                                                ? "bg-rose-50 text-rose-700"
+                                                : task.priority === "Low"
+                                                    ? "bg-emerald-50 text-emerald-700"
+                                                    : "bg-amber-50 text-amber-700"
+                                        }`}>
+                                            {task.priority}
+                                        </span>
+                                    </td>
+                                    <td className="px-5 py-3">
+                                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                                            task.status === "Completed"
+                                                ? "bg-emerald-50 text-emerald-700"
+                                                : task.status === "In Progress"
+                                                    ? "bg-blue-50 text-blue-700"
+                                                    : "bg-slate-100 text-slate-600"
+                                        }`}>
+                                            {task.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-5 py-3 font-medium text-slate-500">{task.dueDate}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
             {/* Middle Section: Charts & Low Stock */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Sales Overview Bar Chart */}
@@ -802,29 +891,35 @@ const Dashboard = () => {
                         <h3 className="text-base font-black text-slate-800">Top Expense Categories</h3>
                         <button onClick={() => navigate('/admin/expensive/category')} className="text-xs font-bold text-purple-600 hover:underline">View All →</button>
                     </div>
-                    <div className="space-y-3">
-                        {topProducts && topProducts.length > 0 ? topProducts.map((item, i) => (
-                            <div key={i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group">
-                                <div className="relative shrink-0">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center font-black text-xs">
-                                        {item.label?.slice(0, 2).toUpperCase() || 'EX'}
-                                    </div>
-                                    <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white text-[9px] font-black flex items-center justify-center shadow">
-                                        {i + 1}
-                                    </span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-slate-800 truncate">{item.label || item.name}</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">{item.count || 0} entries</p>
-                                </div>
-                                <div className="text-right shrink-0">
-                                    <p className="text-sm font-black text-purple-600">₹{Number(item.value || item.sales || 0).toLocaleString('en-IN')}</p>
-                                    <p className="text-[10px] text-gray-400">spent</p>
-                                </div>
-                            </div>
-                        )) : (
-                            <p className="text-center text-gray-400 text-sm font-semibold py-8">No expense data available</p>
-                        )}
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[560px] text-left text-sm">
+                            <thead className="bg-[#1F0A3C] text-xs uppercase tracking-wide text-[#FCD34D]">
+                                <tr>
+                                    <th className="rounded-tl-xl px-4 py-4 font-bold">S No</th>
+                                    <th className="px-4 py-4 font-bold">Category</th>
+                                    <th className="px-4 py-4 text-right font-bold">Entries</th>
+                                    <th className="rounded-tr-xl px-4 py-4 text-right font-bold">Amount Spent</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {topProducts && topProducts.length > 0 ? topProducts.map((item, i) => (
+                                    <tr key={item.label || item.name || i} className="text-slate-700 transition-colors hover:bg-violet-50/40">
+                                        <td className="px-5 py-3 font-bold text-slate-500">{i + 1}</td>
+                                        <td className="px-5 py-3 font-semibold text-slate-800">{item.label || item.name || "Uncategorized"}</td>
+                                        <td className="px-5 py-3 text-right text-slate-500">{Number(item.count || 0).toLocaleString("en-IN")}</td>
+                                        <td className="px-5 py-3 text-right font-black text-purple-600">
+                                            ₹{Number(item.value || item.sales || 0).toLocaleString("en-IN")}
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={4} className="px-5 py-8 text-center font-semibold text-gray-400">
+                                            No expense data available
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
