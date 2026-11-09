@@ -4,6 +4,7 @@ import { useAdmin } from "../PrivateRouter/AdminContext";
 import { StoreContext } from "../PrivateRouter/StoreContext";
 import api from "../api";
 import { toLocalDateKey } from "../utils/date";
+import { DATE_FILTER_OPTIONS, resolveDateRange } from "../utils/dateRange";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
@@ -80,7 +81,9 @@ const Dashboard = () => {
     const { monthlyBudget, setMonthlyBudget } = useContext(StoreContext);
     const { dashboardData, setDashboardCached } = useAdmin();
     const [loading, setLoading] = useState(!dashboardData);
-    const [salesRange, setSalesRange] = useState("week");
+    const [salesRange, setSalesRange] = useState("All");
+    const [customStartDate, setCustomStartDate] = useState("");
+    const [customEndDate, setCustomEndDate] = useState("");
 
     // ── Recent Activity State ───────────────────────────────────────────
     const [recentExpenses,  setRecentExpenses]  = useState([]);
@@ -91,7 +94,7 @@ const Dashboard = () => {
     const [activityLoading, setActivityLoading] = useState(true);
 
     useEffect(() => {
-        fetchDashboardData("week");
+        fetchDashboardData("All");
         fetchRecentActivity();
     }, []);
 
@@ -172,10 +175,17 @@ const Dashboard = () => {
         }
     };
 
-    const fetchDashboardData = async (range = salesRange) => {
+    const fetchDashboardData = async (
+        range = salesRange,
+        startDate = customStartDate,
+        endDate = customEndDate,
+    ) => {
         if (!dashboardData) setLoading(true);
         try {
-            const response = await api.get('/dashboard', { params: { range } });
+            const dateRange = resolveDateRange(range, startDate, endDate);
+            const response = await api.get('/dashboard', {
+                params: { range, startDate: dateRange.start, endDate: dateRange.end },
+            });
             setDashboardCached(response.data);
         } catch (error) {
             console.error("Fetch Dashboard Error:", error);
@@ -288,12 +298,6 @@ const Dashboard = () => {
         }
     };
 
-    const salesRangeOptions = [
-        { value: "week", label: "This Week" },
-        { value: "month", label: "This Month" },
-        { value: "all", label: "All Time" },
-    ];
-
     // ── Doughnut Chart: Expense Category Breakdown ──────────────────
     const categoryColors = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899'];
     const categoryLabels = categoryAnalytics.length > 0
@@ -352,6 +356,58 @@ const Dashboard = () => {
 
     return (
         <div className="space-y-6 pb-12 bg-slate-50 min-h-screen">
+            <div className="flex flex-col items-stretch justify-end gap-2 sm:flex-row sm:items-center">
+                {salesRange === "Custom Date Range" && (
+                    <>
+                        <label className="flex items-center gap-2 rounded-xl border border-purple-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500">
+                            From
+                            <input
+                                type="date"
+                                value={customStartDate}
+                                onChange={(event) => {
+                                    const value = event.target.value;
+                                    setCustomStartDate(value);
+                                    fetchDashboardData(salesRange, value, customEndDate);
+                                }}
+                                aria-label="Dashboard start date"
+                                className="min-w-0 bg-transparent text-sm text-slate-700 outline-none"
+                            />
+                        </label>
+                        <label className="flex items-center gap-2 rounded-xl border border-purple-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500">
+                            To
+                            <input
+                                type="date"
+                                value={customEndDate}
+                                onChange={(event) => {
+                                    const value = event.target.value;
+                                    setCustomEndDate(value);
+                                    fetchDashboardData(salesRange, customStartDate, value);
+                                }}
+                                aria-label="Dashboard end date"
+                                className="min-w-0 bg-transparent text-sm text-slate-700 outline-none"
+                            />
+                        </label>
+                    </>
+                )}
+                <label className="flex items-center gap-2 rounded-xl border border-purple-500 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm">
+                    <FiCalendar className="shrink-0 text-purple-600" />
+                    <select
+                        value={salesRange}
+                        onChange={(event) => {
+                            const range = event.target.value;
+                            setSalesRange(range);
+                            fetchDashboardData(range);
+                        }}
+                        aria-label="Filter dashboard by date"
+                        className="w-full cursor-pointer bg-transparent outline-none sm:w-auto"
+                    >
+                        {DATE_FILTER_OPTIONS.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                        ))}
+                    </select>
+                </label>
+            </div>
+
             {/* Top Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {dashboardStats.map((stat, i) => {
@@ -672,22 +728,6 @@ const Dashboard = () => {
                 <div className="lg:col-span-6 bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-slate-800">Expense Overview</h3>
-                        <label className="flex items-center gap-2 text-xs text-gray-500 border border-gray-200 rounded px-2 py-1">
-                            <FiClock />
-                            <select
-                                value={salesRange}
-                                onChange={(event) => {
-                                    const range = event.target.value;
-                                    setSalesRange(range);
-                                    fetchDashboardData(range);
-                                }}
-                                className="bg-transparent text-xs text-gray-600 outline-none cursor-pointer"
-                            >
-                                {salesRangeOptions.map((option) => (
-                                    <option key={option.value} value={option.value}>{option.label}</option>
-                                ))}
-                            </select>
-                        </label>
                     </div>
                     <div className="flex-1 min-h-[250px]">
                         <Bar data={barChartData} options={barChartOptions} />

@@ -53,7 +53,7 @@ const AllExpensive = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("All");
-    const [dateFilter, setDateFilter] = useState("All");
+    const [dateFilter, setDateFilter] = useState("This Month");
     const [customStartDate, setCustomStartDate] = useState("");
     const [customEndDate, setCustomEndDate] = useState("");
     const [viewMode, setViewMode] = useState("table");

@@ -287,14 +287,6 @@ const Transfer = () => {
         }
     };
 
-    /* ── derived stats ────────────────────────────────────────────────── */
-    const totalTransferred = transfers.reduce((s, t) => s + Number(t.amount || 0), 0);
-    const totalExpense     = transfers.reduce((s, t) => s + Number(t.total_expense || 0), 0);
-    const totalRemaining   = transfers.reduce(
-        (sum, transfer) => sum + getRemainingAmount(transfer),
-        0,
-    );
-
     /* ── filtered list ────────────────────────────────────────────────── */
     const visible = useMemo(() => {
         const dateRange = resolveDateRange(dateFilter, customStartDate, customEndDate);
@@ -307,6 +299,14 @@ const Transfer = () => {
             return matchSearch && matchFilter && matchDate;
         });
     }, [transfers, searchTerm, categoryFilter, dateFilter, customStartDate, customEndDate]);
+
+    /* ── derived stats ────────────────────────────────────────────────── */
+    const totalTransferred = visible.reduce((sum, transfer) => sum + Number(transfer.amount || 0), 0);
+    const totalExpense = visible.reduce((sum, transfer) => sum + Number(transfer.total_expense || 0), 0);
+    const totalRemaining = visible.reduce(
+        (sum, transfer) => sum + getRemainingAmount(transfer),
+        0,
+    );
 
     const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
     const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -327,7 +327,7 @@ const Transfer = () => {
 
             {/* ── stat cards ──────────────────────────────────────────── */}
             <div className="grid grid-cols-1 gap-5 md:grid-cols-4">
-                <StatCard label="Total Transfers"    value={transfers.length}        caption="All records"           color="bg-[#4b0b78]" icon={<FiSend />} />
+                <StatCard label="Total Transfers"    value={visible.length}          caption="Filtered records"      color="bg-[#4b0b78]" icon={<FiSend />} />
                 <StatCard label="Amount Transferred" value={fmt(totalTransferred)}   caption="Total moved amount"    color="bg-[#3c096c]" icon={<FiDollarSign />} />
                 <StatCard label="Total Expense"      value={fmt(totalExpense)}        caption="Spent from transfers"  color="bg-red-600"   icon={<FiArrowRight />} />
                 <StatCard label="Total Remaining"    value={fmt(totalRemaining)}      caption="Balance in transfers"  color="bg-[#00897b]" icon={<FiDollarSign />} />

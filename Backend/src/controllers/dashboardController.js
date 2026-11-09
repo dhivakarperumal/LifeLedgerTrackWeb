@@ -19,58 +19,78 @@ const tableExists = async (tableName) => {
     }
 };
 
-const getLastMonthsExpenseTrend = async (hasExpenses, userId) => {
-    if (!hasExpenses) {
-        return [];
-    }
-
-    const query = `
-        SELECT DATE_FORMAT(expense_date, '%Y-%m') AS month,
-               COALESCE(SUM(expense_amount), 0) AS total
-        FROM expenses
-        WHERE expense_date >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
-          ${userId ? "AND user_id = ?" : ""}
-        GROUP BY DATE_FORMAT(expense_date, '%Y-%m')
-        ORDER BY month ASC
-    `;
-
-    const [rows] = await db.query(query, userId ? [userId] : []);
-
-    const monthlyMap = new Map(rows.map((row) => [row.month, safeNumber(row.total, 0)]));
-    const trend = [];
-    const today = new Date();
-
-    for (let i = 11; i >= 0; i -= 1) {
-        const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-        const monthLabel = date.toLocaleDateString("en-US", { month: "short" });
-        trend.push({
-            month: monthLabel,
-            revenue: monthlyMap.get(monthKey) || 0,
-            total: monthlyMap.get(monthKey) || 0,
-        });
-    }
-
-    return trend;
+const isValidDateKey = (value) => {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const date = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
-const getCategoryBreakdown = async (hasExpenses, userId) => {
+const getExpenseDateCondition = (startDate, endDate) => {
+    const conditions = [];
+    const params = [];
+    if (startDate) {
+        conditions.push("expense_date >= ?");
+        params.push(startDate);
+    }
+    if (endDate) {
+        conditions.push("expense_date <= ?");
+        params.push(endDate);
+    }
+    return { clause: conditions.join(" AND "), params };
+};
+
+const getExpenseTrend = async (hasExpenses, userId, range, startDate, endDate) => {
     if (!hasExpenses) {
         return [];
     }
 
+    const dateCondition = getExpenseDateCondition(startDate, endDate);
+    const whereClause = [dateCondition.clause, userId ? "user_id = ?" : ""].filter(Boolean).join(" AND ");
+    const groupFormat = range === "All" ? "%Y-%m" : "%Y-%m-%d";
+    const labelFormat = range === "All" ? "%b %Y" : "%b %e";
+    const query = `
+        SELECT DATE_FORMAT(expense_date, '${labelFormat}') AS month,
+               COALESCE(SUM(expense_amount), 0) AS total
+        FROM expenses
+        ${whereClause ? `WHERE ${whereClause}` : ""}
+        GROUP BY DATE_FORMAT(expense_date, '${groupFormat}')
+        ORDER BY MIN(expense_date) ASC
+    `;
+
+    const [rows] = await db.query(query, [
+        ...dateCondition.params,
+        ...(userId ? [userId] : []),
+    ]);
+
+    return rows.map((row) => ({
+        month: row.month,
+        revenue: safeNumber(row.total, 0),
+        total: safeNumber(row.total, 0),
+    }));
+};
+
+const getCategoryBreakdown = async (hasExpenses, userId, startDate, endDate) => {
+    if (!hasExpenses) {
+        return [];
+    }
+
+    const dateCondition = getExpenseDateCondition(startDate, endDate);
+    const whereClause = [dateCondition.clause, userId ? "user_id = ?" : ""].filter(Boolean).join(" AND ");
     const query = `
         SELECT category,
                COALESCE(SUM(expense_amount), 0) AS totalAmount,
                COUNT(*) AS count
         FROM expenses
-        ${userId ? "WHERE user_id = ?" : ""}
+        ${whereClause ? `WHERE ${whereClause}` : ""}
         GROUP BY category
         ORDER BY totalAmount DESC
         LIMIT 6
     `;
 
-    const [rows] = await db.query(query, userId ? [userId] : []);
+    const [rows] = await db.query(query, [
+        ...dateCondition.params,
+        ...(userId ? [userId] : []),
+    ]);
 
     return rows.map((row) => ({
         label: row.category || "Uncategorized",
@@ -114,6 +134,12 @@ const getLowTransferAlerts = async (hasTransfers, userId) => {
 
 exports.getDashboardData = async (req, res) => {
     try {
+        const range = typeof req.query.range === "string" ? req.query.range : "All";
+        const startDate = req.query.startDate || "";
+        const endDate = req.query.endDate || "";
+        if ((startDate && !isValidDateKey(startDate)) || (endDate && !isValidDateKey(endDate))) {
+            return res.status(400).json({ message: "Invalid dashboard date range" });
+        }
         const currentUserId = req.user?.user_id || null;
         const hasOrders = await tableExists("orders");
         const hasIncome = await tableExists("income");
@@ -197,8 +223,8 @@ exports.getDashboardData = async (req, res) => {
         const netBalance = totalIncome - totalExpenses;
         const monthlyIncome = hasIncome ? totalIncome : 0;
         const monthlyExpenses = hasExpenses ? totalExpenses : 0;
-        const monthlyExpenseTrends = await getLastMonthsExpenseTrend(hasExpenses, currentUserId);
-        const categoryAnalytics = await getCategoryBreakdown(hasExpenses, currentUserId);
+        const monthlyExpenseTrends = await getExpenseTrend(hasExpenses, currentUserId, range, startDate, endDate);
+        const categoryAnalytics = await getCategoryBreakdown(hasExpenses, currentUserId, startDate, endDate);
         const lowStockAlerts = await getLowTransferAlerts(hasTransfers, currentUserId);
 
         const orderStatusCounts = {

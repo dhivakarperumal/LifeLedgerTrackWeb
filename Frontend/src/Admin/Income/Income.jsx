@@ -15,7 +15,8 @@ import {
 import { toast } from "react-hot-toast";
 import api from "../../api";
 import { StoreContext } from "../../PrivateRouter/StoreContext";
-import { parseDateOnly, toLocalDateKey } from "../../utils/date";
+import { toLocalDateKey } from "../../utils/date";
+import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
 
 const initialForm = {
   title: "",
@@ -74,6 +75,9 @@ const Income = () => {
   const [transferValidation, setTransferValidation] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [incomeFilter, setIncomeFilter] = useState("All Income");
+  const [dateFilter, setDateFilter] = useState("This Month");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const [viewMode, setViewMode] = useState("table");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -107,7 +111,7 @@ const Income = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, incomeFilter]);
+  }, [searchTerm, incomeFilter, dateFilter, customStartDate, customEndDate]);
 
   useEffect(() => {
     if (!isIncomePage) return;
@@ -371,29 +375,9 @@ const Income = () => {
     }
   };
 
-  const totalIncome = incomes.reduce(
-    (total, income) => total + Number(income.amount || 0),
-    0,
-  );
-  const remainingIncome = incomes.reduce(
-    (total, income) => total + Number(income.remaining_amount ?? income.amount ?? 0),
-    0,
-  );
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  const monthlyIncome = incomes
-    .filter((income) => {
-      const incomeDate = parseDateOnly(income.income_date);
-      return (
-        incomeDate.getMonth() === currentMonth &&
-        incomeDate.getFullYear() === currentYear
-      );
-    })
-    .reduce((total, income) => total + Number(income.amount || 0), 0);
-  const recurringIncome = incomes
-    .filter((income) => income.recurring === "Yes")
-    .reduce((total, income) => total + Number(income.amount || 0), 0);
   const filteredIncomes = useMemo(() => {
+    const dateRange = resolveDateRange(dateFilter, customStartDate, customEndDate);
+
     return incomes.filter((income) => {
       const searchValue =
         `${income.title || ""} ${income.category || ""} ${income.payment_method || ""}`.toLowerCase();
@@ -402,9 +386,22 @@ const Income = () => {
         incomeFilter === "All Income" ||
         (incomeFilter === "Recurring" && income.recurring === "Yes") ||
         (incomeFilter === "One-time" && income.recurring !== "Yes");
-      return matchesSearch && matchesFilter;
+      const matchesDate = matchesDateRange(income.income_date, dateRange);
+      return matchesSearch && matchesFilter && matchesDate;
     });
-  }, [incomes, searchTerm, incomeFilter]);
+  }, [incomes, searchTerm, incomeFilter, dateFilter, customStartDate, customEndDate]);
+
+  const totalIncome = filteredIncomes.reduce(
+    (total, income) => total + Number(income.amount || 0),
+    0,
+  );
+  const remainingIncome = filteredIncomes.reduce(
+    (total, income) => total + Number(income.remaining_amount ?? income.amount ?? 0),
+    0,
+  );
+  const recurringIncome = filteredIncomes
+    .filter((income) => income.recurring === "Yes")
+    .reduce((total, income) => total + Number(income.amount || 0), 0);
 
   const totalPages = Math.max(1, Math.ceil(filteredIncomes.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -427,15 +424,15 @@ const Income = () => {
             <IncomeStatCard
               label="Total Income"
               value={totalIncome}
-              caption="All recorded income"
+              caption="Income matching filters"
               color="bg-[#4b0b78]"
               icon="$"
               iconStyle="text-[1.8rem]"
             />
             <IncomeStatCard
-              label="This Month"
-              value={monthlyIncome}
-              caption="Income this month"
+              label="Recurring Income"
+              value={recurringIncome}
+              caption="Recurring income matching filters"
               color="bg-[#18b8a7]"
               icon="↗"
               iconStyle="text-[1.8rem]"
@@ -443,14 +440,14 @@ const Income = () => {
             <IncomeStatCard
               label="Remaining Income"
               value={remainingIncome}
-              caption="Available after transfers"
+              caption="Available in filtered records"
               color="bg-[#00897b]"
               icon="₹"
             />
             <IncomeStatCard
               label="Income Records"
-              value={incomes.length}
-              caption="Total transactions"
+              value={filteredIncomes.length}
+              caption="Records matching filters"
               color="bg-[#f43f83]"
               icon="#"
               isCount
@@ -508,6 +505,17 @@ const Income = () => {
                 <option>One-time</option>
               </select>
 
+              <select
+                value={dateFilter}
+                onChange={(event) => setDateFilter(event.target.value)}
+                aria-label="Filter income by date"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-slate-600 outline-none transition-all hover:border-[#7b2cbf] md:w-auto"
+              >
+                {DATE_FILTER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+
               <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
                 <button
                   type="button"
@@ -527,6 +535,31 @@ const Income = () => {
                 </button>
               </div>
             </div>
+
+            {dateFilter === "Custom Date Range" && (
+              <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 md:w-auto">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  From
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(event) => setCustomStartDate(event.target.value)}
+                    aria-label="Income start date"
+                    className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#7b2cbf]"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  To
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(event) => setCustomEndDate(event.target.value)}
+                    aria-label="Income end date"
+                    className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#7b2cbf]"
+                  />
+                </label>
+              </div>
+            )}
 
             <button
               type="button"
