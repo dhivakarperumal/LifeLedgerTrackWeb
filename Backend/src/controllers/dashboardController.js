@@ -25,15 +25,15 @@ const isValidDateKey = (value) => {
     return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
-const getExpenseDateCondition = (startDate, endDate) => {
+const getDateCondition = (dateColumn, startDate, endDate) => {
     const conditions = [];
     const params = [];
     if (startDate) {
-        conditions.push("expense_date >= ?");
+        conditions.push(`${dateColumn} >= ?`);
         params.push(startDate);
     }
     if (endDate) {
-        conditions.push("expense_date <= ?");
+        conditions.push(`${dateColumn} < DATE_ADD(?, INTERVAL 1 DAY)`);
         params.push(endDate);
     }
     return { clause: conditions.join(" AND "), params };
@@ -44,7 +44,7 @@ const getExpenseTrend = async (hasExpenses, userId, range, startDate, endDate) =
         return [];
     }
 
-    const dateCondition = getExpenseDateCondition(startDate, endDate);
+    const dateCondition = getDateCondition("expense_date", startDate, endDate);
     const whereClause = [dateCondition.clause, userId ? "user_id = ?" : ""].filter(Boolean).join(" AND ");
     const groupFormat = range === "All" ? "%Y-%m" : "%Y-%m-%d";
     const labelFormat = range === "All" ? "%b %Y" : "%b %e";
@@ -74,7 +74,7 @@ const getCategoryBreakdown = async (hasExpenses, userId, startDate, endDate) => 
         return [];
     }
 
-    const dateCondition = getExpenseDateCondition(startDate, endDate);
+    const dateCondition = getDateCondition("expense_date", startDate, endDate);
     const whereClause = [dateCondition.clause, userId ? "user_id = ?" : ""].filter(Boolean).join(" AND ");
     const query = `
         SELECT category,
@@ -140,6 +140,9 @@ exports.getDashboardData = async (req, res) => {
         if ((startDate && !isValidDateKey(startDate)) || (endDate && !isValidDateKey(endDate))) {
             return res.status(400).json({ message: "Invalid dashboard date range" });
         }
+        if (startDate && endDate && startDate > endDate) {
+            return res.status(400).json({ message: "Dashboard start date must be on or before the end date" });
+        }
         const currentUserId = req.user?.user_id || null;
         const hasOrders = await tableExists("orders");
         const hasIncome = await tableExists("income");
@@ -160,52 +163,62 @@ exports.getDashboardData = async (req, res) => {
                 : await db.query("SELECT COUNT(*) AS totalCustomers FROM users")
             : [[defaultUserCount]];
 
+        const categoryDates = getDateCondition("created_at", startDate, endDate);
+        const categoryConditions = [
+            categoryDates.clause,
+            currentUserId ? "(user_id = ? OR user_id IS NULL)" : "",
+        ].filter(Boolean).join(" AND ");
         const [[categoryResult]] = hasCategories
-            ? currentUserId
-                ? await db.query("SELECT COUNT(*) AS totalCategories FROM categories WHERE user_id = ? OR user_id IS NULL", [currentUserId])
-                : await db.query("SELECT COUNT(*) AS totalCategories FROM categories")
+            ? await db.query(
+                `SELECT COUNT(*) AS totalCategories FROM categories ${categoryConditions ? `WHERE ${categoryConditions}` : ""}`,
+                [...categoryDates.params, ...(currentUserId ? [currentUserId] : [])],
+            )
             : [[defaultCategoryCount]];
 
+        const incomeDates = getDateCondition("income_date", startDate, endDate);
+        const incomeConditions = [incomeDates.clause, currentUserId ? "user_id = ?" : ""].filter(Boolean).join(" AND ");
         const [[incomeResult]] = hasIncome
-            ? currentUserId
-                ? await db.query("SELECT COALESCE(SUM(amount), 0) AS totalIncome, COUNT(*) AS incomeCount FROM income WHERE user_id = ?", [currentUserId])
-                : await db.query("SELECT COALESCE(SUM(amount), 0) AS totalIncome, COUNT(*) AS incomeCount FROM income")
+            ? await db.query(
+                `SELECT COALESCE(SUM(amount), 0) AS totalIncome, COUNT(*) AS incomeCount FROM income ${incomeConditions ? `WHERE ${incomeConditions}` : ""}`,
+                [...incomeDates.params, ...(currentUserId ? [currentUserId] : [])],
+            )
             : [[defaultFinancial]];
 
+        const expenseDates = getDateCondition("expense_date", startDate, endDate);
+        const expenseConditions = [expenseDates.clause, currentUserId ? "user_id = ?" : ""].filter(Boolean).join(" AND ");
         const [[expenseResult]] = hasExpenses
-            ? currentUserId
-                ? await db.query("SELECT COALESCE(SUM(expense_amount), 0) AS totalExpenses, COUNT(*) AS expenseCount FROM expenses WHERE user_id = ?", [currentUserId])
-                : await db.query("SELECT COALESCE(SUM(expense_amount), 0) AS totalExpenses, COUNT(*) AS expenseCount FROM expenses")
+            ? await db.query(
+                `SELECT COALESCE(SUM(expense_amount), 0) AS totalExpenses, COUNT(*) AS expenseCount FROM expenses ${expenseConditions ? `WHERE ${expenseConditions}` : ""}`,
+                [...expenseDates.params, ...(currentUserId ? [currentUserId] : [])],
+            )
             : [[defaultFinancial]];
 
+        const transferDates = getDateCondition("transfer_date", startDate, endDate);
+        const transferConditions = [transferDates.clause, currentUserId ? "user_id = ?" : ""].filter(Boolean).join(" AND ");
         const [[transferResult]] = hasTransfers
-            ? currentUserId
-                ? await db.query("SELECT COALESCE(SUM(amount), 0) AS totalTransfers FROM transfers WHERE user_id = ?", [currentUserId])
-                : await db.query("SELECT COALESCE(SUM(amount), 0) AS totalTransfers FROM transfers")
+            ? await db.query(
+                `SELECT COALESCE(SUM(amount), 0) AS totalTransfers FROM transfers ${transferConditions ? `WHERE ${transferConditions}` : ""}`,
+                [...transferDates.params, ...(currentUserId ? [currentUserId] : [])],
+            )
             : [[defaultFinancial]];
 
+        const memoryDates = getDateCondition("memory_date", startDate, endDate);
+        const memoryConditions = [memoryDates.clause, currentUserId ? "user_id = ?" : ""].filter(Boolean).join(" AND ");
         const [[memoriesResult]] = hasMemories
-            ? currentUserId
-                ? await db.query("SELECT COUNT(*) AS totalMemories FROM memories WHERE user_id = ?", [currentUserId])
-                : await db.query("SELECT COUNT(*) AS totalMemories FROM memories")
+            ? await db.query(
+                `SELECT COUNT(*) AS totalMemories FROM memories ${memoryConditions ? `WHERE ${memoryConditions}` : ""}`,
+                [...memoryDates.params, ...(currentUserId ? [currentUserId] : [])],
+            )
             : [[{ totalMemories: 0 }]];
 
+        const diaryDates = getDateCondition("entry_date", startDate, endDate);
+        const diaryConditions = [diaryDates.clause, currentUserId ? "user_id = ?" : ""].filter(Boolean).join(" AND ");
         const [[diaryResult]] = hasDiary
-            ? currentUserId
-                ? await db.query("SELECT COUNT(*) AS totalDiary FROM diary_entries WHERE user_id = ?", [currentUserId])
-                : await db.query("SELECT COUNT(*) AS totalDiary FROM diary_entries")
+            ? await db.query(
+                `SELECT COUNT(*) AS totalDiary FROM diary_entries ${diaryConditions ? `WHERE ${diaryConditions}` : ""}`,
+                [...diaryDates.params, ...(currentUserId ? [currentUserId] : [])],
+            )
             : [[{ totalDiary: 0 }]];
-
-        const [[todayExpenseResult]] = hasExpenses
-            ? currentUserId
-                ? await db.query(
-                    "SELECT COALESCE(SUM(expense_amount), 0) AS todayExpense FROM expenses WHERE DATE(expense_date) = CURDATE() AND user_id = ?",
-                    [currentUserId]
-                  )
-                : await db.query(
-                    "SELECT COALESCE(SUM(expense_amount), 0) AS todayExpense FROM expenses WHERE DATE(expense_date) = CURDATE()"
-                  )
-            : [[{ todayExpense: 0 }]];
 
         const totalIncome = safeNumber(incomeResult.totalIncome || 0);
         const totalExpenses = safeNumber(expenseResult.totalExpenses || 0);
@@ -214,7 +227,7 @@ exports.getDashboardData = async (req, res) => {
         const totalCategories = safeNumber(categoryResult.totalCategories || 0);
         const totalMemories = safeNumber(memoriesResult.totalMemories || 0);
         const totalDiary = safeNumber(diaryResult.totalDiary || 0);
-        const todayExpense = safeNumber(todayExpenseResult.todayExpense || 0);
+        const expenseCount = safeNumber(expenseResult.expenseCount || 0);
 
         const totalRevenue = hasOrders
             ? safeNumber(0)
@@ -242,8 +255,8 @@ exports.getDashboardData = async (req, res) => {
                 { label: "Total Expenses", value: formatCurrency(totalExpenses), trend: "- 0%", trendUp: false, icon: "bag" },
                 { label: "Total Memories", value: totalMemories.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "memories" },
                 { label: "Total Diary", value: totalDiary.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "diary" },
-                { label: "Categories", value: totalCategories.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "tag" },
-                { label: "Today Expense", value: formatCurrency(todayExpense), trend: "+ 0%", trendUp: false, icon: "today_expense" },
+                { label: "Categories Created", value: totalCategories.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "tag" },
+                { label: "Expense Records", value: expenseCount.toLocaleString(), trend: "+ 0%", trendUp: false, icon: "today_expense" },
                 { label: "Transfers", value: formatCurrency(totalTransfers), trend: "+ 0%", trendUp: true, icon: "pending" },
                 { label: "Monthly Budget", value: formatCurrency(monthlyIncome - monthlyExpenses), trend: "- 0%", trendUp: false, icon: "offer" }
             ],

@@ -81,7 +81,7 @@ const Dashboard = () => {
     const { monthlyBudget, setMonthlyBudget } = useContext(StoreContext);
     const { dashboardData, setDashboardCached } = useAdmin();
     const [loading, setLoading] = useState(!dashboardData);
-    const [salesRange, setSalesRange] = useState("All");
+    const [salesRange, setSalesRange] = useState("This Month");
     const [customStartDate, setCustomStartDate] = useState("");
     const [customEndDate, setCustomEndDate] = useState("");
 
@@ -94,7 +94,7 @@ const Dashboard = () => {
     const [activityLoading, setActivityLoading] = useState(true);
 
     useEffect(() => {
-        fetchDashboardData("All");
+        fetchDashboardData("This Month");
         fetchRecentActivity();
     }, []);
 
@@ -356,7 +356,14 @@ const Dashboard = () => {
 
     return (
         <div className="space-y-6 pb-12 bg-slate-50 min-h-screen">
-            <div className="flex flex-col items-stretch justify-end gap-2 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="text-2xl font-black tracking-tight text-slate-800">Dashboard Overview</h1>
+                    <p className="mt-1 text-sm font-medium text-slate-500">
+                        Your financial activity and personal records at a glance.
+                    </p>
+                </div>
+                <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
                 {salesRange === "Custom Date Range" && (
                     <>
                         <label className="flex items-center gap-2 rounded-xl border border-purple-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500">
@@ -406,6 +413,7 @@ const Dashboard = () => {
                         ))}
                     </select>
                 </label>
+                </div>
             </div>
 
             {/* Top Stats Grid */}
