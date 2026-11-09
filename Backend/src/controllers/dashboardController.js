@@ -193,6 +193,15 @@ exports.getDashboardData = async (req, res) => {
             )
             : [[defaultFinancial]];
 
+        const [[todayExpenseResult]] = hasExpenses
+            ? await db.query(
+                `SELECT COALESCE(SUM(expense_amount), 0) AS todayExpense, COUNT(*) AS todayExpenseCount
+                 FROM expenses
+                 WHERE expense_date = CURDATE() ${currentUserId ? "AND user_id = ?" : ""}`,
+                currentUserId ? [currentUserId] : [],
+            )
+            : [[{ todayExpense: 0, todayExpenseCount: 0 }]];
+
         const transferDates = getDateCondition("transfer_date", startDate, endDate);
         const transferConditions = [transferDates.clause, currentUserId ? "user_id = ?" : ""].filter(Boolean).join(" AND ");
         const [[transferResult]] = hasTransfers
@@ -227,7 +236,8 @@ exports.getDashboardData = async (req, res) => {
         const totalCategories = safeNumber(categoryResult.totalCategories || 0);
         const totalMemories = safeNumber(memoriesResult.totalMemories || 0);
         const totalDiary = safeNumber(diaryResult.totalDiary || 0);
-        const expenseCount = safeNumber(expenseResult.expenseCount || 0);
+        const todayExpense = safeNumber(todayExpenseResult.todayExpense || 0);
+        const todayExpenseCount = safeNumber(todayExpenseResult.todayExpenseCount || 0);
 
         const totalRevenue = hasOrders
             ? safeNumber(0)
@@ -256,7 +266,7 @@ exports.getDashboardData = async (req, res) => {
                 { label: "Total Memories", value: totalMemories.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "memories" },
                 { label: "Total Diary", value: totalDiary.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "diary" },
                 { label: "Categories Created", value: totalCategories.toLocaleString(), trend: "+ 0%", trendUp: true, icon: "tag" },
-                { label: "Expense Records", value: expenseCount.toLocaleString(), trend: "+ 0%", trendUp: false, icon: "today_expense" },
+                { label: "Today Expense", value: formatCurrency(todayExpense), count: todayExpenseCount, trend: "+ 0%", trendUp: false, icon: "today_expense" },
                 { label: "Transfers", value: formatCurrency(totalTransfers), trend: "+ 0%", trendUp: true, icon: "pending" },
                 { label: "Monthly Budget", value: formatCurrency(monthlyIncome - monthlyExpenses), trend: "- 0%", trendUp: false, icon: "offer" }
             ],

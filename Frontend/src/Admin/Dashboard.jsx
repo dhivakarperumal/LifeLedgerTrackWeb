@@ -444,8 +444,14 @@ const Dashboard = () => {
                                     {getStatIcon(stat.icon)}
                                 </div>
                                 <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white">
-                                    {stat.trendUp ? <FiTrendingUp size={10} /> : <FiTrendingDown size={10} />}
-                                    {stat.trend.replace('+', '').replace('↓', '').trim()}
+                                    {stat.icon === "today_expense" ? (
+                                        `${Number(stat.count || 0).toLocaleString("en-IN")} records`
+                                    ) : (
+                                        <>
+                                            {stat.trendUp ? <FiTrendingUp size={10} /> : <FiTrendingDown size={10} />}
+                                            {stat.trend.replace('+', '').replace('↓', '').trim()}
+                                        </>
+                                    )}
                                 </span>
                             </div>
 
@@ -458,7 +464,9 @@ const Dashboard = () => {
                             {/* Bottom divider */}
                             <div className="mt-3 pt-3 border-t border-white/20 relative z-10">
                                 <p className="text-white/60 text-[10px] font-medium">
-                                    {stat.trendUp ? '▲' : '▼'} {stat.trend.replace('+', '').replace('↓', '').trim()} vs last month
+                                    {stat.icon === "today_expense"
+                                        ? "Today's expense total"
+                                        : `${stat.trendUp ? '▲' : '▼'} ${stat.trend.replace('+', '').replace('↓', '').trim()} vs last month`}
                                 </p>
                             </div>
                         </div>
