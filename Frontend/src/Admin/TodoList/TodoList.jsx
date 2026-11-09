@@ -20,6 +20,7 @@ import {
 import { toast } from "react-hot-toast";
 import api from "../../api";
 import { formatDateOnly } from "../../utils/date";
+import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
 
 const createEmptyForm = () => {
   const now = new Date();
@@ -87,6 +88,9 @@ const TodoList = () => {
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("Any priority");
   const [dueDateFilter, setDueDateFilter] = useState("Any due date");
+  const [dateFilter, setDateFilter] = useState("This Month");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -122,6 +126,7 @@ const TodoList = () => {
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase();
     const today = todayKey();
+    const dateRange = resolveDateRange(dateFilter, customStartDate, customEndDate);
     return tasks.filter((task) => {
       const matchesSearch =
         !query ||
@@ -138,9 +143,10 @@ const TodoList = () => {
         (dueDateFilter === "Due today" && task.dueDate === today) ||
         (dueDateFilter === "Upcoming" && task.dueDate && task.dueDate > today) ||
         (dueDateFilter === "No due date" && !task.dueDate);
-      return matchesSearch && matchesStatus && matchesPriority && matchesDueDate;
+      const matchesDate = matchesDateRange(task.dueDate, dateRange);
+      return matchesSearch && matchesStatus && matchesPriority && matchesDueDate && matchesDate;
     });
-  }, [tasks, search, statusFilter, priorityFilter, dueDateFilter]);
+  }, [tasks, search, statusFilter, priorityFilter, dueDateFilter, dateFilter, customStartDate, customEndDate]);
 
   const orderedTasks = useMemo(
     () => [
@@ -158,7 +164,7 @@ const TodoList = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, priorityFilter, dueDateFilter]);
+  }, [search, statusFilter, priorityFilter, dueDateFilter, dateFilter, customStartDate, customEndDate]);
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
@@ -717,17 +723,43 @@ const TodoList = () => {
               {STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}
             </select>
 
-            <label className=" flex items-center gap-2 text-xs font-bold text-slate-500">
-           
             <select
-              aria-label="Filter by due date"
-              value={dueDateFilter}
-              onChange={(event) => setDueDateFilter(event.target.value)}
-              className="h-13 min-w-40 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+              aria-label="Filter tasks by date range"
+              value={dateFilter}
+              onChange={(event) => setDateFilter(event.target.value)}
+              className="h-[52px] rounded-2xl border border-slate-200 bg-slate-50/70 px-4 text-sm font-semibold text-slate-600 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100 xl:w-[180px]"
             >
-              {DATE_FILTERS.map((option) => <option key={option} value={option}>{option}</option>)}
+              {DATE_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
-          </label>
+
+            <label className=" flex items-center gap-2 text-xs font-bold text-slate-500">
+              <select
+                aria-label="Filter by due date"
+                value={dueDateFilter}
+                onChange={(event) => setDueDateFilter(event.target.value)}
+                className="h-[52px] min-w-40 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+              >
+                {DATE_FILTERS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            {dateFilter === "Custom Date Range" && (
+              <>
+                <input
+                  type="date"
+                  aria-label="Task start date"
+                  value={customStartDate}
+                  onChange={(event) => setCustomStartDate(event.target.value)}
+                  className="h-[52px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 text-sm font-semibold text-slate-600 outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                />
+                <input
+                  type="date"
+                  aria-label="Task end date"
+                  value={customEndDate}
+                  onChange={(event) => setCustomEndDate(event.target.value)}
+                  className="h-[52px] rounded-2xl border border-slate-200 bg-slate-50/70 px-3 text-sm font-semibold text-slate-600 outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                />
+              </>
+            )}
             <div className="flex h-[52px] shrink-0 items-center rounded-2xl border border-slate-200 bg-slate-100/80 p-1">
               <button
                 type="button"

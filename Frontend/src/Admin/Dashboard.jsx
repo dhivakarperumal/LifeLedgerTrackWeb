@@ -472,7 +472,7 @@ const Dashboard = () => {
                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Quick Actions</h3>
                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Shortcuts</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-8 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-9 gap-3">
                     {[
                         { label: "All Expenses",   icon: <FiBox size={20} />,          color: "from-[#6C3DE8] to-[#A855F7]", path: "/admin/expensive/all" },
                         { label: "Categories",     icon: <FiTag size={20} />,          color: "from-[#2563EB] to-[#0EA5E9]", path: "/admin/expensive/category" },
@@ -482,6 +482,7 @@ const Dashboard = () => {
                         { label: "Reports",        icon: <FiTrendingUp size={20} />,  color: "from-[#DB2777] to-[#EC4899]", path: "/admin/reports" },
                         { label: "Memories",       icon: <FiEye size={20} />,         color: "from-[#0891B2] to-[#06B6D4]", path: "/admin/users/memories" },
                         { label: "My Diary",       icon: <FiClock size={20} />,       color: "from-[#7C3AED] to-[#6D28D9]", path: "/admin/users/diary" },
+                        { label: "Todo List",      icon: <FiCheckCircle size={20} />, color: "from-[#0F766E] to-[#14B8A6]", path: "/admin/planner/todos" },
                     ].map((action, i) => (
                         <button
                             key={i}
