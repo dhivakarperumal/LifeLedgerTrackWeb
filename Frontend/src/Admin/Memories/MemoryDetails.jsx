@@ -4,7 +4,7 @@ import api from "../../api";
 import { formatDateOnly } from "../../utils/date";
 import getMediaUrl from "../../utils/mediaUrl";
 import { toast } from "react-hot-toast";
-import { FiImage, FiVideo, FiMusic, FiCalendar, FiMapPin, FiClock, FiTag, FiBookOpen, FiArrowLeft, FiHeart, FiEdit2, FiTrash2, FiEye, FiDownload, FiShare2 } from "react-icons/fi";
+import { FiImage, FiVideo, FiMusic, FiCalendar, FiMapPin, FiClock, FiTag, FiBookOpen, FiArrowLeft, FiHeart, FiEdit2, FiTrash2, FiEye, FiDownload, FiShare2, FiFileText } from "react-icons/fi";
 
 const formatDate = (value) => {
   if (!value) return "—";
@@ -13,7 +13,7 @@ const formatDate = (value) => {
 
 const getMediaFileName = (media, index) => {
   if (typeof media === "object" && media) {
-    const name = media.file_name || media.name;
+    const name = media.original_name || media.file_name || media.name;
     if (name) return name;
   }
 
@@ -30,11 +30,68 @@ const getMediaFileName = (media, index) => {
   }
 };
 
+const getMediaCategory = (media) => {
+  const declaredType = String(media?.mime_type || media?.media_type || media?.file_type || media?.type || "").toLowerCase();
+  const fileName = String(media?.original_name || media?.file_name || media?.name || media?.file_url || media?.url || media || "").toLowerCase();
+
+  if (declaredType.startsWith("image/") || declaredType === "image") return "images";
+  if (declaredType.startsWith("audio/") || declaredType === "audio") return "audio";
+  if (declaredType.startsWith("video/") || declaredType === "video") return "videos";
+  if (declaredType.includes("zip") || /\.(zip|rar|7z)$/i.test(fileName)) return "zip";
+  if (/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i.test(fileName)) return "images";
+  if (/\.(mp3|wav|m4a|aac|ogg)$/i.test(fileName)) return "audio";
+  if (/\.(mp4|mov|webm|m4v|mkv|avi)$/i.test(fileName)) return "videos";
+  return "files";
+};
+
+const getMemoryMediaTabs = (memory) => {
+  const mediaByCategory = { images: [], videos: [], audio: [], zip: [], files: [] };
+  const seenUrls = new Set();
+  const sources = [
+    { items: memory.images, category: "images" },
+    { items: memory.videos, category: "videos" },
+    { items: memory.audio, category: "audio" },
+    { items: memory.media_files },
+    { items: memory.media_gallery },
+    { items: memory.media_url ? [{ file_url: memory.media_url, media_type: memory.media_type }] : [] },
+  ];
+
+  sources.forEach(({ items, category }) => {
+    if (!Array.isArray(items)) return;
+    items.forEach((media, index) => {
+      const url = typeof media === "string"
+        ? media
+        : media?.file_url || media?.url || media?.path || media?.src || "";
+      if (!url || seenUrls.has(url)) return;
+      seenUrls.add(url);
+      const mediaCategory = category || getMediaCategory(media);
+      mediaByCategory[mediaCategory].push({
+        media,
+        url,
+        fileName: getMediaFileName(media, index),
+        category: mediaCategory,
+      });
+    });
+  });
+
+  const allMedia = Object.values(mediaByCategory).flat();
+  return [
+    { id: "all", label: "All", icon: FiFileText, items: allMedia },
+    { id: "images", label: "Images", icon: FiImage },
+    { id: "videos", label: "Videos", icon: FiVideo },
+    { id: "audio", label: "Audio", icon: FiMusic },
+    { id: "zip", label: "ZIP", icon: FiFileText },
+    { id: "files", label: "Files", icon: FiFileText },
+  ].filter((tab) => tab.id === "all" ? allMedia.length > 0 : mediaByCategory[tab.id].length > 0)
+    .map((tab) => tab.id === "all" ? tab : ({ ...tab, items: mediaByCategory[tab.id] }));
+};
+
 const MemoryDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [memory, setMemory] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeMediaTab, setActiveMediaTab] = useState("personal");
 
   useEffect(() => {
     const fetchMemory = async () => {
@@ -126,6 +183,12 @@ const MemoryDetails = () => {
   }
 
   if (!memory) return null;
+  const mediaTabs = [
+    { id: "personal", label: "Personal", icon: FiBookOpen, items: [] },
+    ...getMemoryMediaTabs(memory),
+  ];
+  const activeTab = mediaTabs.find((tab) => tab.id === activeMediaTab) || mediaTabs[0];
+  const memoryTags = Array.isArray(memory.tags) ? memory.tags : [];
 
   return (
     <div className="min-h-screen  pb-20">
@@ -206,145 +269,134 @@ const MemoryDetails = () => {
           </div>
 
           {/* Details Section */}
-          <div className="p-6 md:p-10">
-            {/* Metadata Grid */}
-            <div className="mb-8 grid gap-6 md:grid-cols-3 border-b border-slate-100 pb-8 text-sm">
-              {memory.memory_date && (
-                <div className="flex items-center gap-4 text-slate-600">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 text-violet-600 shadow-sm"><FiCalendar size={20} /></div> 
-                  <div className="flex flex-col"><span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Date</span><span className="font-semibold text-slate-800 text-base">{formatDate(memory.memory_date)}</span></div>
-                </div>
-              )}
-              {memory.location && (
-                <div className="flex items-center gap-4 text-slate-600">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600 shadow-sm"><FiMapPin size={20} /></div> 
-                  <div className="flex flex-col"><span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Location</span><span className="font-semibold text-slate-800 text-base">{memory.location}</span></div>
-                </div>
-              )}
-              {memory.mood && (
-                <div className="flex items-center gap-4 text-slate-600">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 shadow-sm"><FiClock size={20} /></div> 
-                  <div className="flex flex-col"><span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Mood</span><span className="font-semibold text-slate-800 text-base">{memory.mood}</span></div>
-                </div>
-              )}
-            </div>
-
-            {/* Description */}
-            <div className="mb-10 prose prose-slate max-w-none">
-               <h3 className="mb-4 text-xl font-bold text-slate-800">About this memory</h3>
-               <p className="whitespace-pre-line text-[16px] leading-relaxed text-slate-600">
-                 {memory.description || <span className="italic text-slate-400">No description provided for this memory.</span>}
-               </p>
-            </div>
-
+          <div className="p-6 md:p-2">
             {/* Media Gallery */}
-            {(() => {
-              const galleryItems = [
-                ...(Array.isArray(memory.images) ? memory.images : []),
-                ...(Array.isArray(memory.videos) ? memory.videos : []),
-                ...(Array.isArray(memory.audio) ? memory.audio : []),
-                ...(Array.isArray(memory.media_files) ? memory.media_files : []),
-                ...(Array.isArray(memory.media_gallery) ? memory.media_gallery : []),
-                ...(memory.media_url ? [memory.media_url] : []),
-              ];
+            {activeTab && (
+              <div className="mb-10 rounded-[22px] border border-slate-200 bg-[#f4f5f7] p-4 md:p-2">
+                <h3 className="mb-5 text-[11px] font-extrabold uppercase tracking-[0.25em] text-slate-500">Media & attachments</h3>
 
-              const seenUrls = new Set();
-              const uniqueGallery = galleryItems.filter((item) => {
-                const url = typeof item === "string" ? item : item?.file_url || item?.url || item?.path || "";
-                if (!url || seenUrls.has(url)) return false;
-                seenUrls.add(url);
-                return true;
-              });
-
-              if (!uniqueGallery.length) return null;
-
-              return (
-                <div className="mb-10 rounded-[22px] border border-slate-200 bg-[#f4f5f7] p-4 md:p-6">
-                  <h3 className="mb-5 text-[11px] font-extrabold uppercase tracking-[0.25em] text-slate-500">Media & attachments</h3>
-
-                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                    {uniqueGallery.map((mediaUrl, idx) => {
-                      const sourceUrl = typeof mediaUrl === "string"
-                        ? mediaUrl
-                        : mediaUrl?.file_url || mediaUrl?.url || mediaUrl?.path || mediaUrl?.src || "";
-                      const resolvedUrl = getMediaUrl(sourceUrl);
-                      const fileName = getMediaFileName(mediaUrl, idx);
-                      const declaredType = String(mediaUrl?.mime_type || mediaUrl?.file_type || mediaUrl?.type || "").toLowerCase();
-                      const isAudio = declaredType.startsWith("audio/") || declaredType === "audio" || /(\.(mp3|wav|ogg|m4a|aac))$/i.test(fileName);
-                      const isVideo = !isAudio && (declaredType.startsWith("video/") || declaredType === "video" || /(\.(mp4|webm|ogg|mov|m4v))$/i.test(fileName));
-
+                <div className="grid gap-4 md:grid-cols-[190px_minmax(0,1fr)]">
+                  <div role="tablist" aria-orientation="vertical" aria-label="Memory media categories" className="flex gap-2 overflow-x-auto md:flex-col md:overflow-visible">
+                    {mediaTabs.map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = tab.id === activeTab.id;
                       return (
-                        <div key={`${sourceUrl}-${idx}`} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
-                          <div className={isAudio ? "flex h-[220px] items-center justify-center bg-gradient-to-r from-violet-500 to-pink-500 p-4" : "h-[220px] overflow-hidden bg-black"}>
-                            {isAudio ? (
-                              <div className="flex w-full items-center justify-center">
-                                <div className="flex w-full max-w-[94%] items-center gap-3 rounded-full bg-white/95 px-4 py-3 shadow-lg">
-                                  <span className="text-lg text-slate-700">▶</span>
-                                  <audio src={resolvedUrl} crossOrigin="use-credentials" controls className="h-9 w-full" />
-                                </div>
-                              </div>
-                            ) : isVideo ? (
-                              <video src={resolvedUrl} crossOrigin="use-credentials" controls className="h-full w-full object-cover" />
-                            ) : (
-                              <img src={resolvedUrl} alt={fileName} crossOrigin="use-credentials" className="h-full w-full object-cover" />
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between gap-3 px-3 py-3">
-                            <span className="truncate text-[12px] text-slate-700">{fileName}</span>
-                            <div className="flex shrink-0 items-center gap-1.5">
-                              <a href={resolvedUrl} target="_blank" rel="noreferrer" aria-label={`Open ${fileName}`} title="Open" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100">
-                                <FiEye size={14} />
-                              </a>
-                              <button type="button" onClick={() => handleDownload(sourceUrl, fileName)} aria-label={`Download ${fileName}`} title="Download" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">
-                                <FiDownload size={14} />
-                              </button>
-                              <button type="button" onClick={() => handleShare(window.location.href, `${memory.title} - ${fileName}`)} aria-label={`Share ${fileName}`} title="Share memory" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">
-                                <FiShare2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+                        <button
+                          key={tab.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          onClick={() => setActiveMediaTab(tab.id)}
+                          className={`flex shrink-0 items-center justify-between gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition md:w-full ${isActive ? "bg-violet-700 text-white shadow-sm" : "bg-white text-slate-600 hover:bg-violet-50 hover:text-violet-700"}`}
+                        >
+                          <span className="flex items-center gap-2"><Icon size={16} />{tab.label}</span>
+                          {tab.id !== "personal" && (
+                            <span className={`rounded-full px-2 py-0.5 text-xs ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>{tab.items.length}</span>
+                          )}
+                        </button>
                       );
                     })}
                   </div>
-                </div>
-              );
-            })()}
 
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Tags */}
-              {memory.tags?.length > 0 && (
-                <div>
-                  <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-slate-400">Tags</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {memory.tags.map((tag, idx) => (
-                      <span key={`${tag}-${idx}`} className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-[12px] font-bold uppercase tracking-wider text-slate-600 transition hover:bg-slate-200">
-                        <FiTag size={12} /> {tag}
-                      </span>
-                    ))}
+                  <div role="tabpanel" aria-label={activeTab.label} className="min-w-0">
+                    {activeTab.id === "personal" ? (
+                      <div className="space-y-5">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="rounded-full bg-violet-100 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-widest text-violet-700">{memory.category_name || "General"}</span>
+                          <span className={`rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-widest ${memory.status === "published" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{memory.status || "published"}</span>
+                          <span className="rounded-full bg-pink-100 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-widest text-pink-700">{memory.is_favorite ? "Favorite" : "Not a favorite"}</span>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                          {[
+                            { label: "Date", value: formatDate(memory.memory_date), icon: FiCalendar, color: "bg-violet-100 text-violet-600" },
+                            { label: "Location", value: memory.location || "Not set", icon: FiMapPin, color: "bg-sky-100 text-sky-600" },
+                            { label: "Mood", value: memory.mood || "Not set", icon: FiClock, color: "bg-amber-100 text-amber-600" },
+                          ].map(({ label, value, icon: Icon, color }) => (
+                            <div key={label} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+                              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color}`}><Icon size={19} /></div>
+                              <div><p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p><p className="font-semibold text-slate-800">{value}</p></div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                          <h4 className="mb-2 text-sm font-bold text-slate-800">About this memory</h4>
+                          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">{memory.description || "No description provided for this memory."}</p>
+                        </section>
+
+                        <div className="grid gap-5 lg:grid-cols-2">
+                          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                            <h4 className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-slate-500">Tags</h4>
+                            {memoryTags.length ? (
+                              <div className="flex flex-wrap gap-2">
+                                {memoryTags.map((tag, idx) => (
+                                  <span key={`${tag}-${idx}`} className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600"><FiTag size={12} />{tag}</span>
+                                ))}
+                              </div>
+                            ) : <p className="text-sm text-slate-400">No tags added.</p>}
+                          </section>
+
+                          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                            <h4 className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-slate-500">Voice note transcript</h4>
+                            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">{memory.voice_note || "No voice note transcript."}</p>
+                          </section>
+                        </div>
+
+                        <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 text-xs text-slate-400 sm:flex-row sm:gap-6">
+                          {memory.created_at && <span><strong className="font-bold uppercase tracking-widest text-slate-500">Created:</strong> {new Date(memory.created_at).toLocaleString()}</span>}
+                          {memory.updated_at && <span><strong className="font-bold uppercase tracking-widest text-slate-500">Last Modified:</strong> {new Date(memory.updated_at).toLocaleString()}</span>}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                        {activeTab.items.map(({ url, fileName, category }, idx) => {
+                          const resolvedUrl = getMediaUrl(url);
+                          const mediaCategory = activeTab.id === "all" ? category : activeTab.id;
+                          const isImage = mediaCategory === "images";
+                          const isVideo = mediaCategory === "videos";
+                          const isAudio = mediaCategory === "audio";
+
+                          return (
+                            <div key={`${url}-${idx}`} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
+                              <div className={isAudio ? "flex h-[220px] items-center justify-center bg-gradient-to-r from-violet-500 to-pink-500 p-4" : "flex h-[220px] items-center justify-center overflow-hidden bg-black"}>
+                                {isImage ? (
+                                  <img src={resolvedUrl} alt={fileName} crossOrigin="use-credentials" className="h-full w-full object-cover" />
+                                ) : isVideo ? (
+                                  <video src={resolvedUrl} crossOrigin="use-credentials" controls className="h-full w-full object-contain" />
+                                ) : isAudio ? (
+                                  <audio src={resolvedUrl} crossOrigin="use-credentials" controls className="w-full" />
+                                ) : (
+                                  <div className="flex flex-col items-center gap-3 p-4 text-center text-white">
+                                    <FiFileText size={42} />
+                                    <span className="text-xs font-semibold">{mediaCategory === "zip" ? "ZIP archive" : "File attachment"}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center justify-between gap-3 px-3 py-3">
+                                <span className="truncate text-[12px] text-slate-700">{fileName}</span>
+                                <div className="flex shrink-0 items-center gap-1.5">
+                                  <a href={resolvedUrl} target="_blank" rel="noreferrer" aria-label={`Open ${fileName}`} title="Open" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100">
+                                    <FiEye size={14} />
+                                  </a>
+                                  <button type="button" onClick={() => handleDownload(url, fileName)} aria-label={`Download ${fileName}`} title="Download" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">
+                                    <FiDownload size={14} />
+                                  </button>
+                                  <button type="button" onClick={() => handleShare(window.location.href, `${memory.title} - ${fileName}`)} aria-label={`Share ${fileName}`} title="Share memory" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-violet-50 hover:text-violet-700">
+                                    <FiShare2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-
-              {/* Voice Note */}
-              {memory.voice_note && (
-                <div>
-                  <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-slate-400">Voice Note Transcript</h3>
-                  <div className="rounded-2xl border border-violet-100 bg-violet-50 p-5 shadow-sm">
-                    <p className="text-sm font-medium italic leading-relaxed text-slate-700">"{memory.voice_note}"</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Timestamps */}
-            <div className="mt-10 border-t border-slate-100 pt-6">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-6 text-[12px] font-medium text-slate-400">
-                {memory.created_at && <span><strong className="text-slate-500 uppercase tracking-widest text-[10px]">Created:</strong> {new Date(memory.created_at).toLocaleString()}</span>}
-                {memory.updated_at && <span><strong className="text-slate-500 uppercase tracking-widest text-[10px]">Last Modified:</strong> {new Date(memory.updated_at).toLocaleString()}</span>}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
