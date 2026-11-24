@@ -45,11 +45,23 @@ const getMediaFileName = (value, fallback) => {
   }
 };
 
+const getAttachmentCategory = (media, fallback) => {
+  if (fallback) return fallback;
+  const declaredType = String(media?.mime_type || media?.media_type || media?.file_type || media?.type || "").toLowerCase();
+  const fileName = String(media?.original_name || media?.file_name || media?.name || media?.file_url || media?.url || media?.path || media || "").toLowerCase();
+  if (declaredType.startsWith("image/") || declaredType === "image" || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(fileName)) return "images";
+  if (declaredType.startsWith("video/") || declaredType === "video" || /\.(mp4|mov|webm|m4v|mkv|avi)$/i.test(fileName)) return "videos";
+  if (declaredType.startsWith("audio/") || declaredType === "audio" || /\.(mp3|wav|m4a|aac|ogg)$/i.test(fileName)) return "audio";
+  if (declaredType.includes("zip") || /\.(zip|rar|7z)$/i.test(fileName)) return "zip";
+  return "files";
+};
+
 const DiaryDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [entry, setEntry] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeMediaTab, setActiveMediaTab] = useState("personal");
 
   const fetchEntry = async () => {
     try {
@@ -145,19 +157,46 @@ const DiaryDetails = () => {
   if (!entry) return null;
 
   const rawAttachments = [
-    ...(Array.isArray(entry.images) ? entry.images : []),
-    ...(Array.isArray(entry.videos) ? entry.videos : []),
-    ...(Array.isArray(entry.audio) ? entry.audio : []),
-    ...(Array.isArray(entry.attachments) ? entry.attachments : []),
-    ...(Array.isArray(entry.media_files) ? entry.media_files : []),
+    ...(Array.isArray(entry.images) ? entry.images.map((media) => ({ media, category: "images" })) : []),
+    ...(Array.isArray(entry.videos) ? entry.videos.map((media) => ({ media, category: "videos" })) : []),
+    ...(Array.isArray(entry.audio) ? entry.audio.map((media) => ({ media, category: "audio" })) : []),
+    ...(Array.isArray(entry.attachments) ? entry.attachments.map((media) => ({ media })) : []),
+    ...(Array.isArray(entry.media_files) ? entry.media_files.map((media) => ({ media })) : []),
+    ...[
+      ["image_path", "images"],
+      ["video_path", "videos"],
+      ["audio_path", "audio"],
+      ["file_path", "files"],
+    ].filter(([field]) => entry[field]).map(([field, category]) => ({ media: entry[field], category })),
   ];
   const seenAttachmentUrls = new Set();
-  const attachments = rawAttachments.filter((item) => {
-    const url = typeof item === "string" ? item : item?.file_url || item?.url || item?.path || "";
-    if (!url || seenAttachmentUrls.has(url)) return false;
+  const attachments = rawAttachments.map(({ media, category }, index) => {
+    const url = typeof media === "string" ? media : media?.file_url || media?.url || media?.path || media?.src || "";
+    if (!url || seenAttachmentUrls.has(url)) return null;
     seenAttachmentUrls.add(url);
-    return true;
-  });
+    const fileName = media?.original_name || media?.file_name || media?.name || getMediaFileName(url, `Attachment ${index + 1}`);
+    return { media, category: getAttachmentCategory(media, category), url, fileName };
+  }).filter(Boolean);
+  const mediaTabs = [
+    { id: "personal", label: "Personal", icon: FiBookOpen, items: [] },
+    ...(attachments.length ? [
+      { id: "all", label: "All", icon: FiFileText, items: attachments },
+      ...["images", "videos", "audio", "zip", "files"]
+        .map((category) => ({
+          id: category,
+          label: { images: "Images", videos: "Videos", audio: "Audio", zip: "ZIP", files: "Files" }[category],
+          icon: { images: FiImage, videos: FiVideo, audio: FiMusic, zip: FiFileText, files: FiFileText }[category],
+          items: attachments.filter((item) => item.category === category),
+        }))
+        .filter((tab) => tab.items.length),
+    ] : []),
+  ];
+  const activeTab = mediaTabs.find((tab) => tab.id === activeMediaTab) || mediaTabs[0];
+  const firstImage = Array.isArray(entry.images) ? entry.images[0] : null;
+  const coverImage = typeof firstImage === "string"
+    ? firstImage
+    : firstImage?.file_url || firstImage?.url || firstImage?.path || firstImage?.src || entry.image_path;
+  const coverImageUrl = coverImage ? getMediaUrl(coverImage) : "";
 
   return (
     <div className="min-h-screen  pb-20">
@@ -200,158 +239,144 @@ const DiaryDetails = () => {
         </div>
 
         <div className="overflow-hidden rounded-[28px] bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-gradient-to-r from-[#240046] to-[#7b2cbf] p-6 text-white md:p-8">
-            <div className="mb-3 flex flex-wrap gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em]">
-              <span className="rounded-full bg-white/15 px-3 py-1.5">{entry.category_name || "General"}</span>
-              <span className="rounded-full bg-white/15 px-3 py-1.5">{entry.status || "published"}</span>
-              <span className="rounded-full bg-white/15 px-3 py-1.5">{entry.mood || "Normal"}</span>
+          <div className="relative flex min-h-[240px] items-end overflow-hidden border-b border-slate-200 bg-gradient-to-r from-[#240046] to-[#7b2cbf] p-6 text-white md:min-h-[340px] md:p-10">
+            {coverImageUrl && (
+              <>
+                <img src={coverImageUrl} alt="" crossOrigin="use-credentials" className="absolute inset-0 h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#240046]/85 to-[#7b2cbf]/70" />
+              </>
+            )}
+            <div className="relative z-10">
+              <div className="mb-3 flex flex-wrap gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em]">
+                <span className="rounded-full bg-white/15 px-3 py-1.5">{entry.category_name || "General"}</span>
+                <span className="rounded-full bg-white/15 px-3 py-1.5">{entry.status || "published"}</span>
+                <span className="rounded-full bg-white/15 px-3 py-1.5">{entry.mood || "Normal"}</span>
+              </div>
+              <h1 className="text-3xl font-black md:text-5xl">{entry.title}</h1>
             </div>
-            <h1 className="text-3xl font-black md:text-5xl">{entry.title}</h1>
           </div>
 
-          <div className="space-y-8 p-6 md:p-8">
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-2 flex items-center gap-2 text-slate-500"><FiCalendar size={15} /> Date</div>
-                <p className="text-base font-bold text-slate-800">{formatDate(entry.entry_date)}</p>
-              </div>
+          <div className="p-6 md:p-2">
+            <section className="rounded-2xl border border-slate-200 bg-[#f4f5f7] p-4 md:p-6">
+              <h2 className="mb-5 text-[11px] font-extrabold uppercase tracking-[0.25em] text-slate-500">Diary details & media</h2>
+              <div className="grid gap-4 md:grid-cols-[190px_minmax(0,1fr)]">
+                <div role="tablist" aria-orientation="vertical" aria-label="Diary detail categories" className="flex gap-2 overflow-x-auto md:flex-col md:overflow-visible">
+                  {mediaTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = tab.id === activeTab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={isActive}
+                        onClick={() => setActiveMediaTab(tab.id)}
+                        className={`flex shrink-0 items-center justify-between gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition md:w-full ${isActive ? "bg-violet-700 text-white shadow-sm" : "bg-white text-slate-600 hover:bg-violet-50 hover:text-violet-700"}`}
+                      >
+                        <span className="flex items-center gap-2"><Icon size={16} />{tab.label}</span>
+                        {tab.id !== "personal" && (
+                          <span className={`rounded-full px-2 py-0.5 text-xs ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>{tab.items.length}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-2 flex items-center gap-2 text-slate-500"><FiClock size={15} /> Time</div>
-                <p className="text-base font-bold text-slate-800">{entry.entry_time || "Not set"}</p>
-              </div>
+                <div role="tabpanel" aria-label={activeTab.label} className="min-w-0">
+                  {activeTab.id === "personal" ? (
+                    <div className="space-y-5">
+                      <div className="flex flex-wrap gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em]">
+                        <span className="rounded-full bg-violet-100 px-3 py-1.5 text-violet-700">{entry.category_name || "General"}</span>
+                        <span className="rounded-full bg-slate-200 px-3 py-1.5 text-slate-700">{entry.status || "published"}</span>
+                        <span className="rounded-full bg-amber-100 px-3 py-1.5 text-amber-700">{entry.mood || "Normal"}</span>
+                      </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-2 flex items-center gap-2 text-slate-500"><FiMapPin size={15} /> Location</div>
-                <p className="text-base font-bold text-slate-800">{entry.location || "No location"}</p>
-              </div>
+                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        {[
+                          { label: "Date", value: formatDate(entry.entry_date), icon: FiCalendar },
+                          { label: "Time", value: entry.entry_time || "Not set", icon: FiClock },
+                          { label: "Location", value: entry.location || "No location", icon: FiMapPin },
+                          { label: "Favorite", value: entry.is_favorite ? "Yes" : "No", icon: FiHeart },
+                        ].map(({ label, value, icon: Icon }) => (
+                          <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4">
+                            <div className="mb-2 flex items-center gap-2 text-slate-500"><Icon size={15} /> {label}</div>
+                            <p className="text-base font-bold text-slate-800">{value}</p>
+                          </div>
+                        ))}
+                      </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-2 flex items-center gap-2 text-slate-500"><FiHeart size={15} /> Favorite</div>
-                <p className="text-base font-bold text-slate-800">{entry.is_favorite ? "Yes" : "No"}</p>
-              </div>
-            </div>
+                      <div className="grid gap-5 lg:grid-cols-[1.8fr_1fr]">
+                        <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                          <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Diary entry</h3>
+                          <div className="prose max-w-none text-slate-700" dangerouslySetInnerHTML={{ __html: entry.content || "<p>No content provided.</p>" }} />
+                        </section>
 
-            <div className="grid gap-6 lg:grid-cols-[1.8fr_1fr]">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Diary entry</p>
-                <div className="prose max-w-none text-slate-700" dangerouslySetInnerHTML={{ __html: entry.content || "<p>No content provided.</p>" }} />
-              </div>
+                        <div className="space-y-4">
+                          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                            <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Tags</h3>
+                            {Array.isArray(entry.tags) && entry.tags.length ? (
+                              <div className="flex flex-wrap gap-2">
+                                {entry.tags.map((tag, index) => (
+                                  <span key={`${tag}-${index}`} className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700"><FiTag size={10} /> {tag}</span>
+                                ))}
+                              </div>
+                            ) : <p className="text-sm text-slate-500">No tags added.</p>}
+                          </section>
 
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Tags</p>
-                  {entry.tags?.length ? (
-                    <div className="flex flex-wrap gap-2">
-                      {entry.tags.map((tag, index) => (
-                        <span key={`${tag}-${index}`} className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700"><FiTag size={10} /> {tag}</span>
-                      ))}
+                          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                            <h3 className="mb-3 text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Meta</h3>
+                            <div className="space-y-2 text-sm text-slate-700">
+                              <p><span className="font-semibold">Private:</span> {entry.is_private ? "Yes" : "No"}</p>
+                              <p><span className="font-semibold">Locked:</span> {entry.is_locked ? "Yes" : "No"}</p>
+                              <p><span className="font-semibold">Created:</span> {formatDateTime(entry.created_at)}</p>
+                              <p><span className="font-semibold">Updated:</span> {formatDateTime(entry.updated_at)}</p>
+                            </div>
+                          </section>
+                        </div>
+                      </div>
+                    </div>
+                  ) : activeTab.items.length ? (
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      {activeTab.items.map(({ url: mediaUrl, fileName, category }, index) => {
+                        const url = getMediaUrl(mediaUrl);
+                        const isImage = category === "images";
+                        const isVideo = category === "videos";
+                        const isAudio = category === "audio";
+
+                        return (
+                          <article key={`${mediaUrl}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            {isImage ? (
+                              <img src={url} alt={fileName} crossOrigin="use-credentials" className="h-52 w-full object-cover" />
+                            ) : isVideo ? (
+                              <video src={url} crossOrigin="use-credentials" controls className="h-52 w-full object-cover" />
+                            ) : isAudio ? (
+                              <div className="flex h-52 items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 p-3">
+                                <audio src={url} crossOrigin="use-credentials" controls className="w-full" />
+                              </div>
+                            ) : (
+                              <div className="flex h-52 items-center justify-center bg-slate-200 p-3 text-center text-sm font-medium text-slate-700">
+                                <div className="flex flex-col items-center gap-2"><FiFileText size={28} /><span>{fileName}</span></div>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between gap-3 px-3 py-2">
+                              <span className="truncate text-xs text-slate-600">{fileName}</span>
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                <a href={url} target="_blank" rel="noreferrer" aria-label={`Open ${fileName}`} title="Open" className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-700"><FiEye size={14} /></a>
+                                <button type="button" onClick={() => handleDownload(mediaUrl, fileName)} aria-label={`Download ${fileName}`} title="Download" className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-violet-100 hover:text-violet-700"><FiDownload size={14} /></button>
+                                <button type="button" onClick={() => handleShare(`${entry.title} - ${fileName}`)} aria-label={`Share ${fileName}`} title="Share diary entry" className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-violet-100 hover:text-violet-700"><FiShare2 size={14} /></button>
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-500">No tags added.</p>
+                    <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">No media or attachments have been added.</p>
                   )}
                 </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Meta</p>
-                  <div className="space-y-2 text-sm text-slate-700">
-                    <p><span className="font-semibold">Private:</span> {entry.is_private ? "Yes" : "No"}</p>
-                    <p><span className="font-semibold">Locked:</span> {entry.is_locked ? "Yes" : "No"}</p>
-                    <p><span className="font-semibold">Created:</span> {formatDateTime(entry.created_at)}</p>
-                    <p><span className="font-semibold">Updated:</span> {formatDateTime(entry.updated_at)}</p>
-                  </div>
-                </div>
               </div>
-            </div>
-
-            {attachments.length > 0 && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="mb-4 text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Media & attachments</p>
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {attachments.map((attachment, index) => {
-                    const fileType = String(attachment?.file_type || attachment?.type || "file");
-                    const mediaUrl = attachment?.file_url || attachment?.url || attachment?.path || attachment?.src;
-                    const url = getMediaUrl(mediaUrl);
-                    const fileName = attachment?.file_name || attachment?.name || getMediaFileName(mediaUrl, `Attachment ${index + 1}`);
-
-                    if (!url) return null;
-
-                    const isImage = fileType.startsWith("image/") || /image/i.test(fileType);
-                    const isVideo = fileType.startsWith("video/") || /video/i.test(fileType);
-                    const isAudio = fileType.startsWith("audio/") || /audio/i.test(fileType);
-
-                    return (
-                      <div key={`${fileName}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        {isImage ? (
-                          <img src={url} alt={fileName} crossOrigin="use-credentials" className="h-52 w-full object-cover" />
-                        ) : isVideo ? (
-                          <video src={url} crossOrigin="use-credentials" controls className="h-52 w-full object-cover" />
-                        ) : isAudio ? (
-                          <div className="flex h-52 items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 p-3">
-                            <audio src={url} crossOrigin="use-credentials" controls className="w-full" />
-                          </div>
-                        ) : (
-                          <div className="flex h-52 items-center justify-center bg-slate-200 p-3 text-center text-sm font-medium text-slate-700">
-                            <div className="flex flex-col items-center gap-2">
-                              <FiFileText size={28} />
-                              <span>{fileName}</span>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between gap-3 px-3 py-2">
-                          <span className="truncate text-xs text-slate-600">{fileName}</span>
-                          <div className="flex shrink-0 items-center gap-1.5">
-                            <a href={url} target="_blank" rel="noreferrer" aria-label={`Open ${fileName}`} title="Open" className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
-                              <FiEye size={14} />
-                            </a>
-                            <button type="button" onClick={() => handleDownload(mediaUrl, fileName)} aria-label={`Download ${fileName}`} title="Download" className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-violet-100 hover:text-violet-700">
-                              <FiDownload size={14} />
-                            </button>
-                            <button type="button" onClick={() => handleShare(`${entry.title} - ${fileName}`)} aria-label={`Share ${fileName}`} title="Share diary entry" className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-violet-100 hover:text-violet-700">
-                              <FiShare2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {!attachments.length && (entry.image_path || entry.video_path || entry.audio_path || entry.file_path) && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="mb-4 text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500">Primary media</p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {[
-                    ["image_path", entry.image_path, "Diary image"],
-                    ["video_path", entry.video_path, "Diary video"],
-                    ["audio_path", entry.audio_path, "Diary audio"],
-                    ["file_path", entry.file_path, "Diary attachment"],
-                  ].filter(([, path]) => path).map(([type, path, label]) => {
-                    const url = getMediaUrl(path);
-                    const fileName = getMediaFileName(path, label);
-                    return (
-                      <div key={type} className="min-w-0 space-y-2">
-                        {type === "image_path" && <img src={url} alt="Diary media" crossOrigin="use-credentials" className="h-60 w-full rounded-2xl object-cover" />}
-                        {type === "video_path" && <video src={url} crossOrigin="use-credentials" controls className="h-60 w-full rounded-2xl object-cover" />}
-                        {type === "audio_path" && <audio src={url} crossOrigin="use-credentials" controls className="w-full" />}
-                        {type === "file_path" && <a href={url} target="_blank" rel="noreferrer" className="flex h-60 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm font-semibold text-slate-700">Open attached file</a>}
-                        <div className="flex justify-end gap-2">
-                          <button type="button" onClick={() => handleDownload(path, fileName)} className="inline-flex items-center gap-1.5 rounded-lg bg-violet-100 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-200">
-                            <FiDownload size={14} /> Download
-                          </button>
-                          <button type="button" onClick={() => handleShare(`${entry.title} - ${fileName}`)} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200">
-                            <FiShare2 size={14} /> Share
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            </section>
           </div>
         </div>
       </div>
