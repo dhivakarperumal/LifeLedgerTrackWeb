@@ -6,10 +6,6 @@ const multer = require("multer");
 // Base upload directories
 const UPLOAD_ROOT = path.join(__dirname, "..", "..", "uploads");
 const DIRS = {
-  images: path.join(UPLOAD_ROOT, "images"),
-  videos: path.join(UPLOAD_ROOT, "videos"),
-  audio: path.join(UPLOAD_ROOT, "audio"),
-  files: path.join(UPLOAD_ROOT, "files"),
   memoriesImages: path.join(UPLOAD_ROOT, "memories", "images"),
   memoriesVideos: path.join(UPLOAD_ROOT, "memories", "videos"),
   memoriesAudio: path.join(UPLOAD_ROOT, "memories", "audio"),
@@ -107,7 +103,13 @@ const ALLOWED_DOC_MIMES = new Set([
 ]);
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, resolveStorageDirectory(req, file)),
+  destination: (req, file, cb) => {
+    try {
+      cb(null, resolveStorageDirectory(req, file));
+    } catch (error) {
+      cb(error);
+    }
+  },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `${crypto.randomUUID()}${ext}`);
@@ -130,30 +132,29 @@ const getMediaCategory = (mimeType) => {
 
 const resolveStorageDirectory = (req, file) => {
   const mimeType = getEffectiveMimeType(file);
-  const isMemoryUpload = req.baseUrl === "/api/memories";
-  const isDiaryUpload = req.baseUrl === "/api/diary";
-  const directories = isMemoryUpload
+  const directories = req.baseUrl === "/api/memories"
     ? {
         image: DIRS.memoriesImages,
         video: DIRS.memoriesVideos,
         audio: DIRS.memoriesAudio,
         file: DIRS.memoriesFiles,
       }
-    : isDiaryUpload
+    : req.baseUrl === "/api/diary"
       ? {
           image: DIRS.diaryImages,
           video: DIRS.diaryVideos,
           audio: DIRS.diaryAudio,
           file: DIRS.diaryFiles,
         }
-      : {
-          image: DIRS.images,
-          video: DIRS.videos,
-          audio: DIRS.audio,
-          file: DIRS.files,
-        };
+      : null;
 
-  return directories[getMediaCategory(mimeType)] || directories.file;
+  const directory = directories?.[getMediaCategory(mimeType)];
+  if (!directory) {
+    const error = new Error("Upload media through a memory or diary entry.");
+    error.code = "UNLINKED_MEDIA_NOT_SUPPORTED";
+    throw error;
+  }
+  return directory;
 };
 
 const fileFilter = (req, file, cb) => {
@@ -162,11 +163,18 @@ const fileFilter = (req, file, cb) => {
   const effectiveMime = getEffectiveMimeType(file);
   const extensionCategory = getMediaCategory(extensionMime || "");
   const mediaCategory = getMediaCategory(effectiveMime || "");
+  const isMemoryOrDiaryUpload = req.baseUrl === "/api/memories" || req.baseUrl === "/api/diary";
   const isAllowedMime = ALLOWED_IMAGE_MIMES.has(effectiveMime)
     || ALLOWED_VIDEO_MIMES.has(effectiveMime)
     || ALLOWED_AUDIO_MIMES.has(effectiveMime)
     || ALLOWED_DOC_MIMES.has(effectiveMime);
   const isAudioWebm = ext === ".webm" && mediaCategory === "audio";
+
+  if (!isMemoryOrDiaryUpload) {
+    const error = new Error("Upload media through a memory or diary entry.");
+    error.code = "UNLINKED_MEDIA_NOT_SUPPORTED";
+    return cb(error, false);
+  }
 
   if (
     extensionMime
@@ -241,6 +249,14 @@ const handleUploadError = (err, req, res, next) => {
       success: false,
       message: err.message,
       code: "UNSUPPORTED_FILE_TYPE",
+    });
+  }
+
+  if (err.code === "UNLINKED_MEDIA_NOT_SUPPORTED") {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+      code: err.code,
     });
   }
 

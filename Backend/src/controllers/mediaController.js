@@ -1,61 +1,16 @@
 const db = require("../config/db");
 const mediaService = require("../services/mediaService");
-const { extractUploadedFiles } = require("../middleware/uploadMiddleware");
 
 /**
  * POST /api/media/upload
- * Handles single or multiple standalone media uploads.
+ * Rejects unlinked uploads; new files must belong to a memory or diary entry.
  */
-const uploadMedia = async (req, res) => {
-  const files = extractUploadedFiles(req);
-
-  if (!files || files.length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: "No files uploaded. Attach files using form fields: 'media', 'images', 'videos', or 'file'.",
-    });
-  }
-
-  const userId = req.user.user_id;
-  try {
-    if (req.body.memory_id || req.body.diary_id) {
-      mediaService.cleanupFiles(files);
-      return res.status(400).json({
-        success: false,
-        message: "Upload linked files through the memory or diary media endpoint.",
-      });
-    }
-
-    const savedFiles = await mediaService.saveUploadedFiles({
-      files,
-      userId,
-    });
-
-    const images = savedFiles.filter((f) => f.file_type === "image");
-    const videos = savedFiles.filter((f) => f.file_type === "video");
-    const audio = savedFiles.filter((f) => f.file_type === "audio");
-
-    return res.status(201).json({
-      success: true,
-      message: `${savedFiles.length} file(s) uploaded successfully.`,
-      data: savedFiles,
-      images,
-      videos,
-      audio,
-    });
-  } catch (error) {
-    console.error("Media upload error:", error);
-    try {
-      await mediaService.rollbackUploadedFiles(files);
-    } catch (cleanupError) {
-      console.error("Media upload rollback failed:", cleanupError.message);
-    }
-    return res.status(500).json({
-      success: false,
-      message: "Failed to process media upload.",
-      error: error.message,
-    });
-  }
+const uploadMedia = (req, res) => {
+  return res.status(410).json({
+    success: false,
+    code: "STANDALONE_UPLOAD_DISABLED",
+    message: "Upload media through a memory or diary entry.",
+  });
 };
 
 /**

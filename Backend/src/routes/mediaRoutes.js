@@ -1,15 +1,14 @@
 const express = require("express");
 const { requireAuth } = require("../middleware/auth");
 const { requireMediaUnlock } = require("../middleware/appLock");
-const { uploadMedia, handleUploadError } = require("../middleware/uploadMiddleware");
 const mediaController = require("../controllers/mediaController");
 
 const router = express.Router();
 
 router.use(requireAuth, requireMediaUnlock);
 
-// Upload images/videos
-router.post("/upload", uploadMedia, handleUploadError, mediaController.uploadMedia);
+// Uploads must be associated with a memory or diary entry.
+router.post("/upload", mediaController.uploadMedia);
 
 // List all media with filtering and pagination
 router.get("/", mediaController.getMedia);

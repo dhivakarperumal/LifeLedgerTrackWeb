@@ -214,16 +214,16 @@ X-App-Lock-Token: <APP_LOCK_SESSION_TOKEN>
 ### Image Upload Specifications
 - **Supported Formats**: `JPG`, `JPEG`, `PNG`, `WEBP`, `GIF`, `BMP`
 - **Max File Size**: 50 MB per image
-- **Storage Location**: `Backend/uploads/images/`
-- **Public URL**: `/uploads/images/<filename>`
+- **Storage Location**: `Backend/uploads/memories/images/` or `Backend/uploads/diary/images/`
+- **Protected URL**: `/api/media/:id`
 - **Database Entity**: Recorded in `media_files` with `file_type: "image"`
 
 ### Video Upload Specifications
 - **Supported Formats**: `MP4`, `MOV`, `WEBM`, `M4V`, `MKV`
 - **Max File Size**: 250 MB per video
 - **Streaming Disk Storage**: Multer streams chunks directly to disk instead of buffering the entire video in Node.js heap memory.
-- **Storage Location**: `Backend/uploads/videos/`
-- **Public URL**: `/uploads/videos/<filename>`
+- **Storage Location**: `Backend/uploads/memories/videos/` or `Backend/uploads/diary/videos/`
+- **Protected URL**: `/api/media/:id`
 - **Database Entity**: Recorded in `media_files` with `file_type: "video"`
 - **Streaming Endpoint**: Supports HTTP Range headers (`Range: bytes=0-1048576`) via `GET /api/media/stream/:id` for seamless HTML5 video player scrubbing and playback.
 
@@ -283,18 +283,18 @@ Content-Type: multipart/form-data
     "is_favorite": true,
     "favorite": true,
     "voice_note": "",
-    "media_url": "/uploads/images/1732456789-a1b2-beach_photo.jpg",
+    "media_url": "/api/media/101",
     "media_type": "image",
     "media_gallery": [
-      "/uploads/images/1732456789-a1b2-beach_photo.jpg",
-      "/uploads/videos/1732456790-c3d4-sunset_drone.mp4"
+      "/api/media/101",
+      "/api/media/102"
     ],
     "images": [
       {
         "id": 101,
         "file_name": "1732456789-a1b2-beach_photo.jpg",
         "original_name": "beach_photo.jpg",
-        "file_url": "/uploads/images/1732456789-a1b2-beach_photo.jpg",
+        "file_url": "/api/media/101",
         "file_type": "image",
         "mime_type": "image/jpeg",
         "file_size": 2450800,
@@ -306,7 +306,7 @@ Content-Type: multipart/form-data
         "id": 102,
         "file_name": "1732456790-c3d4-sunset_drone.mp4",
         "original_name": "sunset_drone.mp4",
-        "file_url": "/uploads/videos/1732456790-c3d4-sunset_drone.mp4",
+        "file_url": "/api/media/102",
         "file_type": "video",
         "mime_type": "video/mp4",
         "file_size": 48290000,
@@ -318,7 +318,7 @@ Content-Type: multipart/form-data
         "id": 101,
         "file_name": "1732456789-a1b2-beach_photo.jpg",
         "original_name": "beach_photo.jpg",
-        "file_url": "/uploads/images/1732456789-a1b2-beach_photo.jpg",
+        "file_url": "/api/media/101",
         "file_type": "image",
         "mime_type": "image/jpeg",
         "file_size": 2450800,
@@ -328,7 +328,7 @@ Content-Type: multipart/form-data
         "id": 102,
         "file_name": "1732456790-c3d4-sunset_drone.mp4",
         "original_name": "sunset_drone.mp4",
-        "file_url": "/uploads/videos/1732456790-c3d4-sunset_drone.mp4",
+        "file_url": "/api/media/102",
         "file_type": "video",
         "mime_type": "video/mp4",
         "file_size": 48290000,
@@ -382,7 +382,7 @@ Fetches a paginated, searchable, and filtered list of memories belonging to the 
           "id": 101,
           "file_name": "1732456789-a1b2-beach_photo.jpg",
           "original_name": "beach_photo.jpg",
-          "file_url": "/uploads/images/1732456789-a1b2-beach_photo.jpg",
+          "file_url": "/api/media/101",
           "file_type": "image",
           "mime_type": "image/jpeg",
           "file_size": 2450800,
@@ -394,7 +394,7 @@ Fetches a paginated, searchable, and filtered list of memories belonging to the 
           "id": 102,
           "file_name": "1732456790-c3d4-sunset_drone.mp4",
           "original_name": "sunset_drone.mp4",
-          "file_url": "/uploads/videos/1732456790-c3d4-sunset_drone.mp4",
+          "file_url": "/api/media/102",
           "file_type": "video",
           "mime_type": "video/mp4",
           "file_size": 48290000,
@@ -434,7 +434,7 @@ Retrieves a single memory by ID with complete related media information.
       {
         "id": 101,
         "file_name": "1732456789-a1b2-beach_photo.jpg",
-        "file_url": "/uploads/images/1732456789-a1b2-beach_photo.jpg",
+        "file_url": "/api/media/101",
         "file_type": "image",
         "file_size": 2450800
       }
@@ -443,7 +443,7 @@ Retrieves a single memory by ID with complete related media information.
       {
         "id": 102,
         "file_name": "1732456790-c3d4-sunset_drone.mp4",
-        "file_url": "/uploads/videos/1732456790-c3d4-sunset_drone.mp4",
+        "file_url": "/api/media/102",
         "file_type": "video",
         "file_size": 48290000
       }
@@ -562,7 +562,7 @@ Creates a new diary or journal entry with optional image, video, and document up
       {
         "id": 201,
         "file_name": "1732457890-e5f6-whiteboard_notes.png",
-        "file_url": "/uploads/images/1732457890-e5f6-whiteboard_notes.png",
+        "file_url": "/api/media/201",
         "file_type": "image",
         "file_size": 1820400
       }
@@ -571,7 +571,7 @@ Creates a new diary or journal entry with optional image, video, and document up
       {
         "id": 202,
         "file_name": "1732457891-g7h8-demo_walkthrough.mp4",
-        "file_url": "/uploads/videos/1732457891-g7h8-demo_walkthrough.mp4",
+        "file_url": "/api/media/202",
         "file_type": "video",
         "file_size": 65120000
       }
@@ -638,61 +638,19 @@ Deletes a specific attachment by media ID.
 
 ### Base URL: `/api/media`
 
-The standalone Media API allows uploading and managing media independent of or directly associated with memories or diary entries.
+Standalone uploads are disabled. Attach images, videos, audio, and documents to a memory or diary entry so files are stored in their corresponding feature folder.
 
 ---
 
 ### `POST /api/media/upload`
-Uploads multiple images and videos.
+Returns `410 Gone`; use `POST /api/memories/:id/media` or `POST /api/diary/:id/media` instead.
 
-#### Headers:
-```http
-Authorization: Bearer <JWT_TOKEN>
-Content-Type: multipart/form-data
-```
-
-#### FormData:
-- `media`: File or files (JPG, PNG, WEBP, MP4, MOV, WEBM)
-- `memory_id` (Optional): ID of memory to associate with
-- `diary_id` (Optional): ID of diary entry to associate with
-
-#### Example Response (`201 Created`):
+#### Response:
 ```json
 {
-  "success": true,
-  "message": "2 file(s) uploaded successfully.",
-  "data": [
-    {
-      "id": 105,
-      "user_id": "USR001",
-      "memory_id": 14,
-      "diary_id": null,
-      "file_name": "1732459000-a1b2-scenery.jpg",
-      "original_name": "scenery.jpg",
-      "file_path": "uploads/images/1732459000-a1b2-scenery.jpg",
-      "file_url": "/uploads/images/1732459000-a1b2-scenery.jpg",
-      "file_type": "image",
-      "mime_type": "image/jpeg",
-      "file_size": 1540300,
-      "created_at": "2026-11-24T12:00:00.000Z"
-    },
-    {
-      "id": 106,
-      "user_id": "USR001",
-      "memory_id": 14,
-      "diary_id": null,
-      "file_name": "1732459001-c3d4-waterfall.mp4",
-      "original_name": "waterfall.mp4",
-      "file_path": "uploads/videos/1732459001-c3d4-waterfall.mp4",
-      "file_url": "/uploads/videos/1732459001-c3d4-waterfall.mp4",
-      "file_type": "video",
-      "mime_type": "video/mp4",
-      "file_size": 35200000,
-      "created_at": "2026-11-24T12:00:01.000Z"
-    }
-  ],
-  "images": [ ... ],
-  "videos": [ ... ]
+  "success": false,
+  "code": "STANDALONE_UPLOAD_DISABLED",
+  "message": "Upload media through a memory or diary entry."
 }
 ```
 
