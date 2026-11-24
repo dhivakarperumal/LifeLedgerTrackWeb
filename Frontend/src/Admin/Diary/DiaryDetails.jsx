@@ -242,8 +242,8 @@ const DiaryDetails = () => {
           <div className="relative flex min-h-[240px] items-end overflow-hidden border-b border-slate-200 bg-gradient-to-r from-[#240046] to-[#7b2cbf] p-6 text-white md:min-h-[340px] md:p-10">
             {coverImageUrl && (
               <>
-                <img src={coverImageUrl} alt="" crossOrigin="use-credentials" className="absolute inset-0 h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#240046]/85 to-[#7b2cbf]/70" />
+                <img src={coverImageUrl} alt="" crossOrigin="use-credentials" className="absolute inset-0 z-0 h-full w-full object-cover" />
+                <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
               </>
             )}
             <div className="relative z-10">
