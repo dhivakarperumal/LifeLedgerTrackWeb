@@ -30,6 +30,28 @@ app.use(
   "/uploads",
   requireAuth,
   requireMediaUnlock,
+  async (req, res, next) => {
+    const normalizedPath = path.posix.normalize(
+      `uploads/${String(req.path || "").replace(/\\/g, "/").replace(/^\/+/, "")}`
+    );
+    if (!/^uploads\/(memories|diary)\//.test(normalizedPath)) return next();
+
+    try {
+      const isAdmin = req.user.role?.toLowerCase() === "admin";
+      const query = isAdmin
+        ? "SELECT id FROM media_files WHERE file_path = ?"
+        : "SELECT id FROM media_files WHERE file_path = ? AND user_id = ?";
+      const params = isAdmin ? [normalizedPath] : [normalizedPath, req.user.user_id];
+      const [rows] = await db.query(query, params);
+      if (!rows.length) {
+        return res.status(404).json({ success: false, message: "Media file not found or access denied." });
+      }
+      next();
+    } catch (error) {
+      console.error("Private upload authorization error:", error.message);
+      next(error);
+    }
+  },
   (req, res, next) => {
     res.set("Cache-Control", "private, no-store");
     next();
@@ -74,6 +96,7 @@ app.use("/api/transfers", require("./src/routes/transferRoutes"));
 app.use("/api/expenses", require("./src/routes/expenseRoutes"));
 app.use("/api/diary", require("./src/routes/diaryRoutes"));
 app.use("/api/memories", require("./src/routes/memoryRoutes"));
+app.use("/api/media", require("./src/routes/mediaRoutes"));
 app.use("/api/todos", require("./src/routes/todoRoutes"));
 
 app.use((error, req, res, next) => {

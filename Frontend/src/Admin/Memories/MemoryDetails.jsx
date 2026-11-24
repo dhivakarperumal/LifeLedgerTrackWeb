@@ -2,19 +2,13 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api";
 import { formatDateOnly } from "../../utils/date";
+import getMediaUrl from "../../utils/mediaUrl";
 import { toast } from "react-hot-toast";
 import { FiImage, FiVideo, FiMusic, FiCalendar, FiMapPin, FiClock, FiTag, FiBookOpen, FiArrowLeft, FiHeart, FiEdit2, FiTrash2, FiEye, FiDownload, FiShare2 } from "react-icons/fi";
 
 const formatDate = (value) => {
   if (!value) return "—";
   return formatDateOnly(value, "en-US", { month: "short", day: "numeric", year: "numeric" });
-};
-
-const getMediaUrl = (value) => {
-  if (!value) return "";
-  if (value.startsWith("http")) return value;
-  const base = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "");
-  return `${base}${value.startsWith("/") ? value : `/${value}`}`;
 };
 
 const getMediaFileName = (media, index) => {
@@ -46,7 +40,7 @@ const MemoryDetails = () => {
     const fetchMemory = async () => {
       try {
         const response = await api.get(`/memories/${id}`);
-        setMemory(response.data);
+        setMemory(response.data?.data || response.data);
       } catch (error) {
         toast.error("Failed to load memory details.");
         navigate("/admin/users/memories");
@@ -147,6 +141,9 @@ const MemoryDetails = () => {
              <button onClick={() => handleShare(window.location.href, memory.description || memory.title)} className="inline-flex items-center gap-2 rounded-xl bg-violet-50 px-4 py-2.5 text-sm font-bold text-violet-700 shadow-sm transition hover:bg-violet-100">
                <FiShare2 /> Share
              </button>
+             <button onClick={() => navigate("/admin/users/memories", { state: { editMemoryId: memory.id } })} className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-violet-700">
+               <FiEdit2 /> Edit
+             </button>
              <button onClick={toggleFavorite} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm transition ${memory.is_favorite ? 'bg-pink-50 text-pink-600 hover:bg-pink-100' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
                <FiHeart className={memory.is_favorite ? "fill-current" : ""} /> {memory.is_favorite ? "Favorited" : "Favorite"}
              </button>
@@ -242,13 +239,22 @@ const MemoryDetails = () => {
 
             {/* Media Gallery */}
             {(() => {
-              const galleryItems = Array.isArray(memory.media_gallery) && memory.media_gallery.length
-                ? memory.media_gallery
-                : memory.media_url
-                  ? [memory.media_url]
-                  : [];
+              const galleryItems = [
+                ...(Array.isArray(memory.images) ? memory.images : []),
+                ...(Array.isArray(memory.videos) ? memory.videos : []),
+                ...(Array.isArray(memory.audio) ? memory.audio : []),
+                ...(Array.isArray(memory.media_files) ? memory.media_files : []),
+                ...(Array.isArray(memory.media_gallery) ? memory.media_gallery : []),
+                ...(memory.media_url ? [memory.media_url] : []),
+              ];
 
-              const uniqueGallery = galleryItems.filter((item, index, arr) => item && arr.indexOf(item) === index);
+              const seenUrls = new Set();
+              const uniqueGallery = galleryItems.filter((item) => {
+                const url = typeof item === "string" ? item : item?.file_url || item?.url || item?.path || "";
+                if (!url || seenUrls.has(url)) return false;
+                seenUrls.add(url);
+                return true;
+              });
 
               if (!uniqueGallery.length) return null;
 
@@ -263,21 +269,22 @@ const MemoryDetails = () => {
                         : mediaUrl?.file_url || mediaUrl?.url || mediaUrl?.path || mediaUrl?.src || "";
                       const resolvedUrl = getMediaUrl(sourceUrl);
                       const fileName = getMediaFileName(mediaUrl, idx);
-                      const isVideo = /(\.(mp4|webm|ogg|mov|m4v))$/i.test(fileName);
-                      const isAudio = /(\.(mp3|wav|ogg|m4a|aac))$/i.test(fileName);
+                      const declaredType = String(mediaUrl?.mime_type || mediaUrl?.file_type || mediaUrl?.type || "").toLowerCase();
+                      const isAudio = declaredType.startsWith("audio/") || declaredType === "audio" || /(\.(mp3|wav|ogg|m4a|aac))$/i.test(fileName);
+                      const isVideo = !isAudio && (declaredType.startsWith("video/") || declaredType === "video" || /(\.(mp4|webm|ogg|mov|m4v))$/i.test(fileName));
 
                       return (
                         <div key={`${sourceUrl}-${idx}`} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
                           <div className={isAudio ? "flex h-[220px] items-center justify-center bg-gradient-to-r from-violet-500 to-pink-500 p-4" : "h-[220px] overflow-hidden bg-black"}>
-                            {isVideo ? (
-                              <video src={resolvedUrl} crossOrigin="use-credentials" controls className="h-full w-full object-cover" />
-                            ) : isAudio ? (
+                            {isAudio ? (
                               <div className="flex w-full items-center justify-center">
                                 <div className="flex w-full max-w-[94%] items-center gap-3 rounded-full bg-white/95 px-4 py-3 shadow-lg">
                                   <span className="text-lg text-slate-700">▶</span>
                                   <audio src={resolvedUrl} crossOrigin="use-credentials" controls className="h-9 w-full" />
                                 </div>
                               </div>
+                            ) : isVideo ? (
+                              <video src={resolvedUrl} crossOrigin="use-credentials" controls className="h-full w-full object-cover" />
                             ) : (
                               <img src={resolvedUrl} alt={fileName} crossOrigin="use-credentials" className="h-full w-full object-cover" />
                             )}

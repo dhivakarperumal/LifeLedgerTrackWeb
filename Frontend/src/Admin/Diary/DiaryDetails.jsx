@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api";
 import { toast } from "react-hot-toast";
 import { formatDateOnly } from "../../utils/date";
+import getMediaUrl from "../../utils/mediaUrl";
 import {
   FiArrowLeft,
   FiCalendar,
@@ -34,13 +35,6 @@ const formatDateTime = (value) => {
   return date.toLocaleString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 };
 
-const getMediaUrl = (value) => {
-  if (!value) return "";
-  if (value.startsWith("http")) return value;
-  const base = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "");
-  return `${base}${value.startsWith("/") ? value : `/${value}`}`;
-};
-
 const getMediaFileName = (value, fallback) => {
   const pathname = new URL(getMediaUrl(value), window.location.origin).pathname;
   const filename = pathname.split("/").pop();
@@ -60,7 +54,7 @@ const DiaryDetails = () => {
   const fetchEntry = async () => {
     try {
       const response = await api.get(`/diary/${id}`);
-      setEntry(response.data);
+      setEntry(response.data?.data || response.data);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load diary details.");
       navigate("/admin/users/diary");
@@ -150,7 +144,20 @@ const DiaryDetails = () => {
 
   if (!entry) return null;
 
-  const attachments = Array.isArray(entry.attachments) ? entry.attachments : Array.isArray(entry.media_files) ? entry.media_files : [];
+  const rawAttachments = [
+    ...(Array.isArray(entry.images) ? entry.images : []),
+    ...(Array.isArray(entry.videos) ? entry.videos : []),
+    ...(Array.isArray(entry.audio) ? entry.audio : []),
+    ...(Array.isArray(entry.attachments) ? entry.attachments : []),
+    ...(Array.isArray(entry.media_files) ? entry.media_files : []),
+  ];
+  const seenAttachmentUrls = new Set();
+  const attachments = rawAttachments.filter((item) => {
+    const url = typeof item === "string" ? item : item?.file_url || item?.url || item?.path || "";
+    if (!url || seenAttachmentUrls.has(url)) return false;
+    seenAttachmentUrls.add(url);
+    return true;
+  });
 
   return (
     <div className="min-h-screen  pb-20">

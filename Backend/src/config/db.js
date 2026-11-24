@@ -1,4 +1,5 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", "..", ".env") });
 const mysql = require("mysql2/promise");
 
 const dbConfig = {
@@ -434,6 +435,30 @@ const initializeDatabase = async () => {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       KEY idx_todo_user_status_due_date (user_id, status, due_date),
       CONSTRAINT fk_todo_task_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS media_files (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      memory_id INT NULL,
+      diary_id INT NULL,
+      file_name VARCHAR(255) NOT NULL,
+      stored_name VARCHAR(255) NOT NULL,
+      original_name VARCHAR(255) NOT NULL,
+      file_path VARCHAR(500) NOT NULL,
+      file_url VARCHAR(500) NOT NULL,
+      file_type VARCHAR(50) NOT NULL,
+      media_type VARCHAR(20) NOT NULL,
+      mime_type VARCHAR(100) NOT NULL,
+      file_size BIGINT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_media_user (user_id),
+      KEY idx_media_memory (memory_id),
+      KEY idx_media_diary (diary_id),
+      KEY idx_media_type (file_type),
+      CONSTRAINT fk_media_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+      CONSTRAINT fk_media_memory FOREIGN KEY (memory_id) REFERENCES memories(id) ON DELETE CASCADE,
+      CONSTRAINT fk_media_diary FOREIGN KEY (diary_id) REFERENCES diary_entries(id) ON DELETE CASCADE
     )`
   ];
 
@@ -490,7 +515,24 @@ const initializeDatabase = async () => {
   await ensureColumn("memories", "media_type", "VARCHAR(50) DEFAULT 'image'");
   await ensureColumn("memories", "voice_note", "TEXT NULL");
   await ensureColumn("memories", "category_name", "VARCHAR(120) NULL");
+  await ensureColumn("memories", "category", "VARCHAR(100) NULL");
   await ensureColumn("memories", "category_color", "VARCHAR(30) DEFAULT '#8B5CF6'");
+  await ensureColumn("media_files", "stored_name", "VARCHAR(255) NULL");
+  await ensureColumn("media_files", "media_type", "VARCHAR(20) NULL");
+  await pool.query(
+    `UPDATE media_files
+     SET stored_name = COALESCE(NULLIF(stored_name, ''), file_name),
+         media_type = COALESCE(NULLIF(media_type, ''), file_type)
+     WHERE stored_name IS NULL OR stored_name = '' OR media_type IS NULL OR media_type = ''`
+  );
+  await pool.query("ALTER TABLE media_files MODIFY COLUMN stored_name VARCHAR(255) NOT NULL");
+  await pool.query("ALTER TABLE media_files MODIFY COLUMN media_type VARCHAR(20) NOT NULL");
+  await pool.query(
+    `UPDATE media_files
+     SET file_url = CONCAT('/api/media/', id)
+     WHERE file_path IS NOT NULL AND file_path <> ''
+       AND file_url <> CONCAT('/api/media/', id)`
+  );
   await ensureColumn("income", "user_id", "VARCHAR(50) NULL");
   await ensureColumn("income", "monthly_budget", "DECIMAL(12,2) NOT NULL DEFAULT 0");
   await ensureColumn("income", "created_by", "VARCHAR(50) NULL");
@@ -640,6 +682,7 @@ const initializeDatabase = async () => {
     }
 
     await ensureColumn("diary_entries", "category_name", "VARCHAR(120) NULL");
+    await ensureColumn("diary_entries", "category", "VARCHAR(100) NULL");
     await ensureColumn("diary_entries", "image_path", "VARCHAR(500) NULL");
     await ensureColumn("diary_entries", "video_path", "VARCHAR(500) NULL");
     await ensureColumn("diary_entries", "audio_path", "VARCHAR(500) NULL");
@@ -687,6 +730,15 @@ const initializeDatabase = async () => {
       ['created_by', 'VARCHAR(50) NULL'],
       ['updated_by', 'VARCHAR(50) NULL'],
       ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'diary_entries', columns: [
+      ['user_id', 'VARCHAR(50) NULL'],
+      ['created_by', 'VARCHAR(50) NULL'],
+      ['updated_by', 'VARCHAR(50) NULL'],
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
+    ] },
+    { table: 'media_files', columns: [
+      ['updated_at', 'TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP']
     ] }
   ];
 
@@ -694,6 +746,13 @@ const initializeDatabase = async () => {
     for (const [columnName, columnDefinition] of columns) {
       await ensureColumn(table, columnName, columnDefinition);
     }
+  }
+
+  try {
+    await pool.query("UPDATE memories SET category = category_name WHERE (category IS NULL OR category = '') AND category_name IS NOT NULL");
+    await pool.query("UPDATE diary_entries SET category = category_name WHERE (category IS NULL OR category = '') AND category_name IS NOT NULL");
+  } catch (error) {
+    // Ignore if column update fails
   }
 
   return pool;

@@ -23,7 +23,7 @@ const lockCookieOptions = () => {
 };
 const mediaSessionCookieOptions = () => ({
   ...lockCookieOptions(),
-  path: "/uploads",
+  path: "/",
 });
 const setMediaSessionCookie = (req, res) => {
   const authorization = req.get("Authorization") || "";
@@ -340,6 +340,8 @@ exports.logout = async (req, res) => {
   await db.query("DELETE FROM app_lock_sessions WHERE user_id = ?", [req.user.user_id]);
   res.clearCookie("life_ledger_lock", lockCookieOptions());
   res.clearCookie("life_ledger_session", mediaSessionCookieOptions());
+  res.clearCookie("life_ledger_session", { ...mediaSessionCookieOptions(), path: "/uploads" });
+  res.clearCookie("life_ledger_session", { ...mediaSessionCookieOptions(), path: "/api" });
   res.json({ message: "Session ended." });
 };
 

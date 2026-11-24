@@ -40,8 +40,8 @@ const requireAppUnlock = async (req, res, next) => {
 const requireMediaUnlock = async (req, res, next) => {
   try {
     res.set("Cache-Control", "private, no-store");
-    if (String(req.user?.role || "").trim().toLowerCase() !== "admin") {
-      return res.status(403).json({ message: "Administrator access required." });
+    if (!req.user) {
+      return res.status(401).json({ message: "Authentication required to access media." });
     }
     const [settings] = await db.query(
       "SELECT enabled FROM app_lock_settings WHERE user_id = ?",
@@ -49,7 +49,7 @@ const requireMediaUnlock = async (req, res, next) => {
     );
     if (!settings.length || !settings[0].enabled) return next();
 
-    const token = getCookie(req, "life_ledger_lock");
+    const token = req.query?.lock_token || req.get("X-App-Lock-Token") || getCookie(req, "life_ledger_lock");
     if (!token) return res.status(423).json({ message: "Unlock the app before accessing private media." });
 
     const [sessions] = await db.query(
@@ -57,7 +57,7 @@ const requireMediaUnlock = async (req, res, next) => {
        FROM app_lock_sessions s
        JOIN app_lock_settings a ON a.user_id = s.user_id
       WHERE s.token_hash = ? AND s.user_id = ? AND s.expires_at > NOW() AND a.enabled = 1`,
-          [hashToken(token), req.user.user_id]
+      [hashToken(token), req.user.user_id]
     );
     if (!sessions.length) return res.status(423).json({ message: "Unlock the app before accessing private media." });
     next();

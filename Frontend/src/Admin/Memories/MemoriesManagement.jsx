@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import api from "../../api";
 import Loader from "../../Components/CommenComponents/Loader";
 import { toast } from "react-hot-toast";
 import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
 import { formatDateOnly, parseDateOnly, toLocalDateKey } from "../../utils/date";
+import getMediaUrl from "../../utils/mediaUrl";
 import {
   FiImage,
   FiVideo,
@@ -37,14 +38,6 @@ const formatDate = (value) => {
 
 const normalizeDateInput = (value) => {
   return toLocalDateKey(value) || toLocalDateKey();
-};
-
-const getMediaUrl = (value) => {
-  if (!value) return "";
-  if (typeof value !== "string") return "";
-  if (value.startsWith("http://") || value.startsWith("https://")) return value;
-  const base = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "");
-  return `${base}${value.startsWith("/") ? value : `/${value}`}`;
 };
 
 const getFileTypeFromName = (fileName = "", fallbackType = "application/octet-stream") => {
@@ -101,6 +94,7 @@ const initialForm = {
 
 const MemoriesManagement = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [memories, setMemories] = useState([]);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState("");
@@ -168,8 +162,10 @@ const MemoriesManagement = () => {
   const getAllNewFiles = () => [...newImages, ...newVideos, ...newAudios, ...newZips];
 
   const normalizeExistingMedia = (memoryItem) => {
-    const gallery = Array.isArray(memoryItem?.media_gallery) && memoryItem.media_gallery.length
-      ? memoryItem.media_gallery
+    const gallery = Array.isArray(memoryItem?.media_files) && memoryItem.media_files.length
+      ? memoryItem.media_files
+      : Array.isArray(memoryItem?.media_gallery) && memoryItem.media_gallery.length
+        ? memoryItem.media_gallery
       : memoryItem?.media_url
         ? [memoryItem.media_url]
         : [];
@@ -179,7 +175,16 @@ const MemoriesManagement = () => {
       .map((item, index) => {
         const value = typeof item === "string" ? item : item?.file_url || item?.url || item?.path || item?.src || "";
         const fileName = String(item?.file_name || item?.name || value.split("/").pop() || `media-${index + 1}`);
-        const type = getFileTypeFromName(fileName, item?.file_type || item?.type || "application/octet-stream");
+        const declaredType = item?.mime_type || item?.file_type || item?.type;
+        const type = declaredType && String(declaredType).includes("/")
+          ? declaredType
+          : declaredType === "audio"
+            ? "audio/webm"
+            : declaredType === "video"
+              ? "video/mp4"
+              : declaredType === "image"
+                ? getFileTypeFromName(fileName)
+                : getFileTypeFromName(fileName, "application/octet-stream");
         const id = typeof item === "string" ? `existing-${index}-${fileName}` : (item?.id || `existing-${index}-${fileName}`);
 
         return {
@@ -202,8 +207,8 @@ const MemoriesManagement = () => {
       const lowerType = String(item?.type || item?.file_type || "").toLowerCase();
       const fileName = String(item?.name || item?.file_name || "").toLowerCase();
       const isImage = lowerType.startsWith("image/") || lowerType.includes("image") || /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(fileName);
-      const isVideo = lowerType.startsWith("video/") || lowerType.includes("video") || /\.(mp4|webm|mov|m4v|ogg)$/i.test(fileName);
       const isAudio = lowerType.startsWith("audio/") || lowerType.includes("audio") || /\.(mp3|wav|m4a|aac)$/i.test(fileName);
+      const isVideo = lowerType.startsWith("video/") || lowerType.includes("video") || (!lowerType.startsWith("audio/") && /\.(mp4|webm|mov|m4v|ogg)$/i.test(fileName));
       const isZip = lowerType.includes("zip") || lowerType.includes("compressed") || /\.(zip|rar|7z)$/i.test(fileName);
 
       if (isImage) images.push(item);
@@ -225,15 +230,21 @@ const MemoriesManagement = () => {
 
       if (memoriesResult.status === "rejected") throw memoriesResult.reason;
 
-      const sharedCategories = categoriesResult.status === "fulfilled" && Array.isArray(categoriesResult.value.data)
-        ? categoriesResult.value.data
+      const rawCategories = categoriesResult.status === "fulfilled"
+        ? (categoriesResult.value?.data?.data || categoriesResult.value?.data || [])
         : [];
+      const sharedCategories = Array.isArray(rawCategories) ? rawCategories : [];
       const memoryOnlyCategories = sharedCategories.filter((category) => {
         const typeValue = String(category?.catType || category?.type || category?.category_type || "").trim().toLowerCase();
         return !typeValue || typeValue === "memory" || typeValue === "memories";
       });
 
-      setMemories(Array.isArray(memoriesResult.value.data) ? memoriesResult.value.data : []);
+      const rawMemories = memoriesResult.value?.data;
+      const memoriesList = Array.isArray(rawMemories?.data)
+        ? rawMemories.data
+        : (Array.isArray(rawMemories) ? rawMemories : []);
+
+      setMemories(memoriesList);
       setCategories(memoryOnlyCategories);
       if (categoriesResult.status === "rejected") {
         console.error("Failed to load memory categories:", categoriesResult.reason);
@@ -361,6 +372,20 @@ const MemoriesManagement = () => {
     setIsEditorOpen(true);
   };
 
+  useEffect(() => {
+    const editMemoryId = location.state?.editMemoryId;
+    if (loading || !editMemoryId) return;
+
+    const memoryToEdit = memories.find((item) => String(item.id) === String(editMemoryId));
+    if (memoryToEdit) {
+      openEditMemory(memoryToEdit);
+    } else {
+      toast.error("Could not find that memory to edit.");
+    }
+
+    navigate(location.pathname, { replace: true, state: null });
+  }, [loading, memories, location.pathname, location.state, navigate]);
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({
@@ -415,12 +440,15 @@ const MemoriesManagement = () => {
 
       let response;
       if (editingId) {
-        response = await api.put(`/memories/${editingId}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+        response = await api.put(`/memories/${editingId}`, formData);
       } else {
-        response = await api.post("/memories", formData, { headers: { "Content-Type": "multipart/form-data" } });
+        response = await api.post("/memories", formData);
       }
 
-      const savedMemory = response.data;
+      const savedMemory = response.data?.data || response.data;
+      if (!savedMemory?.id) {
+        throw new Error("The server did not return the saved memory.");
+      }
       memorySaved = true;
       setMemories((previous) => isEditing
         ? previous.map((memory) => memory.id === savedMemory.id ? savedMemory : memory)
@@ -434,8 +462,7 @@ const MemoriesManagement = () => {
         const mediaFormData = new FormData();
         filesToUpload.forEach((file) => mediaFormData.append("media", file));
 
-        const uploadResponse = await api.put(`/memories/${savedMemory.id}`, mediaFormData, {
-          headers: { "Content-Type": "multipart/form-data" },
+        const uploadResponse = await api.post(`/memories/${savedMemory.id}/media`, mediaFormData, {
           onUploadProgress: (event) => {
             if (!event.total) return;
             const percent = Math.round((event.loaded * 100) / event.total);
@@ -449,10 +476,17 @@ const MemoriesManagement = () => {
             );
           },
         });
-        const uploadedMemory = uploadResponse.data;
+        const uploadedMemory = uploadResponse.data?.data || uploadResponse.data;
+        if (!uploadedMemory?.id) {
+          throw new Error("The server did not return the updated memory after media upload.");
+        }
         setMemories((previous) => previous.map((memory) => memory.id === uploadedMemory.id ? uploadedMemory : memory));
-        openEditMemory(uploadedMemory);
         toast.success("Memory and media saved.", { id: uploadToastId });
+        if (isEditing) {
+          openEditMemory(uploadedMemory);
+        } else {
+          navigate(`/admin/users/memories/${uploadedMemory.id}`);
+        }
       } else {
         toast.success(isEditing ? "Memory updated successfully." : "Memory created successfully.");
         setIsEditorOpen(false);
@@ -470,6 +504,9 @@ const MemoriesManagement = () => {
         setRemovedAudioIds([]);
         setRemovedZipIds([]);
         setRecordedVoiceName("");
+        if (!isEditing) {
+          navigate(`/admin/users/memories/${savedMemory.id}`);
+        }
       }
     } catch (error) {
       console.error("Memory save/upload failed:", error);
@@ -522,7 +559,9 @@ const MemoriesManagement = () => {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const supportedMimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
+        .find((mimeType) => MediaRecorder.isTypeSupported?.(mimeType));
+      const recorder = new MediaRecorder(stream, supportedMimeType ? { mimeType: supportedMimeType } : undefined);
       audioChunksRef.current = [];
 
       recorder.ondataavailable = (event) => {
@@ -530,8 +569,10 @@ const MemoriesManagement = () => {
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: "audio/webm" });
+        const mimeType = recorder.mimeType || audioChunksRef.current[0]?.type || "audio/webm";
+        const extension = mimeType.startsWith("audio/mp4") ? "m4a" : "webm";
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        const file = new File([blob], `voice-note-${Date.now()}.${extension}`, { type: mimeType });
         setNewAudios((prevFiles) => mergeUniqueFiles(prevFiles, [file]));
         setRecordedVoiceName((prevName) => (prevName ? `${prevName}, ${file.name}` : file.name));
         stream.getTracks().forEach((track) => track.stop());

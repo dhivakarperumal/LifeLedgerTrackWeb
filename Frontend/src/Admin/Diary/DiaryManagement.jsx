@@ -5,6 +5,7 @@ import { useAuth } from "../../PrivateRouter/AuthContext";
 import { toast } from "react-hot-toast";
 import { DATE_FILTER_OPTIONS, matchesDateRange, resolveDateRange } from "../../utils/dateRange";
 import { formatDateOnly, parseDateOnly, toLocalDateKey } from "../../utils/date";
+import getMediaUrl from "../../utils/mediaUrl";
 import {
   FiPlus, FiSearch, FiCalendar, FiHeart, FiEdit2, FiTrash2, FiStar, FiClock,
   FiFileText, FiImage, FiVideo, FiPaperclip, FiBookmark, FiCheck, FiX,
@@ -14,6 +15,7 @@ import {
 } from "react-icons/fi";
 
 const MAX_ATTACHMENT_FILE_SIZE = 100 * 1024 * 1024;
+const MAX_ATTACHMENT_FILES = 20;
 
 const defaultMoodOptions = [
   { value: "Happy", emoji: "😊" },
@@ -132,9 +134,10 @@ const DiaryManagement = () => {
 
   const getFilePreviewUrl = (file) => {
     if (!file) return "";
-    if (typeof file === "string") return file;
-    if (file.previewUrl || file.file_url || file.url || file.src || file.path) {
-      return file.previewUrl || file.file_url || file.url || file.src || file.path;
+    if (typeof file === "string") return getMediaUrl(file);
+    const mediaUrl = file.previewUrl || file.file_url || file.url || file.src || file.path;
+    if (mediaUrl) {
+      return getMediaUrl(mediaUrl);
     }
     if (file instanceof Blob || file instanceof File) {
       return URL.createObjectURL(file);
@@ -211,8 +214,8 @@ const DiaryManagement = () => {
       const name = String(item?.name || item?.file_name || "").toLowerCase();
 
       const isImage = type.startsWith("image/") || type === "image" || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
-      const isVideo = type.startsWith("video/") || type === "video" || /\.(mp4|webm|mov|m4v|ogg)$/i.test(name);
       const isAudio = type.startsWith("audio/") || type === "audio" || /\.(mp3|wav|m4a|aac)$/i.test(name);
+      const isVideo = type.startsWith("video/") || type === "video" || (!type.startsWith("audio/") && type !== "audio" && /\.(mp4|webm|mov|m4v|ogg)$/i.test(name));
       const isZip = type.includes("zip") || type.includes("compressed") || /\.(zip|rar|7z)$/i.test(name);
 
       if (isImage) images.push(item);
@@ -247,10 +250,14 @@ const DiaryManagement = () => {
         api.get("/diary"),
         api.get("/categories"),
       ]);
-      const categoryList = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
+      const rawCategories = categoriesRes.data?.data || categoriesRes.data || [];
+      const categoryList = Array.isArray(rawCategories) ? rawCategories : [];
       const diaryCategories = categoryList.filter(isDiaryCategory);
 
-      setEntries(entriesRes.data || []);
+      const rawEntries = entriesRes.data?.data || entriesRes.data || [];
+      const entriesList = Array.isArray(rawEntries) ? rawEntries : [];
+
+      setEntries(entriesList);
       setCategories(diaryCategories);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load diary data.");
@@ -459,26 +466,20 @@ const DiaryManagement = () => {
     if (!entryId || !validFiles.length) return;
 
     const totalBytes = validFiles.reduce((total, file) => total + (file.size || 0), 0);
-    let uploadedBytes = 0;
-    for (const [index, file] of validFiles.entries()) {
-      const formData = new FormData();
-      formData.append("file", file);
-      await api.post(`/diary/${entryId}/attachments`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (event) => {
-          if (!toastId || !event.total) return;
-          const currentFileBytes = Math.min(event.loaded, file.size || event.loaded);
-          const percent = Math.min(99, Math.round(((uploadedBytes + currentFileBytes) * 100) / (totalBytes || 1)));
-          setUploadProgress(percent);
-          toast.loading(`Diary saved. Uploading ${index + 1}/${validFiles.length}: ${percent}%`, { id: toastId });
-        },
-      });
-      uploadedBytes += file.size || 0;
-      setFiles((previous) => previous.filter((pendingFile) => pendingFile !== file));
-      setNewImages((previous) => previous.filter((pendingFile) => pendingFile !== file));
-      setNewVideos((previous) => previous.filter((pendingFile) => pendingFile !== file));
-      setNewAudios((previous) => previous.filter((pendingFile) => pendingFile !== file));
-    }
+    const formData = new FormData();
+    validFiles.forEach((file) => formData.append("media", file));
+    await api.post(`/diary/${entryId}/media`, formData, {
+      onUploadProgress: (event) => {
+        if (!toastId || !event.total) return;
+        const percent = Math.min(99, Math.round((event.loaded * 100) / Math.max(event.total, totalBytes, 1)));
+        setUploadProgress(percent);
+        toast.loading(`Diary saved. Uploading ${validFiles.length} attachment(s): ${percent}%`, { id: toastId });
+      },
+    });
+    setFiles((previous) => previous.filter((pendingFile) => !validFiles.includes(pendingFile)));
+    setNewImages((previous) => previous.filter((pendingFile) => !validFiles.includes(pendingFile)));
+    setNewVideos((previous) => previous.filter((pendingFile) => !validFiles.includes(pendingFile)));
+    setNewAudios((previous) => previous.filter((pendingFile) => !validFiles.includes(pendingFile)));
     setUploadProgress(100);
     setIsUploadFinalizing(true);
   };
@@ -497,6 +498,10 @@ const DiaryManagement = () => {
       ...newZips,
       ...files.filter((file) => file instanceof File || file instanceof Blob),
     ]);
+    if (newUploadFiles.length > MAX_ATTACHMENT_FILES) {
+      toast.error(`Choose no more than ${MAX_ATTACHMENT_FILES} attachments at a time.`);
+      return;
+    }
     const oversizedFile = newUploadFiles.find((file) => file.size > MAX_ATTACHMENT_FILE_SIZE);
     if (oversizedFile) {
       toast.error(`${oversizedFile.name || "Attachment"} exceeds the 100 MB per-file limit.`);
@@ -535,11 +540,12 @@ const DiaryManagement = () => {
         response = await api.post("/diary", payload, config);
       }
 
-      savedEntryId = response?.data?.id || editingId;
+      const resData = response?.data?.data || response?.data;
+      savedEntryId = resData?.id || editingId;
       entrySaved = true;
       localStorage.removeItem("diary-draft-temp");
       setEditingId(savedEntryId);
-      setSelectedEntry(response.data || selectedEntry);
+      setSelectedEntry(resData || selectedEntry);
       setDraftSaved(true);
 
       if (newUploadFiles.length) {
@@ -547,15 +553,23 @@ const DiaryManagement = () => {
         toast.loading("Diary saved. Please wait while attachments upload: 0%", { id: uploadToastId });
         await uploadAttachmentFiles(savedEntryId, newUploadFiles, uploadToastId);
         const entryResponse = await api.get(`/diary/${savedEntryId}`);
+        const savedData = entryResponse.data?.data || entryResponse.data;
         setEntries((previous) => editingId
-          ? previous.map((entry) => String(entry.id) === String(savedEntryId) ? entryResponse.data : entry)
-          : [entryResponse.data, ...previous]);
-        openEditEntry(entryResponse.data);
+          ? previous.map((entry) => String(entry.id) === String(savedEntryId) ? savedData : entry)
+          : [savedData, ...previous]);
         toast.success("Diary and attachments saved.", { id: uploadToastId });
+        if (editingId) {
+          openEditEntry(savedData);
+        } else {
+          navigate(`/admin/users/diary/${savedEntryId}`);
+        }
       } else {
         await fetchData();
         closeEditor();
         toast.success(editingId ? "Diary updated successfully." : "Diary saved successfully.");
+        if (!editingId) {
+          navigate(`/admin/users/diary/${savedEntryId}`);
+        }
       }
     } catch (error) {
       console.error("Diary save/upload failed:", error);
@@ -610,7 +624,9 @@ const DiaryManagement = () => {
   const startVoiceRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const supportedMimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
+        .find((mimeType) => MediaRecorder.isTypeSupported?.(mimeType));
+      const recorder = new MediaRecorder(stream, supportedMimeType ? { mimeType: supportedMimeType } : undefined);
       audioChunksRef.current = [];
 
       recorder.ondataavailable = (event) => {
@@ -618,8 +634,10 @@ const DiaryManagement = () => {
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: "audio/webm" });
+        const mimeType = recorder.mimeType || audioChunksRef.current[0]?.type || "audio/webm";
+        const extension = mimeType.startsWith("audio/mp4") ? "m4a" : "webm";
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        const file = new File([blob], `voice-note-${Date.now()}.${extension}`, { type: mimeType });
         setFiles((prevFiles) => mergeUniqueFiles(prevFiles, [file]));
         setNewAudios((prevFiles) => mergeUniqueFiles(prevFiles, [file]));
         stream.getTracks().forEach((track) => track.stop());
@@ -650,8 +668,8 @@ const DiaryManagement = () => {
       await Promise.all(
         pendingFiles.map(async (file) => {
           const formData = new FormData();
-          formData.append("file", file);
-          await api.post(`/diary/${entryId}/attachments`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+          formData.append("media", file);
+          await api.post(`/diary/${entryId}/media`, formData);
         })
       );
       toast.success("Attachment uploaded.");

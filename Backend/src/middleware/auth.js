@@ -2,6 +2,18 @@ const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 const { requireAppUnlock, getCookie } = require("./appLock");
 
+const setApiMediaSessionCookie = (res, token) => {
+  const configuredSameSite = String(process.env.APP_LOCK_COOKIE_SAMESITE || "lax").toLowerCase();
+  const sameSite = ["strict", "lax", "none"].includes(configuredSameSite) ? configuredSameSite : "lax";
+  res.cookie("life_ledger_session", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production" || sameSite === "none",
+    sameSite,
+    path: "/api",
+    maxAge: 24 * 60 * 60 * 1000,
+  });
+};
+
 const getJwtSecrets = () => {
   return process.env.JWT_SECRET ? [process.env.JWT_SECRET] : [];
 };
@@ -22,9 +34,11 @@ const verifyToken = (token) => {
 
 const requireAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization || req.headers.Authorization;
+  const isMediaPath = req.originalUrl.startsWith("/api/media/");
+  const isUploadPath = req.originalUrl.startsWith("/uploads/");
   const token = authHeader && authHeader.startsWith("Bearer ")
     ? authHeader.split(" ")[1]
-    : req.originalUrl.startsWith("/uploads/") ? getCookie(req, "life_ledger_session") : null;
+    : (req.query?.token || (isUploadPath || isMediaPath ? getCookie(req, "life_ledger_session") : null));
 
   if (!token) {
     return res.status(401).json({ message: "Authentication required." });
@@ -58,7 +72,11 @@ const requireAuth = async (req, res, next) => {
     role: rows[0].role,
   };
 
-  if (req.originalUrl.startsWith("/api/app-lock/") || req.originalUrl.startsWith("/uploads/")) return next();
+  if (authHeader?.startsWith("Bearer ") && !getCookie(req, "life_ledger_session")) {
+    setApiMediaSessionCookie(res, authHeader.split(" ")[1]);
+  }
+
+  if (req.originalUrl.startsWith("/api/app-lock/") || isUploadPath || isMediaPath) return next();
   return requireAppUnlock(req, res, next);
 };
 
