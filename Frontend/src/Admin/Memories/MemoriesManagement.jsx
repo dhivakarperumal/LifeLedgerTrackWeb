@@ -40,6 +40,32 @@ const normalizeDateInput = (value) => {
   return toLocalDateKey(value) || toLocalDateKey();
 };
 
+const getMemoryPreview = (memory) => {
+  const getUrl = (item) => typeof item === "string"
+    ? item
+    : item?.file_url || item?.url || item?.path || item?.src || "";
+  const getType = (item) => {
+    const type = String(item?.media_type || item?.file_type || item?.mime_type || "").toLowerCase();
+    if (type.startsWith("image/") || type.includes("image")) return "image";
+    if (type.startsWith("video/") || type.includes("video")) return "video";
+    return "";
+  };
+  const mediaFiles = Array.isArray(memory?.media_files) ? memory.media_files : [];
+  const image = (Array.isArray(memory?.images) ? memory.images : []).find(getUrl)
+    || mediaFiles.find((item) => getType(item) === "image" && getUrl(item));
+  if (image) return { url: getUrl(image), type: "image" };
+
+  const video = (Array.isArray(memory?.videos) ? memory.videos : []).find(getUrl)
+    || mediaFiles.find((item) => getType(item) === "video" && getUrl(item));
+  if (video) return { url: getUrl(video), type: "video" };
+
+  const legacyType = String(memory?.media_type || "").toLowerCase();
+  if (memory?.media_url && (legacyType === "image" || legacyType === "video")) {
+    return { url: memory.media_url, type: legacyType };
+  }
+  return null;
+};
+
 const getFileTypeFromName = (fileName = "", fallbackType = "application/octet-stream") => {
   const name = String(fileName || "").toLowerCase();
   const extension = name.split(".").pop();
@@ -780,22 +806,21 @@ const MemoriesManagement = () => {
                       No memories found.
                     </td>
                   </tr>
-                ) : paginatedMemories.map((memory, index) => (
+                ) : paginatedMemories.map((memory, index) => {
+                  const preview = getMemoryPreview(memory);
+                  return (
                   <tr key={memory.id} className="bg-white hover:bg-violet-50/40">
                     <td className="whitespace-nowrap px-3 py-4 font-bold text-slate-700">{(safeCurrentPage - 1) * pageSize + index + 1}</td>
                     <td className="min-w-0 px-3 py-4">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-violet-600">
-                          {memory.media_type === "video" ? (
-                            <video src={getMediaUrl(memory.media_url)} crossOrigin="use-credentials" className="h-full w-full object-cover" controls playsInline muted />
-                          ) : memory.media_type === "audio" ? (
-                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-500 to-pink-500 text-white">
-                              <FiMusic size={18} />
-                              <audio src={getMediaUrl(memory.media_url)} crossOrigin="use-credentials" controls className="h-8 w-20" />
-                            </div>
+                          {preview?.type === "image" ? (
+                            <img src={getMediaUrl(preview.url)} alt={memory.title} crossOrigin="use-credentials" className="h-full w-full object-cover" />
+                          ) : preview?.type === "video" ? (
+                            <video src={getMediaUrl(preview.url)} crossOrigin="use-credentials" className="h-full w-full object-cover" controls playsInline muted preload="metadata" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-100 to-pink-100">
-                              <FiImage size={18} />
+                              {memory.media_type === "audio" ? <FiMusic size={18} /> : <FiImage size={18} />}
                             </div>
                           )}
                         </div>
@@ -829,7 +854,8 @@ const MemoriesManagement = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
