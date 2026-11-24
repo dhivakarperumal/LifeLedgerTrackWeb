@@ -542,6 +542,9 @@ const DiaryManagement = () => {
 
       const resData = response?.data?.data || response?.data;
       savedEntryId = resData?.id || editingId;
+      if (!savedEntryId) {
+        throw new Error("The server did not return the saved diary entry.");
+      }
       entrySaved = true;
       localStorage.removeItem("diary-draft-temp");
       setEditingId(savedEntryId);
