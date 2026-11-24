@@ -30,7 +30,9 @@
   "scripts": {
     "frontend": "npm --prefix \"Frontend\" run dev",
     "backend": "npm --prefix \"Backend\" run dev",
-    "dev": "concurrently \"npm run frontend\" \"npm run backend\""
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
+    "build": "npm --prefix Frontend run build",
+    "postinstall": "npm --prefix Frontend install --include=dev && npm run build"
   },
   "repository": {
     "type": "git",
